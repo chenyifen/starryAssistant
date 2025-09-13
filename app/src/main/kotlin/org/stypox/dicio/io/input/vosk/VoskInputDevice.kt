@@ -50,6 +50,7 @@ import org.stypox.dicio.io.input.vosk.VoskState.NotInitialized
 import org.stypox.dicio.io.input.vosk.VoskState.NotLoaded
 import org.stypox.dicio.io.input.vosk.VoskState.Unzipping
 import org.stypox.dicio.ui.util.Progress
+import org.stypox.dicio.util.AssetModelManager
 import org.stypox.dicio.util.FileToDownload
 import org.stypox.dicio.util.LocaleUtils
 import org.stypox.dicio.util.distinctUntilChangedBlockingFirst
@@ -66,9 +67,9 @@ import java.io.IOException
 import java.util.Locale
 
 class VoskInputDevice(
-    @ApplicationContext appContext: Context,
+    @ApplicationContext private val appContext: Context,
     private val okHttpClient: OkHttpClient,
-    localeManager: LocaleManager,
+    private val localeManager: LocaleManager,
 ) : SttInputDevice {
 
     private val _state: MutableStateFlow<VoskState>
@@ -106,6 +107,25 @@ class VoskInputDevice(
             // perform initialization again every time the locale changes
             nextLocaleFlow.collect { reinit(it) }
         }
+        
+        // 如果assets中有当前语言的模型，自动复制
+        scope.launch {
+            val localeString = try {
+                LocaleUtils.resolveLocaleString(firstLocale, MODEL_URLS.keys)
+            } catch (e: LocaleUtils.UnsupportedLocaleException) {
+                null
+            }
+            
+            if (localeString != null && 
+                AssetModelManager.hasVoskModelInAssets(appContext, localeString) &&
+                !modelExistFileCheck.exists()) {
+                Log.d(TAG, "Auto-copying Vosk model from assets for language: $localeString")
+                val copySuccess = AssetModelManager.copyVoskModel(appContext, localeString)
+                if (copySuccess) {
+                    _state.value = NotLoaded
+                }
+            }
+        }
     }
 
     private fun init(locale: Locale): VoskState {
@@ -132,7 +152,25 @@ class VoskInputDevice(
             // if the modelUrl is null, then the current locale is not supported by any Vosk model
             modelUrl == null -> NotAvailable
             // if the model url changed, the model needs to be re-downloaded
-            modelUrlChanged -> NotDownloaded(modelUrl)
+            modelUrlChanged -> {
+                // 检查assets中是否有对应语言的模型
+                val localeString = try {
+                    LocaleUtils.resolveLocaleString(locale, MODEL_URLS.keys)
+                } catch (e: LocaleUtils.UnsupportedLocaleException) {
+                    null
+                }
+                
+                if (localeString != null && AssetModelManager.hasVoskModelInAssets(appContext, localeString)) {
+                    // 如果assets中有模型，检查是否已经复制到本地
+                    if (modelExistFileCheck.exists()) {
+                        NotLoaded // 模型已复制，可以直接加载
+                    } else {
+                        Downloaded // 需要从assets复制（通过unzip流程触发）
+                    }
+                } else {
+                    NotDownloaded(modelUrl)
+                }
+            }
             // if the model zip file exists, it means that the app was interrupted after the
             // download finished (because the file is downloaded in the cache, and is moved to its
             // actual position only after it finishes downloading), but before the unzip process
@@ -143,7 +181,21 @@ class VoskInputDevice(
             modelExistFileCheck.isDirectory -> NotLoaded
             // if the both the model zip file and the model directory do not exist, then the model
             // has not been downloaded yet
-            else -> NotDownloaded(modelUrl)
+            else -> {
+                // 检查assets中是否有对应语言的模型
+                val localeString = try {
+                    LocaleUtils.resolveLocaleString(locale, MODEL_URLS.keys)
+                } catch (e: LocaleUtils.UnsupportedLocaleException) {
+                    null
+                }
+                
+                if (localeString != null && AssetModelManager.hasVoskModelInAssets(appContext, localeString)) {
+                    // 如果assets中有模型，标记为已下载状态，等待复制
+                    Downloaded
+                } else {
+                    NotDownloaded(modelUrl)
+                }
+            }
         }
     }
 
@@ -313,6 +365,30 @@ class VoskInputDevice(
         _state.value = Unzipping(Progress.UNKNOWN)
 
         operationsJob = scope.launch {
+            // 首先尝试从assets复制模型
+            val currentLocale = try {
+                // 使用应用的语言设置，而不是系统默认语言
+                val currentAppLocale = localeManager.locale.value
+                val localeResolutionResult = LocaleUtils.resolveSupportedLocale(
+                    androidx.core.os.LocaleListCompat.create(currentAppLocale),
+                    MODEL_URLS.keys
+                )
+                localeResolutionResult.supportedLocaleString
+            } catch (e: LocaleUtils.UnsupportedLocaleException) {
+                null
+            }
+            
+            if (currentLocale != null && AssetModelManager.hasVoskModelInAssets(appContext, currentLocale)) {
+                Log.d(TAG, "Copying Vosk model from assets for language: $currentLocale")
+                val copySuccess = AssetModelManager.copyVoskModel(appContext, currentLocale)
+                if (copySuccess) {
+                    _state.value = NotLoaded
+                    return@launch
+                }
+                Log.w(TAG, "Failed to copy Vosk model from assets, falling back to unzip")
+            }
+            
+            // 如果assets中没有模型或复制失败，则解压zip文件
             unzipImpl()
         }
     }
