@@ -1,5 +1,5 @@
-import me.champeau.gradle.igp.gitRepositories
-import org.eclipse.jgit.api.Git
+// import me.champeau.gradle.igp.gitRepositories
+// import org.eclipse.jgit.api.Git
 import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Path
@@ -22,7 +22,7 @@ pluginManagement {
 
 plugins {
     // not using version catalog because it is not available in settings.gradle.kts
-    id("me.champeau.includegit") version "0.1.6"
+    // id("me.champeau.includegit") version "0.2.0" // Temporarily disabled due to network issues
 }
 
 dependencyResolutionManagement {
@@ -80,39 +80,24 @@ if (localProperties.getOrDefault("useLocalDicioLibraries", "") == "true") {
     }
 
 } else {
-    // if the repo has already been cloned, the gitRepositories plugin is buggy and doesn't
-    // fetch the remote repo before trying to checkout the commit (in case the commit has changed),
-    // and doesn't clone the repo again if the remote changed, so we need to do it manually
+    // includegit plugin is disabled due to network issues
+    // Using local dependencies instead
+    println("Warning: includegit plugin is disabled. Make sure you have the required dependencies locally.")
+    
+    // Fallback: try to use local dependencies if they exist
     for (repo in includeGitRepos) {
-        val file = File("$rootDir/checkouts/${repo.name}")
-        if (file.isDirectory) {
-            val git = Git.open(file)
-            val sameRemote = git.remoteList().call()
-                .any { rem -> rem.urIs.any { uri -> uri.toString() == repo.uri } }
-            if (sameRemote) {
-                // the commit may have changed, fetch again
-                git.fetch().call()
-            } else {
-                // the remote changed, delete the repository and start from scratch
-                println("Git: remote for ${repo.name} changed, deleting the current folder")
-                file.deleteRecursively()
-            }
-        }
-    }
-
-    gitRepositories {
-        for (repo in includeGitRepos) {
-            include(repo.name) {
-                uri.set(repo.uri)
-                commit.set(repo.commit)
-                autoInclude.set(false)
-                includeBuild("") {
-                    dependencySubstitution {
-                        substitute(module("git.included.build:${repo.name}"))
-                            .using(project(repo.projectPath))
-                    }
+        val localPath = "../${repo.name}"
+        val localFile = File(rootDir, localPath)
+        if (localFile.exists() && localFile.isDirectory) {
+            println("Using local dependency: ${repo.name} from $localPath")
+            includeBuild(localPath) {
+                dependencySubstitution {
+                    substitute(module("git.included.build:${repo.name}"))
+                        .using(project(repo.projectPath))
                 }
             }
+        } else {
+            println("Warning: Local dependency not found: $localPath")
         }
     }
 }
