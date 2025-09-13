@@ -35,6 +35,7 @@ import org.stypox.dicio.R
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
+import org.stypox.dicio.util.DebugLogger
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -72,6 +73,7 @@ class WakeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        DebugLogger.logWakeWord(TAG, "🚀 WakeService onCreate")
         notificationManager = getSystemService(this, NotificationManager::class.java)!!
 
         scope.launch {
@@ -79,6 +81,7 @@ class WakeService : Service() {
             // different string for the "Hey Dicio" wake word and for a custom one).
             // Ignore the first one (i.e. the current value), which is handled in onStartCommand.
             wakeDevice.isHeyDicio.drop(1).collect { isHeyDicio ->
+                DebugLogger.logWakeWord(TAG, "🔄 Wake word type changed: ${if (isHeyDicio) "Hey Dicio" else "Custom"}")
                 createForegroundNotification(isHeyDicio)
             }
         }
@@ -146,6 +149,85 @@ class WakeService : Service() {
         }
     }
 
+    @SuppressLint("MissingPermission")
+    private fun createOptimalAudioRecord(): AudioRecord? {
+        // 尝试不同的音频源配置
+        val audioSources = arrayOf(
+            MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
+            MediaRecorder.AudioSource.MIC to "MIC",
+            MediaRecorder.AudioSource.DEFAULT to "DEFAULT",
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION"
+        )
+        
+        // 尝试不同的缓冲区大小
+        val bufferSizes = arrayOf(6400, 3200, 1600, 8000)
+        
+        for ((source, sourceName) in audioSources) {
+            for (bufferSize in bufferSizes) {
+                try {
+                    DebugLogger.logAudioProcessing(TAG, "🔧 Trying AudioRecord: source=$sourceName, bufferSize=$bufferSize")
+                    
+                    val ar = AudioRecord(
+                        source,
+                        16000,
+                        AudioFormat.CHANNEL_IN_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        bufferSize
+                    )
+                    
+                    if (ar.state == AudioRecord.STATE_INITIALIZED) {
+                        DebugLogger.logAudioProcessing(TAG, "✅ AudioRecord initialized: source=$sourceName, bufferSize=$bufferSize")
+                        
+                        // 测试录音功能
+                        if (testAudioRecord(ar)) {
+                            DebugLogger.logAudioProcessing(TAG, "🎵 AudioRecord test passed: source=$sourceName")
+                            return ar
+                        } else {
+                            DebugLogger.logWakeWordError(TAG, "❌ AudioRecord test failed: source=$sourceName")
+                            ar.release()
+                        }
+                    } else {
+                        DebugLogger.logWakeWordError(TAG, "❌ AudioRecord not initialized: source=$sourceName, state=${ar.state}")
+                        ar.release()
+                    }
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "❌ Exception creating AudioRecord: source=$sourceName", e)
+                }
+            }
+        }
+        
+        return null
+    }
+    
+    @SuppressLint("MissingPermission")
+    private fun testAudioRecord(ar: AudioRecord): Boolean {
+        return try {
+            ar.startRecording()
+            val testBuffer = ShortArray(160) // 10ms at 16kHz
+            val bytesRead = ar.read(testBuffer, 0, testBuffer.size)
+            ar.stop()
+            
+            DebugLogger.logAudioProcessing(TAG, "🧪 AudioRecord test: bytesRead=$bytesRead")
+            
+            if (bytesRead > 0) {
+                // 检查是否有实际音频数据（非全零）
+                val hasAudio = testBuffer.any { it != 0.toShort() }
+                DebugLogger.logAudioProcessing(TAG, "🧪 Audio data present: $hasAudio")
+                
+                // 计算音频幅度
+                val amplitude = testBuffer.maxOfOrNull { kotlin.math.abs(it.toFloat()) / 32768.0f } ?: 0.0f
+                DebugLogger.logAudioProcessing(TAG, "🧪 Test amplitude: $amplitude")
+                
+                return bytesRead > 0 // 只要能读取数据就认为成功，即使幅度为0
+            }
+            
+            false
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ AudioRecord test exception", e)
+            false
+        }
+    }
+
     private fun createForegroundNotification(isHeyDicio: Boolean) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
@@ -186,55 +268,90 @@ class WakeService : Service() {
     }
 
     private fun listenForWakeWord() {
-        @SuppressLint("MissingPermission")
-        val ar = AudioRecord(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
-            16000,
-            AudioFormat.CHANNEL_IN_MONO,
-            AudioFormat.ENCODING_PCM_16BIT,
-            6400,
-        )
+        DebugLogger.logWakeWord(TAG, "🎤 Starting wake word listening...")
+        DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
+        DebugLogger.logWakeWord(TAG, "🔊 Wake word type: ${if (wakeDevice.isHeyDicio.value) "Hey Dicio" else "Custom"}")
+        DebugLogger.logWakeWord(TAG, "📏 Frame size: ${wakeDevice.frameSize()}")
+
+        // 尝试多种AudioRecord配置以提高兼容性
+        val ar = createOptimalAudioRecord() ?: run {
+            DebugLogger.logWakeWordError(TAG, "❌ Failed to create any AudioRecord configuration")
+            return
+        }
+
+        DebugLogger.logAudioProcessing(TAG, "🎵 AudioRecord created successfully")
 
         var audio = ShortArray(0)
         var nextWakeWordAllowed = Instant.MIN
+        var frameCount = 0
 
         try {
             ar.startRecording()
+            DebugLogger.logWakeWord(TAG, "✅ AudioRecord started successfully")
+            
             while (listening.get()) {
                 if (audio.size != wakeDevice.frameSize()) {
+                    val oldSize = audio.size
                     audio = ShortArray(wakeDevice.frameSize())
+                    DebugLogger.logAudioProcessing(TAG, "🔄 Audio buffer resized: $oldSize -> ${audio.size}")
                 }
 
-                ar.read(audio, 0, audio.size)
+                val bytesRead = ar.read(audio, 0, audio.size)
+                frameCount++
+                
+                if (bytesRead > 0) {
+                    val wakeWordDetected = wakeDevice.processFrame(audio)
+                    val now = Instant.now()
+                    
+                    if (wakeWordDetected) {
+                        if (now > nextWakeWordAllowed) {
+                            DebugLogger.logWakeWord(TAG, "🎯 WAKE WORD DETECTED! Frame #$frameCount")
+                            nextWakeWordAllowed = now.plusMillis(WAKE_WORD_BACKOFF_MILLIS)
+                            onWakeWordDetected()
+                        } else {
+                            val remainingMs = nextWakeWordAllowed.toEpochMilli() - now.toEpochMilli()
+                            DebugLogger.logWakeWord(TAG, "⏳ Wake word detected but in backoff period (${remainingMs}ms remaining)")
+                        }
+                    }
 
-                val wakeWordDetected = wakeDevice.processFrame(audio)
-                if (wakeWordDetected && Instant.now() > nextWakeWordAllowed) {
-                    nextWakeWordAllowed = Instant.now().plusMillis(WAKE_WORD_BACKOFF_MILLIS)
-                    onWakeWordDetected()
+                    lastHeard.set(now)
+                    
+                    // 每1000帧记录一次状态
+                    if (frameCount % 1000 == 0) {
+                        DebugLogger.logAudioProcessing(TAG, "📊 Processed $frameCount frames, still listening...")
+                    }
+                } else {
+                    DebugLogger.logWakeWordError(TAG, "❌ AudioRecord read failed: $bytesRead bytes")
                 }
-
-                lastHeard.set(Instant.now())
             }
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ Error in wake word listening", e)
+            throw e
         } finally {
+            DebugLogger.logWakeWord(TAG, "🛑 Stopping AudioRecord (processed $frameCount frames)")
             ar.stop()
             ar.release()
         }
     }
 
     private fun onWakeWordDetected() {
-        Log.d(TAG, "Wake word detected")
+        DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
 
         val intent = Intent(this, MainActivity::class.java)
         intent.setAction(ACTION_WAKE_WORD)
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
+        DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
 
         // Start listening and pass STT events to the skill evaluator.
         // Note that this works even if the MainActivity is opened later!
-        sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
+        DebugLogger.logVoiceRecognition(TAG, "🎤 Starting STT input device...")
+        val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
+        DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
 
         // Unload the STT after a while because it would be using RAM uselessly
         handler.removeCallbacks(releaseSttResourcesRunnable)
         handler.postDelayed(releaseSttResourcesRunnable, RELEASE_STT_RESOURCES_MILLIS)
+        DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled STT resource release in ${RELEASE_STT_RESOURCES_MILLIS}ms")
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0) {
             // start the activity directly on versions prior to Android 10,
@@ -352,7 +469,7 @@ class WakeService : Service() {
 
         private val lastHeard = AtomicReference<Instant>()
 
-        private val TAG = WakeService::class.simpleName
+        private val TAG = WakeService::class.simpleName ?: "WakeService"
         private const val FOREGROUND_NOTIFICATION_CHANNEL_ID =
             "org.stypox.dicio.io.wake.WakeService.FOREGROUND"
         private const val START_NOTIFICATION_CHANNEL_ID =

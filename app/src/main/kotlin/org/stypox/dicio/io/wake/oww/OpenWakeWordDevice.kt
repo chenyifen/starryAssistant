@@ -15,8 +15,11 @@ import okhttp3.OkHttpClient
 import org.stypox.dicio.io.wake.WakeDevice
 import org.stypox.dicio.io.wake.WakeState
 import org.stypox.dicio.ui.util.Progress
+import org.stypox.dicio.util.AssetModelManager
+import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.FileToDownload
 import org.stypox.dicio.util.downloadBinaryFilesWithPartial
+import org.stypox.dicio.util.measureTimeAndLog
 import java.io.File
 import java.io.IOException
 
@@ -45,12 +48,52 @@ class OpenWakeWordDevice(
     private val scope = CoroutineScope(Dispatchers.IO)
 
     init {
-        _state = if (allModelFiles.any(FileToDownload::needsToBeDownloaded)) {
-            MutableStateFlow(WakeState.NotDownloaded)
-        } else {
+        DebugLogger.logWakeWord(TAG, "🚀 Initializing OpenWakeWordDevice")
+        DebugLogger.logWakeWord(TAG, "📁 OWW folder: ${owwFolder.absolutePath}")
+        DebugLogger.logWakeWord(TAG, "📄 Model files: ${allModelFiles.map { "${it.file.name} (${if (it.file.exists()) "EXISTS" else "MISSING"})" }}")
+        DebugLogger.logWakeWord(TAG, "👤 User wake file exists: $userWakeFileExists")
+        
+        val modelsAvailable = hasModelsAvailable()
+        DebugLogger.logWakeWord(TAG, "✅ Models available: $modelsAvailable")
+        
+        _state = if (modelsAvailable) {
             MutableStateFlow(WakeState.NotLoaded)
+        } else {
+            MutableStateFlow(WakeState.NotDownloaded)
         }
         state = _state
+        
+        DebugLogger.logStateMachine(TAG, "Initial state: ${_state.value}")
+        
+        // 如果assets中有模型但本地没有，自动复制
+        scope.launch {
+            val hasLocal = hasLocalModels()
+            val hasAssets = AssetModelManager.hasOpenWakeWordModelsInAssets(appContext)
+            
+            DebugLogger.logModelManagement(TAG, "Local models: $hasLocal, Assets models: $hasAssets")
+            
+            if (!hasLocal && hasAssets) {
+                DebugLogger.logModelManagement(TAG, "🔄 Auto-copying OpenWakeWord models from assets on init")
+                val copySuccess = measureTimeAndLog(TAG, "Copy OWW models from assets") {
+                    AssetModelManager.copyOpenWakeWordModels(appContext)
+                }
+                
+                if (copySuccess) {
+                    DebugLogger.logModelManagement(TAG, "✅ Successfully copied models from assets")
+                    _state.value = WakeState.NotLoaded
+                } else {
+                    DebugLogger.logWakeWordError(TAG, "❌ Failed to copy models from assets")
+                }
+            }
+        }
+    }
+    
+    private fun hasModelsAvailable(): Boolean {
+        return hasLocalModels() || AssetModelManager.hasOpenWakeWordModelsInAssets(appContext)
+    }
+    
+    private fun hasLocalModels(): Boolean {
+        return !allModelFiles.any(FileToDownload::needsToBeDownloaded)
     }
 
     override fun download() {
@@ -58,6 +101,18 @@ class OpenWakeWordDevice(
 
         scope.launch {
             try {
+                // 首先尝试从assets复制预打包的模型
+                if (AssetModelManager.hasOpenWakeWordModelsInAssets(appContext)) {
+                    Log.d(TAG, "Copying OpenWakeWord models from assets")
+                    val copySuccess = AssetModelManager.copyOpenWakeWordModels(appContext)
+                    if (copySuccess) {
+                        _state.value = WakeState.NotLoaded
+                        return@launch
+                    }
+                    Log.w(TAG, "Failed to copy from assets, falling back to download")
+                }
+                
+                // 如果assets中没有模型或复制失败，则从网络下载
                 owwFolder.mkdirs()
                 downloadBinaryFilesWithPartial(
                     urlsFiles = allModelFiles,
@@ -78,6 +133,7 @@ class OpenWakeWordDevice(
 
     override fun processFrame(audio16bitPcm: ShortArray): Boolean {
         if (audio16bitPcm.size != OwwModel.MEL_INPUT_COUNT) {
+            DebugLogger.logWakeWordError(TAG, "❌ Invalid frame size: ${audio16bitPcm.size}, expected: ${OwwModel.MEL_INPUT_COUNT}")
             throw IllegalArgumentException(
                 "OwwModel can only process audio frames of ${OwwModel.MEL_INPUT_COUNT} samples"
             )
@@ -85,28 +141,62 @@ class OpenWakeWordDevice(
 
         if (model == null) {
             if (_state.value != WakeState.NotLoaded) {
+                DebugLogger.logWakeWordError(TAG, "❌ Model not ready, current state: ${_state.value}")
                 throw IOException("Model has not been downloaded yet")
             }
 
             try {
+                DebugLogger.logWakeWord(TAG, "🔄 Loading OWW model...")
                 _state.value = WakeState.Loading
-                model = OwwModel(
-                    melFile.file,
-                    embFile.file,
-                    if (userWakeFileExists) userWakeFile else wakeFile.file,
-                )
+                
+                val modelFiles = if (userWakeFileExists) {
+                    DebugLogger.logWakeWord(TAG, "👤 Using user wake file: ${userWakeFile.absolutePath}")
+                    listOf(melFile.file, embFile.file, userWakeFile)
+                } else {
+                    DebugLogger.logWakeWord(TAG, "🔊 Using default wake file: ${wakeFile.file.absolutePath}")
+                    listOf(melFile.file, embFile.file, wakeFile.file)
+                }
+                
+                DebugLogger.logWakeWord(TAG, "📄 Model files: ${modelFiles.map { "${it.name} (${if (it.exists()) "✅" else "❌"})" }}")
+                
+                model = measureTimeAndLog(TAG, "Load OWW model") {
+                    OwwModel(
+                        melFile.file,
+                        embFile.file,
+                        if (userWakeFileExists) userWakeFile else wakeFile.file,
+                    )
+                }
+                
                 _state.value = WakeState.Loaded
+                DebugLogger.logWakeWord(TAG, "✅ OWW model loaded successfully")
             } catch (t: Throwable) {
+                DebugLogger.logWakeWordError(TAG, "❌ Failed to load OWW model", t)
                 _state.value = WakeState.ErrorLoading(t)
                 return false
             }
         }
 
+        // 转换音频数据
         for (i in 0..<OwwModel.MEL_INPUT_COUNT) {
             audio[i] = audio16bitPcm[i].toFloat() / 32768.0f
         }
 
-        return model!!.processFrame(audio) > 0.8f
+        // 计算音频幅度用于调试
+        val amplitude = audio.maxOf { kotlin.math.abs(it) }
+        
+        // 处理音频帧并获取置信度
+        val confidence = measureTimeAndLog(TAG, "Process audio frame") {
+            model!!.processFrame(audio)
+        }
+        
+               val threshold = 0.01f // 进一步降低阈值测试模型响应  TODO
+        val detected = confidence > threshold
+        
+        // 记录检测结果
+        DebugLogger.logWakeWordDetection(TAG, confidence, threshold, detected)
+        DebugLogger.logAudioStats(TAG, audio16bitPcm.size, amplitude, threshold)
+        
+        return detected
     }
 
     override fun frameSize(): Int {
@@ -122,7 +212,7 @@ class OpenWakeWordDevice(
     override fun isHeyDicio(): Boolean = !userWakeFileExists
 
     companion object {
-        val TAG = OpenWakeWordDevice::class.simpleName
+        val TAG = OpenWakeWordDevice::class.simpleName ?: "OpenWakeWordDevice"
         const val MEL_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/melspectrogram.tflite"
         const val EMB_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/embedding_model.tflite"
         const val WAKE_URL = "https://github.com/Stypox/dicio-android/releases/download/v2.0/hey_dicio_v6.0.tflite"
