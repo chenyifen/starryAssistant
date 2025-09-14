@@ -17,6 +17,9 @@ object DebugLogger {
     private const val DEBUG_MODEL_MANAGEMENT = DEBUG_ENABLED && true
     private const val DEBUG_STATE_MACHINE = DEBUG_ENABLED && true
     
+    // 音频保存调试功能 - 可以一键关闭
+    private const val DEBUG_SAVE_AUDIO = DEBUG_ENABLED && false
+    
     // 唤醒词相关日志
     fun logWakeWord(tag: String?, message: String) {
         if (DEBUG_WAKE_WORD && tag != null) {
@@ -96,10 +99,18 @@ object DebugLogger {
     // 唤醒词检测结果
     fun logWakeWordDetection(tag: String?, confidence: Float, threshold: Float, detected: Boolean) {
         if (DEBUG_WAKE_WORD && tag != null) {
-            val status = if (detected) "✅ DETECTED" else "❌ NOT_DETECTED"
-            Log.d("🎯[$tag]", "$status - Confidence: %.3f, Threshold: %.3f".format(confidence, threshold))
+            // 过滤掉置信度为0的日志，减少输出噪音
+            if (confidence > 0.0f || detected) {
+                val status = if (detected) "✅ DETECTED" else "❌ NOT_DETECTED"
+                Log.d("🎯[$tag]", "$status - Confidence: %.3f, Threshold: %.3f".format(confidence, threshold))
+            }
         }
     }
+    
+    /**
+     * 检查音频保存功能是否启用
+     */
+    fun isAudioSaveEnabled(): Boolean = DEBUG_SAVE_AUDIO
 }
 
 /**

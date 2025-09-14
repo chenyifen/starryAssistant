@@ -37,11 +37,12 @@ import org.stypox.dicio.ui.util.loadingProgressString
 
 val wakeWordPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.USE_FULL_SCREEN_INTENT)
+            Manifest.permission.USE_FULL_SCREEN_INTENT, Manifest.permission.READ_EXTERNAL_STORAGE)
 else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-    arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
+    arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS,
+            Manifest.permission.READ_EXTERNAL_STORAGE)
 else
-    arrayOf(Manifest.permission.RECORD_AUDIO)
+    arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE)
 
 /**
  * Calls [WakeWordWidgetImpl] with the data from the view model, and handles the permissions.

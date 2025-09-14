@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ import org.stypox.dicio.settings.datastore.UserSettingsModule.Companion.newDataS
 import org.stypox.dicio.settings.datastore.WakeDevice
 import org.stypox.dicio.settings.ui.SettingsCategoryTitle
 import org.stypox.dicio.settings.ui.SettingsItem
+import org.stypox.dicio.ui.settings.PermissionSettingsWidget
 import org.stypox.dicio.ui.theme.AppTheme
 
 
@@ -81,6 +83,15 @@ private fun MainSettingsScreen(
     }
 
     LazyColumn(modifier) {
+        /* PERMISSIONS */
+        item { SettingsCategoryTitle("应用权限", topPadding = 4.dp) }
+        item { 
+            PermissionSettingsWidget(
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) 
+        }
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+        
         /* GENERAL SETTINGS */
         item { SettingsCategoryTitle(stringResource(R.string.pref_general), topPadding = 4.dp) }
         item {
@@ -134,7 +145,7 @@ private fun MainSettingsScreen(
         }
         val wakeDevice = when (val device = settings.wakeDevice) {
             WakeDevice.UNRECOGNIZED,
-            WakeDevice.WAKE_DEVICE_UNSET -> WakeDevice.WAKE_DEVICE_OWW
+            WakeDevice.WAKE_DEVICE_UNSET -> WakeDevice.WAKE_DEVICE_SHERPA_ONNX
             else -> device
         }
         item {
@@ -143,27 +154,42 @@ private fun MainSettingsScreen(
                 viewModel::setWakeDevice,
             )
         }
-        if (wakeDevice == WakeDevice.WAKE_DEVICE_OWW) {
-            /* OpenWakeWord-specific settings */
-            item {
-                val isHeyDicio by viewModel.isHeyDicio.collectAsState(true)
-                if (isHeyDicio) {
-                    // the wake word is "Hey Dicio", so there is no custom model at the moment
+        when (wakeDevice) {
+            WakeDevice.WAKE_DEVICE_OWW -> {
+                /* OpenWakeWord-specific settings */
+                item {
+                    val isHeyDicio by viewModel.isHeyDicio.collectAsState(true)
+                    if (isHeyDicio) {
+                        // the wake word is "Hey Dicio", so there is no custom model at the moment
+                        SettingsItem(
+                            modifier = Modifier.clickable { importLauncher.launch(arrayOf("*/*")) },
+                            title = stringResource(R.string.pref_wake_custom_import),
+                            icon = Icons.Default.UploadFile,
+                            description = stringResource(R.string.pref_wake_custom_import_summary_oww),
+                        )
+                    } else {
+                        // a custom model is currently set, give the option to remove it
+                        SettingsItem(
+                            modifier = Modifier.clickable { viewModel.removeOwwUserWakeFile() },
+                            title = stringResource(R.string.pref_wake_custom_delete),
+                            icon = Icons.Default.DeleteSweep,
+                            description = stringResource(R.string.pref_wake_custom_delete_summary),
+                        )
+                    }
+                }
+            }
+            WakeDevice.WAKE_DEVICE_SHERPA_ONNX -> {
+                /* SherpaOnnx-specific settings */
+                item {
                     SettingsItem(
-                        modifier = Modifier.clickable { importLauncher.launch(arrayOf("*/*")) },
-                        title = stringResource(R.string.pref_wake_custom_import),
-                        icon = Icons.Default.UploadFile,
-                        description = stringResource(R.string.pref_wake_custom_import_summary_oww),
-                    )
-                } else {
-                    // a custom model is currently set, give the option to remove it
-                    SettingsItem(
-                        modifier = Modifier.clickable { viewModel.removeOwwUserWakeFile() },
-                        title = stringResource(R.string.pref_wake_custom_delete),
-                        icon = Icons.Default.DeleteSweep,
-                        description = stringResource(R.string.pref_wake_custom_delete_summary),
+                        title = "SherpaOnnx Configuration",
+                        icon = Icons.Default.Tune,
+                        description = "Configure SherpaOnnx KWS parameters and wake words",
                     )
                 }
+            }
+            else -> {
+                // No specific settings for other wake devices
             }
         }
         item {
