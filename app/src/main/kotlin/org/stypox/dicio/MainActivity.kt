@@ -6,6 +6,7 @@ import android.content.Intent.ACTION_ASSIST
 import android.content.Intent.ACTION_VOICE_COMMAND
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,7 @@ import org.stypox.dicio.io.wake.WakeState.NotLoaded
 import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
 import org.stypox.dicio.util.BaseActivity
+import org.stypox.dicio.util.PermissionHelper
 import java.time.Instant
 import javax.inject.Inject
 
@@ -119,6 +121,9 @@ class MainActivity : BaseActivity() {
             sttInputDevice.tryLoad(null)
         }
 
+        // 检查并请求必要的权限
+        checkAndRequestPermissions()
+        
         WakeService.start(this)
         wakeServiceJob?.cancel()
         wakeServiceJob = lifecycleScope.launch {
@@ -156,6 +161,71 @@ class MainActivity : BaseActivity() {
                     modifier = Modifier.safeDrawingPadding()
                 ) {
                     Navigation()
+                }
+            }
+        }
+    }
+
+    /**
+     * 检查并请求必要的权限
+     */
+    private fun checkAndRequestPermissions() {
+        // 检查基础权限
+        if (!PermissionHelper.hasAllBasicPermissions(this)) {
+            Log.d(TAG, "缺少基础权限，主动请求")
+            PermissionHelper.requestBasicPermissions(this)
+        }
+        
+        // 检查外部存储权限并主动请求
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()) {
+                Log.d(TAG, "缺少MANAGE_EXTERNAL_STORAGE权限，主动请求")
+                PermissionHelper.requestManageExternalStoragePermission(this)
+            }
+        } else {
+            if (!PermissionHelper.hasExternalStoragePermission(this)) {
+                Log.d(TAG, "缺少READ_EXTERNAL_STORAGE权限，主动请求")
+                PermissionHelper.requestExternalStoragePermission(this)
+            }
+        }
+        
+        // 记录权限状态
+        val hasModelAccess = PermissionHelper.hasModelAccessPermissions(this)
+        Log.d(TAG, "模型访问权限状态: ${if (hasModelAccess) "已授予" else "缺失"}")
+    }
+    
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        val result = PermissionHelper.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        if (result.allGranted) {
+            Log.d(TAG, "所有权限已授予: ${result.grantedPermissions}")
+            // 权限授予后，尝试重新初始化WakeDevice
+            wakeDevice.download()
+        } else {
+            Log.w(TAG, "部分权限被拒绝: ${result.deniedPermissions}")
+            // 可以显示权限说明对话框
+        }
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        when (requestCode) {
+            PermissionHelper.REQUEST_MANAGE_EXTERNAL_STORAGE -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (Environment.isExternalStorageManager()) {
+                        Log.d(TAG, "MANAGE_EXTERNAL_STORAGE权限已授予")
+                        // 权限授予后，尝试重新下载/初始化WakeDevice
+                        wakeDevice.download()
+                    } else {
+                        Log.w(TAG, "MANAGE_EXTERNAL_STORAGE权限被拒绝")
+                    }
                 }
             }
         }

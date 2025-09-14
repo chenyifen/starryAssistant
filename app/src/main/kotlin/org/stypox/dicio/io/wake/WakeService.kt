@@ -36,6 +36,7 @@ import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.util.DebugLogger
+import org.stypox.dicio.util.AudioDebugSaver
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -84,6 +85,11 @@ class WakeService : Service() {
                 DebugLogger.logWakeWord(TAG, "🔄 Wake word type changed: ${if (isHeyDicio) "Hey Dicio" else "Custom"}")
                 createForegroundNotification(isHeyDicio)
             }
+        }
+        
+        // 启动时清理旧的音频调试文件
+        if (DebugLogger.isAudioSaveEnabled()) {
+            AudioDebugSaver.cleanupOldAudioFiles(this, 50)
         }
     }
 

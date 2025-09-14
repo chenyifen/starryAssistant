@@ -17,6 +17,7 @@ import org.stypox.dicio.io.wake.WakeState
 import org.stypox.dicio.ui.util.Progress
 import org.stypox.dicio.util.AssetModelManager
 import org.stypox.dicio.util.DebugLogger
+import org.stypox.dicio.util.AudioDebugSaver
 import org.stypox.dicio.util.FileToDownload
 import org.stypox.dicio.util.downloadBinaryFilesWithPartial
 import org.stypox.dicio.util.measureTimeAndLog
@@ -191,6 +192,11 @@ class OpenWakeWordDevice(
         
                val threshold = 0.01f // 进一步降低阈值测试模型响应  TODO
         val detected = confidence > threshold
+        
+        // 保存有音频信号的音频数据用于调试
+        if (amplitude > 0.0f) {
+            AudioDebugSaver.saveWakeAudio(appContext, audio16bitPcm, amplitude, confidence)
+        }
         
         // 记录检测结果
         DebugLogger.logWakeWordDetection(TAG, confidence, threshold, detected)

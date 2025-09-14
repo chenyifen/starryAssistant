@@ -23,8 +23,11 @@ import android.util.Log
 import org.json.JSONException
 import org.json.JSONObject
 import org.stypox.dicio.io.input.InputEvent
+import org.stypox.dicio.util.DebugLogger
 import org.vosk.android.RecognitionListener
 import org.vosk.android.SpeechService
+import java.text.SimpleDateFormat
+import java.util.*
 
 
 /**
@@ -37,6 +40,9 @@ internal class VoskListener(
     private val eventListener: (InputEvent) -> Unit,
     private val speechService: SpeechService,
 ) : RecognitionListener {
+    
+    // 为每个识别会话生成唯一ID
+    private val sessionId = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault()).format(Date())
 
     /**
      * Called when partial recognition result is available.
@@ -80,6 +86,16 @@ internal class VoskListener(
             Log.e(TAG, "Can't obtain result from $s", e)
             eventListener(InputEvent.Error(e))
             return
+        }
+
+        // 记录ASR识别结果用于调试
+        if (inputs.isNotEmpty()) {
+            val recognizedText = inputs.firstOrNull()?.first ?: ""
+            DebugLogger.logVoiceRecognition(TAG, "🎤 ASR Result (Session: $sessionId): '$recognizedText'")
+            
+            // 注意：Vosk的SpeechService不提供原始音频数据访问
+            // 我们只能记录识别结果和会话信息
+            DebugLogger.logVoiceRecognition(TAG, "📝 ASR Session $sessionId completed with ${inputs.size} alternatives")
         }
 
         // emit the final event

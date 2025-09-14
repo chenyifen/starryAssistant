@@ -46,6 +46,25 @@ android {
         }
     }
 
+    // 产品变体：控制是否包含模型文件
+    flavorDimensions += "models"
+    
+    productFlavors {
+        create("withModels") {
+            dimension = "models"
+            versionNameSuffix = "-with-models"
+            // 包含所有模型文件（默认行为，无需额外配置）
+            buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "true")
+        }
+        
+        create("noModels") {
+            dimension = "models" 
+            versionNameSuffix = "-no-models"
+            // 排除模型文件以减少APK大小和构建时间
+            buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "false")
+        }
+    }
+
     buildTypes {
         debug {
             var normalizedGitBranch = gitBranch().replaceFirst("^[^A-Za-z]+", "").replace(Regex("[^0-9A-Za-z]+"), "")
