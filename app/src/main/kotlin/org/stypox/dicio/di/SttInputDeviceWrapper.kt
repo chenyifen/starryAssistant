@@ -3,6 +3,7 @@ package org.stypox.dicio.di
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.util.Log
 import androidx.datastore.core.DataStore
 import dagger.Module
 import dagger.Provides
@@ -23,11 +24,13 @@ import org.stypox.dicio.io.input.SttInputDevice
 import org.stypox.dicio.io.input.SttState
 import org.stypox.dicio.io.input.external_popup.ExternalPopupInputDevice
 import org.stypox.dicio.io.input.vosk.VoskInputDevice
+import org.stypox.dicio.io.input.TwoPassInputDevice
 import org.stypox.dicio.settings.datastore.InputDevice
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_EXTERNAL_POPUP
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_UNSET
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_VOSK
+import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_TWO_PASS
 import org.stypox.dicio.settings.datastore.InputDevice.UNRECOGNIZED
 import org.stypox.dicio.settings.datastore.SttPlaySound
 import org.stypox.dicio.settings.datastore.UserSettings
@@ -54,6 +57,10 @@ class SttInputDeviceWrapperImpl(
     private val okHttpClient: OkHttpClient,
     private val activityForResultManager: ActivityForResultManager,
 ) : SttInputDeviceWrapper {
+    
+    companion object {
+        private const val TAG = "SttInputDeviceWrapper"
+    }
     private val scope = CoroutineScope(Dispatchers.Default)
 
     private var inputDeviceSetting: InputDevice
@@ -99,13 +106,26 @@ class SttInputDeviceWrapperImpl(
     }
 
     private fun buildInputDevice(setting: InputDevice): SttInputDevice? {
+        Log.d(TAG, "🏗️ 构建STT输入设备: $setting")
         return when (setting) {
             UNRECOGNIZED,
             INPUT_DEVICE_UNSET,
-            INPUT_DEVICE_VOSK -> VoskInputDevice(appContext, okHttpClient, localeManager)
-            INPUT_DEVICE_EXTERNAL_POPUP ->
+            INPUT_DEVICE_VOSK -> {
+                Log.d(TAG, "   📡 创建VoskInputDevice")
+                VoskInputDevice(appContext, okHttpClient, localeManager)
+            }
+            INPUT_DEVICE_TWO_PASS -> {
+                Log.d(TAG, "   🎯 创建TwoPassInputDevice (双识别模式)")
+                TwoPassInputDevice(appContext, okHttpClient, localeManager)
+            }
+            INPUT_DEVICE_EXTERNAL_POPUP -> {
+                Log.d(TAG, "   🖥️ 创建ExternalPopupInputDevice")
                 ExternalPopupInputDevice(appContext, activityForResultManager, localeManager)
-            INPUT_DEVICE_NOTHING -> null
+            }
+            INPUT_DEVICE_NOTHING -> {
+                Log.d(TAG, "   ❌ 无输入设备")
+                null
+            }
         }
     }
 

@@ -1,5 +1,6 @@
 package org.stypox.dicio.eval
 
+import android.util.Log
 import org.dicio.skill.skill.Skill
 import org.dicio.skill.context.SkillContext
 import org.dicio.skill.skill.Specificity
@@ -28,31 +29,44 @@ class SkillRanker(
         }
 
         fun getBest(ctx: SkillContext, input: String): SkillWithResult<*>? {
+            Log.d(TAG, "🎯 SkillBatch.getBest() 开始评估输入: '$input'")
+            Log.d(TAG, "📊 技能数量 - High: ${highSkills.size}, Medium: ${mediumSkills.size}, Low: ${lowSkills.size}")
+            
             // first round: considering only high-priority skills
             val bestHigh = getBestForSpecificity(ctx, highSkills, input)
+            Log.d(TAG, "🔴 第一轮(High): ${bestHigh?.let { "${it.skill.correspondingSkillInfo.id} (${it.score.scoreIn01Range()})" } ?: "无匹配"}")
             if (bestHigh != null && bestHigh.score.scoreIn01Range() > HIGH_THRESHOLD_1) {
+                Log.d(TAG, "✅ 第一轮通过，阈值: $HIGH_THRESHOLD_1")
                 return bestHigh
             }
 
             // second round: considering both medium- and high-priority skills
             val bestMedium = getBestForSpecificity(ctx, mediumSkills, input)
+            Log.d(TAG, "🟡 第二轮(Medium): ${bestMedium?.let { "${it.skill.correspondingSkillInfo.id} (${it.score.scoreIn01Range()})" } ?: "无匹配"}")
             if (bestMedium != null && bestMedium.score.scoreIn01Range() > MEDIUM_THRESHOLD_2) {
+                Log.d(TAG, "✅ 第二轮Medium通过，阈值: $MEDIUM_THRESHOLD_2")
                 return bestMedium
             } else if (bestHigh != null && bestHigh.score.scoreIn01Range() > HIGH_THRESHOLD_2) {
+                Log.d(TAG, "✅ 第二轮High通过，阈值: $HIGH_THRESHOLD_2")
                 return bestHigh
             }
 
             // third round: all skills are considered
             val bestLow = getBestForSpecificity(ctx, lowSkills, input)
+            Log.d(TAG, "🟢 第三轮(Low): ${bestLow?.let { "${it.skill.correspondingSkillInfo.id} (${it.score.scoreIn01Range()})" } ?: "无匹配"}")
             if (bestLow != null && bestLow.score.scoreIn01Range() > LOW_THRESHOLD_3) {
+                Log.d(TAG, "✅ 第三轮Low通过，阈值: $LOW_THRESHOLD_3")
                 return bestLow
             } else if (bestMedium != null && bestMedium.score.scoreIn01Range() > MEDIUM_THRESHOLD_3) {
+                Log.d(TAG, "✅ 第三轮Medium通过，阈值: $MEDIUM_THRESHOLD_3")
                 return bestMedium
             } else if (bestHigh != null && bestHigh.score.scoreIn01Range() > HIGH_THRESHOLD_3) {
+                Log.d(TAG, "✅ 第三轮High通过，阈值: $HIGH_THRESHOLD_3")
                 return bestHigh
             }
 
             // nothing was matched
+            Log.d(TAG, "❌ 所有轮次都未通过阈值检查")
             return null
         }
 
@@ -62,15 +76,23 @@ class SkillRanker(
                 skills: List<Skill<*>>,
                 input: String,
             ): SkillWithResult<*>? {
+                if (skills.isEmpty()) {
+                    Log.d(TAG, "  📭 技能列表为空")
+                    return null
+                }
+                
+                Log.d(TAG, "  🔍 评估 ${skills.size} 个技能:")
                 // this ensures that if `skills` is empty and null skill is returned,
                 // nothing bad happens since its score cannot be higher than any other float value.
                 var bestSkillSoFar: SkillWithResult<*>? = null
                 for (skill in skills) {
                     val res = skill.scoreAndWrapResult(ctx, input)
+                    Log.d(TAG, "    📝 ${skill.correspondingSkillInfo.id}: ${res.score.scoreIn01Range()}")
                     if (bestSkillSoFar == null || res.score.isBetterThan(bestSkillSoFar.score)) {
                         bestSkillSoFar = res
                     }
                 }
+                Log.d(TAG, "  🏆 最佳技能: ${bestSkillSoFar?.skill?.correspondingSkillInfo?.id} (${bestSkillSoFar?.score?.scoreIn01Range()})")
                 return bestSkillSoFar
             }
         }
@@ -132,6 +154,8 @@ class SkillRanker(
     }
 
     companion object {
+        private val TAG = SkillRanker::class.simpleName
+        
         // various thresholds for different specificity categories (high, medium and low)
         // first round
         private const val HIGH_THRESHOLD_1 = 0.85f

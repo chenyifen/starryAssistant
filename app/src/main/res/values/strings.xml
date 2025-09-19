@@ -85,6 +85,7 @@
     <string name="pref_input_method_external_popup_summary">Opens the UI of another app through ACTION\u200B_\u200BRECOGNIZE\u200B_\u200BSPEECH, for example whisperIME, Kõnele, Futo Voice Input</string>
     <string name="pref_speech_output_method">Speech output method</string>
     <string name="pref_speech_output_method_summary">Choose the service Dicio should use to talk to you</string>
+    <string name="pref_speech_output_method_sherpa_onnx">SherpaOnnx TTS (Offline multilingual)</string>
     <string name="pref_speech_output_method_android">Android text to speech engine</string>
     <string name="pref_speech_output_method_toast">Toast (popup message)</string>
     <string name="pref_speech_output_method_snackbar">Snackbar (message at the bottom)</string>
@@ -234,4 +235,13 @@
     <string name="skill_weather_kelvin">K</string>
     <string name="skill_weather_meters_per_second">m/s</string>
     <string name="skill_weather_miles_per_hour">mph</string>
+    
+    <!-- Two-Pass Recognition Settings -->
+    <string name="pref_input_method_two_pass">Two-Pass Recognition</string>
+    <string name="pref_input_method_two_pass_summary">Real-time Vosk + High-accuracy SenseVoice</string>
+    <string name="pref_two_pass_enable_second_pass">Enable second-pass recognition</string>
+    <string name="pref_two_pass_enable_second_pass_summary">Use SenseVoice for final accurate results</string>
+    <string name="pref_two_pass_show_comparison_logs">Show comparison logs</string>
+    <string name="pref_two_pass_show_comparison_logs_summary">Display detailed recognition comparison in logs</string>
+    
 </resources>

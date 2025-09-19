@@ -95,13 +95,26 @@ class SkillEvaluatorImpl(
     }
 
     private suspend fun evaluateMatchingSkill(utterances: List<String>) {
+        Log.d(TAG, "🎯 开始技能匹配评估，输入语句: $utterances")
+        
         val (chosenInput, chosenSkill) = try {
             utterances.firstNotNullOfOrNull { input: String ->
-                skillRanker.getBest(skillContext, input)?.let { skillWithResult ->
+                Log.d(TAG, "🔍 尝试匹配输入: '$input'")
+                val result = skillRanker.getBest(skillContext, input)
+                if (result != null) {
+                    Log.d(TAG, "✅ 找到匹配技能: ${result.skill.correspondingSkillInfo.id}, 评分: ${result.score.scoreIn01Range()}")
+                } else {
+                    Log.d(TAG, "❌ 没有找到匹配的技能")
+                }
+                result?.let { skillWithResult ->
                     Pair(input, skillWithResult)
                 }
-            } ?: Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
+            } ?: run {
+                Log.d(TAG, "🔄 使用fallback技能")
+                Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
+            }
         } catch (throwable: Throwable) {
+            Log.e(TAG, "❌ 技能匹配过程中发生错误", throwable)
             addErrorInteractionFromPending(throwable)
             return
         }

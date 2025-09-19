@@ -12,10 +12,12 @@ import kotlinx.coroutines.launch
 import org.dicio.skill.context.SpeechOutputDevice
 import org.stypox.dicio.io.speech.AndroidTtsSpeechDevice
 import org.stypox.dicio.io.speech.NothingSpeechDevice
+import org.stypox.dicio.io.speech.SherpaOnnxTtsSpeechDevice
 import org.stypox.dicio.io.speech.SnackbarSpeechDevice
 import org.stypox.dicio.io.speech.ToastSpeechDevice
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_ANDROID_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_NOTHING
+import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SNACKBAR
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_TOAST
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_UNSET
@@ -54,6 +56,7 @@ class SpeechOutputDeviceWrapper @Inject constructor(
                         null,
                         UNRECOGNIZED,
                         SPEECH_OUTPUT_DEVICE_UNSET,
+                        SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS -> SherpaOnnxTtsSpeechDevice(context, locale)
                         SPEECH_OUTPUT_DEVICE_ANDROID_TTS -> AndroidTtsSpeechDevice(context, locale)
                         SPEECH_OUTPUT_DEVICE_NOTHING -> NothingSpeechDevice()
                         SPEECH_OUTPUT_DEVICE_TOAST -> ToastSpeechDevice(context)

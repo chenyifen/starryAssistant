@@ -39,12 +39,20 @@ abstract class BaseActivity : ComponentActivity() {
 
     /**
      * Sets the locale according to value calculated by the injected [LocaleManager].
+     * Maps internal locale codes to Android resource locale codes.
      */
     private fun setLocale(locale: Locale) {
-        Locale.setDefault(locale)
+        // 将内部语言代码映射为Android资源语言代码
+        val resourceLocale = when (locale.language) {
+            "cn" -> Locale("zh", "CN") // 中文简体
+            "ko" -> Locale("ko") // 韩语
+            else -> locale
+        }
+        
+        Locale.setDefault(resourceLocale)
         for (resources in sequenceOf(resources, applicationContext.resources)) {
             val configuration = resources.configuration
-            configuration.setLocale(locale)
+            configuration.setLocale(resourceLocale)
             resources.updateConfiguration(configuration, resources.displayMetrics)
         }
     }

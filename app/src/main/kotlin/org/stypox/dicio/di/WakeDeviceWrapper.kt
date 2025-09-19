@@ -1,6 +1,7 @@
 package org.stypox.dicio.di
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import dagger.Module
 import dagger.Provides
@@ -113,7 +114,13 @@ class WakeDeviceWrapperImpl(
 
     override fun processFrame(audio16bitPcm: ShortArray): Boolean {
         val device = currentDevice.value
-            ?: throw IllegalArgumentException("No wake word device is enabled")
+            ?: return false // 如果没有设备则返回false而不是抛异常
+        
+        // 检查设备状态，只有在Loaded状态才处理音频
+        if (device.state.value != WakeState.Loaded) {
+            // 设备未就绪，直接返回false
+            return false
+        }
 
         if (audio16bitPcm.size != device.frameSize()) {
             if (lastFrameHadWrongSize) {
@@ -128,7 +135,13 @@ class WakeDeviceWrapperImpl(
         } else {
             // process the frame only if it has the correct size
             lastFrameHadWrongSize = false
-            return device.processFrame(audio16bitPcm)
+            return try {
+                device.processFrame(audio16bitPcm)
+            } catch (e: Exception) {
+                // 捕获任何异常，防止崩溃
+                Log.w(TAG, "❌ Error processing wake word frame: ${e.message}")
+                false
+            }
         }
     }
 
@@ -138,6 +151,10 @@ class WakeDeviceWrapperImpl(
 
     override fun reinitializeToReleaseResources() {
         changeWakeDeviceTo(currentSetting)
+    }
+    
+    companion object {
+        private const val TAG = "WakeDeviceWrapper"
     }
 }
 

@@ -31,6 +31,7 @@ unbescape = "1.1.6.RELEASE"
 voskAndroid = "0.3.32"
 litert = "1.1.2"
 permissionFlow = "2.0.0"
+# sherpaOnnx = "1.10.30" # Maven版本不可用，使用源文件集成
 
 [libraries]
 accompanist-drawablepainter = { module = "com.google.accompanist:accompanist-drawablepainter", version.ref = "accompanist" }
@@ -83,6 +84,7 @@ vosk-android = { module = "com.alphacephei:vosk-android", version.ref = "voskAnd
 litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
 permission-flow-android = { module = "dev.shreyaspatil.permission-flow:permission-flow-android", version.ref = "permissionFlow" }
 permission-flow-compose = { module = "dev.shreyaspatil.permission-flow:permission-flow-compose", version.ref = "permissionFlow" }
+# sherpa-onnx = { module = "com.k2fsa.sherpa.onnx:sherpa-onnx", version.ref = "sherpaOnnx" } # Maven版本不可用
 
 [plugins]
 com-android-application = { id = "com.android.application", version.ref = "gradle" }

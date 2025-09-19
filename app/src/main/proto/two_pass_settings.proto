@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_package = "org.stypox.dicio.settings.datastore";
+option java_multiple_files = true;
+
+// 两阶段识别的配置选项
+message TwoPassSettings {
+  // 是否启用第二阶段识别
+  bool enable_second_pass = 1;
+  
+  // 第二阶段识别延迟（毫秒）
+  int32 second_pass_delay_ms = 2;
+  
+  // 第二阶段识别最小音频时长（秒）
+  float min_audio_duration_seconds = 3;
+  
+  // 是否显示两阶段对比结果
+  bool show_comparison_logs = 4;
+  
+  // 音频质量检查阈值
+  float audio_quality_threshold = 5;
+}
