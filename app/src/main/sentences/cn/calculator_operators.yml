@@ -1,0 +1,17 @@
+addition:
+  - 加|加上|加法|求和|和
+
+subtraction:
+  - 减|减去|减法|减掉
+
+multiplication:
+  - 乘|乘以|乘法|倍
+
+division:
+  - 除|除以|除法|被除以
+
+power:
+  - 的|次方|次幂|乘方
+
+square_root:
+  - 平方根|开方

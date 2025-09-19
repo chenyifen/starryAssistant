@@ -277,6 +277,47 @@ class WakeService : Service() {
         DebugLogger.logWakeWord(TAG, "🎤 Starting wake word listening...")
         DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
         DebugLogger.logWakeWord(TAG, "🔊 Wake word type: ${if (wakeDevice.isHeyDicio.value) "Hey Dicio" else "Custom"}")
+        
+        // 等待模型加载完成，最多等待30秒
+        var waitCount = 0
+        val maxWaitCount = 300 // 30秒，每100ms检查一次
+        while (wakeDevice.state.value != WakeState.Loaded && waitCount < maxWaitCount) {
+            when (val currentState = wakeDevice.state.value) {
+                WakeState.Loading -> {
+                    if (waitCount % 50 == 0) { // 每5秒打印一次状态
+                        DebugLogger.logWakeWord(TAG, "⏳ 等待模型加载完成... (${waitCount * 100}ms)")
+                    }
+                }
+                WakeState.NotDownloaded -> {
+                    DebugLogger.logWakeWordError(TAG, "❌ 模型未下载，尝试下载...")
+                    wakeDevice.download()
+                }
+                is WakeState.ErrorLoading -> {
+                    DebugLogger.logWakeWordError(TAG, "❌ 模型加载失败: ${currentState.throwable.message}")
+                    return
+                }
+                WakeState.NotLoaded -> {
+                    DebugLogger.logWakeWordError(TAG, "❌ 模型未加载")
+                    return
+                }
+                else -> break
+            }
+            
+            Thread.sleep(100) // 等待100ms
+            waitCount++
+            
+            if (!listening.get()) {
+                DebugLogger.logWakeWord(TAG, "🛑 在等待模型加载时停止了监听")
+                return
+            }
+        }
+        
+        if (wakeDevice.state.value != WakeState.Loaded) {
+            DebugLogger.logWakeWordError(TAG, "❌ 模型加载超时，无法开始监听")
+            return
+        }
+        
+        DebugLogger.logWakeWord(TAG, "✅ 模型已就绪，开始监听")
         DebugLogger.logWakeWord(TAG, "📏 Frame size: ${wakeDevice.frameSize()}")
 
         // 尝试多种AudioRecord配置以提高兼容性

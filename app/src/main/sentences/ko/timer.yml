@@ -1,0 +1,20 @@
+set:
+  - 타이머 .duration.
+  - .duration. 후에 알려줘
+  - .duration. 타이머 설정
+  - .duration. 타이머 만들어줘
+  - .name. 타이머 .duration.
+  - .name. 이름으로 .duration. 타이머 설정
+
+cancel:
+  - 타이머 취소
+  - 타이머 정지
+  - 타이머 끄기
+  - .name. 타이머 취소
+  - .name. 타이머 정지
+
+query:
+  - 타이머 얼마나 남았어
+  - .name. 타이머 언제 울려
+  - 타이머 언제 끝나
+  - .name. 타이머 남은 시간

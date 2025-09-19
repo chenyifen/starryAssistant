@@ -5,6 +5,7 @@ data class OnlineModelConfig(
     var paraformer: OnlineParaformerModelConfig = OnlineParaformerModelConfig(),
     var zipformer2Ctc: OnlineZipformer2CtcModelConfig = OnlineZipformer2CtcModelConfig(),
     var neMoCtc: OnlineNeMoCtcModelConfig = OnlineNeMoCtcModelConfig(),
+    var toneCtc: OnlineToneCtcModelConfig = OnlineToneCtcModelConfig(),
     var tokens: String = "",
     var numThreads: Int = 1,
     var debug: Boolean = false,
@@ -30,5 +31,9 @@ data class OnlineZipformer2CtcModelConfig(
 )
 
 data class OnlineNeMoCtcModelConfig(
+    var model: String = "",
+)
+
+data class OnlineToneCtcModelConfig(
     var model: String = "",
 )

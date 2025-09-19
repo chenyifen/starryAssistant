@@ -61,6 +61,20 @@ object DebugLogger {
         }
     }
     
+    // 音频数据日志
+    fun logAudio(tag: String?, message: String) {
+        if (DEBUG_AUDIO_PROCESSING && tag != null) {
+            Log.d("🎵[$tag]", message)
+        }
+    }
+    
+    // 识别结果日志
+    fun logRecognition(tag: String?, message: String) {
+        if (DEBUG_VOICE_RECOGNITION && tag != null) {
+            Log.d("🎤[$tag]", message)
+        }
+    }
+    
     // 模型管理相关日志
     fun logModelManagement(tag: String?, message: String) {
         if (DEBUG_MODEL_MANAGEMENT && tag != null) {

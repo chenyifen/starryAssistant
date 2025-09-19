@@ -70,13 +70,25 @@ class LocaleManager @Inject constructor(
     }
 
     private fun getSentencesLocale(language: Language): LocaleUtils.LocaleResolutionResult {
+        Log.d(TAG, "🌐 LocaleManager.getSentencesLocale() - 语言解析调试:")
+        Log.d(TAG, "  📥 输入Language: $language")
+        
+        val availableLocales = getAvailableLocalesFromLanguage(language)
+        Log.d(TAG, "  🔄 解析后的可用Locales: ${(0 until availableLocales.size()).map { availableLocales[it] }}")
+        Log.d(TAG, "  📚 Sentences支持的语言: ${Sentences.languages}")
+        
         return try {
-            LocaleUtils.resolveSupportedLocale(
-                getAvailableLocalesFromLanguage(language),
+            val result = LocaleUtils.resolveSupportedLocale(
+                availableLocales,
                 Sentences.languages
             )
+            Log.d(TAG, "  ✅ 解析成功: availableLocale=${result.availableLocale}, supportedLocaleString=${result.supportedLocaleString}")
+            Log.d(TAG, "  🎯 最终传给应用的Locale: ${result.availableLocale}")
+            result
         } catch (e: LocaleUtils.UnsupportedLocaleException) {
-            Log.w(TAG, "Current locale is not supported, defaulting to English", e)
+            Log.w(TAG, "❌ 当前语言不支持，回退到英语: ${e.message}")
+            Log.w(TAG, "  💡 可能的原因: 语言映射不匹配或Sentences中缺少对应语言")
+            Log.w(TAG, "  🔄 回退到英语")
             // TODO ask the user to manually choose a locale instead of defaulting to english
             LocaleUtils.LocaleResolutionResult(
                 availableLocale = Locale.ENGLISH,
@@ -90,6 +102,20 @@ class LocaleManager @Inject constructor(
             Language.LANGUAGE_SYSTEM,
             Language.UNRECOGNIZED -> {
                 systemLocaleList // the original system locale list from when the app started
+            }
+            // 特殊处理中文语言映射
+            Language.LANGUAGE_ZH_CN -> {
+                Log.d(TAG, "  🔄 特殊处理中文简体: LANGUAGE_ZH_CN -> cn")
+                LocaleListCompat.create(Locale("cn"))
+            }
+            Language.LANGUAGE_ZH_TW -> {
+                Log.d(TAG, "  🔄 特殊处理中文繁体: LANGUAGE_ZH_TW -> cn")
+                LocaleListCompat.create(Locale("cn"))
+            }
+            // 特殊处理韩语映射
+            Language.LANGUAGE_KO -> {
+                Log.d(TAG, "  🔄 特殊处理韩语: LANGUAGE_KO -> ko")
+                LocaleListCompat.create(Locale("ko"))
             }
             else -> {
                 // exploit the fact that each `Language` is of the form LANGUAGE or LANGUAGE_COUNTRY

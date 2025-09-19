@@ -48,11 +48,14 @@ fun languageSetting() = ListSetting(
         ListSetting.Value(Language.LANGUAGE_EL, "Ελληνικά"),
         ListSetting.Value(Language.LANGUAGE_FR, "Français"),
         ListSetting.Value(Language.LANGUAGE_IT, "Italiano"),
+        ListSetting.Value(Language.LANGUAGE_KO, "한국어"),
         ListSetting.Value(Language.LANGUAGE_PL, "Polski"),
         ListSetting.Value(Language.LANGUAGE_RU, "Русский"),
         ListSetting.Value(Language.LANGUAGE_SL, "Slovenščina"),
         ListSetting.Value(Language.LANGUAGE_SV, "Svenska"),
         ListSetting.Value(Language.LANGUAGE_UK, "Українська"),
+        ListSetting.Value(Language.LANGUAGE_ZH_CN, "中文 (简体)"),
+        ListSetting.Value(Language.LANGUAGE_ZH_TW, "中文 (繁體)"),
     ),
 )
 
@@ -111,6 +114,12 @@ fun inputDevice() = ListSetting(
             icon = Icons.Default.Mic,
         ),
         ListSetting.Value(
+            value = InputDevice.INPUT_DEVICE_TWO_PASS,
+            name = stringResource(R.string.pref_input_method_two_pass),
+            description = stringResource(R.string.pref_input_method_two_pass_summary),
+            icon = Icons.Default.Mic,
+        ),
+        ListSetting.Value(
             value = InputDevice.INPUT_DEVICE_EXTERNAL_POPUP,
             name = stringResource(R.string.pref_input_method_external_popup),
             description = stringResource(R.string.pref_input_method_external_popup_summary),
@@ -151,6 +160,11 @@ fun speechOutputDevice() = ListSetting(
     icon = Icons.Default.SpeakerPhone,
     description = stringResource(R.string.pref_speech_output_method_summary),
     possibleValues = listOf(
+        ListSetting.Value(
+            value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS,
+            name = stringResource(R.string.pref_speech_output_method_sherpa_onnx),
+            icon = Icons.Default.SpeakerPhone,
+        ),
         ListSetting.Value(
             value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_ANDROID_TTS,
             name = stringResource(R.string.pref_speech_output_method_android),
@@ -207,4 +221,21 @@ fun sttPlaySound() = ListSetting(
             name = stringResource(R.string.pref_stt_play_sound_none),
         ),
     ),
+)
+
+// 两阶段识别设置
+@Composable
+fun twoPassEnableSecondPass() = BooleanSetting(
+    title = stringResource(R.string.pref_two_pass_enable_second_pass),
+    icon = Icons.Default.Mic,
+    descriptionOff = stringResource(R.string.pref_two_pass_enable_second_pass_summary),
+    descriptionOn = stringResource(R.string.pref_two_pass_enable_second_pass_summary),
+)
+
+@Composable
+fun twoPassShowComparisonLogs() = BooleanSetting(
+    title = stringResource(R.string.pref_two_pass_show_comparison_logs),
+    icon = Icons.Default.SpeakerPhone,
+    descriptionOff = stringResource(R.string.pref_two_pass_show_comparison_logs_summary),
+    descriptionOn = stringResource(R.string.pref_two_pass_show_comparison_logs_summary),
 )

@@ -36,7 +36,9 @@ object WeatherInfo : SkillInfo("weather") {
         rememberVectorPainter(Icons.Default.Cloud)
 
     override fun isAvailable(ctx: SkillContext): Boolean {
-        return Sentences.Weather[ctx.sentencesLanguage] != null
+        val available = Sentences.Weather[ctx.sentencesLanguage] != null
+        android.util.Log.d("WeatherInfo", "🌤️ Weather技能可用性检查: sentencesLanguage=${ctx.sentencesLanguage}, available=$available")
+        return available
     }
 
     override fun build(ctx: SkillContext): Skill<*> {

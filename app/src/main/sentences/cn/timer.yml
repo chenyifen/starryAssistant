@@ -1,0 +1,22 @@
+set:
+  - 定时器 .duration.
+  - .duration. 后提醒我
+  - 设置 .duration. 定时器
+  - 创建一个 .duration. 的定时器
+  - 设定 .duration. 计时器
+  - .duration. 定时器 叫 .name.
+  - 设置名为 .name. 的 .duration. 定时器
+
+cancel:
+  - 取消定时器
+  - 停止定时器
+  - 关闭定时器
+  - 取消 .name. 定时器
+  - 停止 .name. 定时器
+  - 关闭名为 .name. 的定时器
+
+query:
+  - 定时器还有多长时间
+  - .name. 定时器还有多久
+  - 定时器什么时候到
+  - .name. 定时器什么时候响

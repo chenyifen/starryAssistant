@@ -56,6 +56,7 @@ import org.stypox.dicio.util.LocaleUtils
 import org.stypox.dicio.util.distinctUntilChangedBlockingFirst
 import org.stypox.dicio.util.downloadBinaryFilesWithPartial
 import org.stypox.dicio.util.extractZip
+import org.stypox.dicio.BuildConfig as AppBuildConfig
 import org.vosk.BuildConfig
 import org.vosk.LibVosk
 import org.vosk.LogLevel
@@ -108,67 +109,123 @@ class VoskInputDevice(
             nextLocaleFlow.collect { reinit(it) }
         }
         
-        // 如果assets中有当前语言的模型，自动复制
+        // 自动检查和复制模型（优先级：外部存储 > assets）
         scope.launch {
-            val localeString = try {
-                LocaleUtils.resolveLocaleString(firstLocale, MODEL_URLS.keys)
-            } catch (e: LocaleUtils.UnsupportedLocaleException) {
-                null
-            }
+            val localeString = resolveVoskLanguageCode(firstLocale)
             
-            if (localeString != null && 
-                AssetModelManager.hasVoskModelInAssets(appContext, localeString) &&
-                !modelExistFileCheck.exists()) {
-                Log.d(TAG, "Auto-copying Vosk model from assets for language: $localeString")
-                val copySuccess = AssetModelManager.copyVoskModel(appContext, localeString)
-                if (copySuccess) {
-                    _state.value = NotLoaded
+            if (localeString != null) {
+                // 检查当前模型语言是否匹配
+                val needsModelUpdate = !modelExistFileCheck.exists() || run {
+                    val languageMarkerFile = File(filesDir, "vosk-model-language")
+                    if (languageMarkerFile.exists()) {
+                        try {
+                            val currentLanguage = languageMarkerFile.readText().trim()
+                            currentLanguage != localeString
+                        } catch (e: Exception) {
+                            true // 如果读取失败，认为需要更新
+                        }
+                    } else {
+                        true // 如果标记文件不存在，认为需要更新
+                    }
+                }
+                
+                if (needsModelUpdate) {
+                    Log.d(TAG, "Model update needed for language: $localeString")
+                    
+                    var modelCopied = false
+                    
+                    // noModels变体优先检查外部存储
+                    if (!AppBuildConfig.HAS_MODELS_IN_ASSETS && AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString)) {
+                        Log.d(TAG, "Auto-copying Vosk model from external storage for language: $localeString")
+                        val copySuccess = AssetModelManager.copyVoskModelFromExternalStorage(appContext, localeString)
+                        if (copySuccess) {
+                            Log.d(TAG, "✅ Successfully copied Vosk model from external storage")
+                            modelCopied = true
+                        } else {
+                            Log.w(TAG, "⚠️ Failed to copy Vosk model from external storage")
+                        }
+                    }
+                    
+                    // 如果外部存储没有或复制失败，尝试从assets复制（withModels变体或fallback）
+                    if (!modelCopied && AssetModelManager.hasVoskModelInAssets(appContext, localeString)) {
+                        Log.d(TAG, "Auto-copying Vosk model from assets for language: $localeString")
+                        val copySuccess = AssetModelManager.copyVoskModel(appContext, localeString)
+                        if (copySuccess) {
+                            Log.d(TAG, "✅ Successfully copied Vosk model from assets")
+                            modelCopied = true
+                        } else {
+                            Log.w(TAG, "⚠️ Failed to copy Vosk model from assets")
+                        }
+                    }
+                    
+                    // 如果模型复制成功，重置状态以触发重新加载
+                    if (modelCopied) {
+                        _state.value = NotLoaded
+                        return@launch
+                    } else {
+                        // 没有可用的模型，确保状态是NotLoaded，这样后续会进入下载流程
+                        Log.d(TAG, "❌ No Vosk model available for $localeString, will proceed with download flow")
+                        _state.value = NotLoaded
+                        // 不要return，让后续正常的初始化流程处理下载
+                    }
+                } else {
+                    Log.d(TAG, "Model for language $localeString already exists and is up to date")
                 }
             }
         }
     }
 
     private fun init(locale: Locale): VoskState {
+        Log.d(TAG, "🎤 Vosk初始化 - 语言切换调试:")
+        Log.d(TAG, "  📥 输入Locale: $locale (language=${locale.language}, country=${locale.country})")
+        
         // choose the model url based on the locale
-        val modelUrl = try {
-            val localeResolutionResult = LocaleUtils.resolveSupportedLocale(
-                LocaleListCompat.create(locale),
-                MODEL_URLS.keys
-            )
-            MODEL_URLS[localeResolutionResult.supportedLocaleString]
-        } catch (e: LocaleUtils.UnsupportedLocaleException) {
-            null
-        }
+        val localeString = resolveVoskLanguageCode(locale)
+        Log.d(TAG, "  🔄 解析后的Vosk语言代码: $localeString")
+        
+        val modelUrl = if (localeString != null) MODEL_URLS[localeString] else null
+        Log.d(TAG, "  🌐 对应的模型URL: $modelUrl")
+        Log.d(TAG, "  📚 所有支持的Vosk语言: ${MODEL_URLS.keys}")
 
         // the model url may change if the user changes app language, or in case of model updates
         val modelUrlChanged = try {
-            sameModelUrlCheck.readText() != modelUrl
+            val savedUrl = sameModelUrlCheck.readText()
+            Log.d(TAG, "  💾 已保存的模型URL: $savedUrl")
+            savedUrl != modelUrl
         } catch (e: IOException) {
             // modelUrlCheck file does not exist
+            Log.d(TAG, "  ⚠️ 模型URL检查文件不存在，视为URL已更改")
             true
         }
+        
+        Log.d(TAG, "  🔄 模型URL是否更改: $modelUrlChanged")
 
         return when {
             // if the modelUrl is null, then the current locale is not supported by any Vosk model
             modelUrl == null -> NotAvailable
             // if the model url changed, the model needs to be re-downloaded
             modelUrlChanged -> {
-                // 检查assets中是否有对应语言的模型
-                val localeString = try {
-                    LocaleUtils.resolveLocaleString(locale, MODEL_URLS.keys)
-                } catch (e: LocaleUtils.UnsupportedLocaleException) {
-                    null
-                }
+                val localeString = resolveVoskLanguageCode(locale)
                 
-                if (localeString != null && AssetModelManager.hasVoskModelInAssets(appContext, localeString)) {
-                    // 如果assets中有模型，检查是否已经复制到本地
-                    if (modelExistFileCheck.exists()) {
-                        NotLoaded // 模型已复制，可以直接加载
-                    } else {
-                        Downloaded // 需要从assets复制（通过unzip流程触发）
+                when {
+                    // noModels变体优先检查外部存储
+                    localeString != null && !AppBuildConfig.HAS_MODELS_IN_ASSETS && 
+                    AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString) -> {
+                        if (modelExistFileCheck.exists()) {
+                            NotLoaded // 模型已复制，可以直接加载
+                        } else {
+                            Downloaded // 需要从外部存储复制（通过unzip流程触发）
+                        }
                     }
-                } else {
-                    NotDownloaded(modelUrl)
+                    // 检查assets中是否有对应语言的模型
+                    localeString != null && AssetModelManager.hasVoskModelInAssets(appContext, localeString) -> {
+                        if (modelExistFileCheck.exists()) {
+                            NotLoaded // 模型已复制，可以直接加载
+                        } else {
+                            Downloaded // 需要从assets复制（通过unzip流程触发）
+                        }
+                    }
+                    else -> NotDownloaded(modelUrl)
                 }
             }
             // if the model zip file exists, it means that the app was interrupted after the
@@ -182,29 +239,34 @@ class VoskInputDevice(
             // if the both the model zip file and the model directory do not exist, then the model
             // has not been downloaded yet
             else -> {
-                // 检查assets中是否有对应语言的模型
-                val localeString = try {
-                    LocaleUtils.resolveLocaleString(locale, MODEL_URLS.keys)
-                } catch (e: LocaleUtils.UnsupportedLocaleException) {
-                    null
-                }
+                val localeString = resolveVoskLanguageCode(locale)
                 
-                if (localeString != null && AssetModelManager.hasVoskModelInAssets(appContext, localeString)) {
-                    // 如果assets中有模型，标记为已下载状态，等待复制
-                    Downloaded
-                } else {
-                    NotDownloaded(modelUrl)
+                when {
+                    // noModels变体优先检查外部存储
+                    localeString != null && !AppBuildConfig.HAS_MODELS_IN_ASSETS && 
+                    AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString) -> {
+                        Downloaded // 外部存储有模型，标记为已下载状态，等待复制
+                    }
+                    // 检查assets中是否有对应语言的模型
+                    localeString != null && AssetModelManager.hasVoskModelInAssets(appContext, localeString) -> {
+                        Downloaded // assets中有模型，标记为已下载状态，等待复制
+                    }
+                    else -> NotDownloaded(modelUrl)
                 }
             }
         }
     }
 
     private suspend fun reinit(locale: Locale) {
+        Log.d(TAG, "🔄 Vosk重新初始化:")
+        Log.d(TAG, "  📥 新语言: $locale")
+        
         // interrupt whatever was happening before
         deinit()
 
         // reinitialize and emit the new state
         val initialState = init(locale)
+        Log.d(TAG, "  📤 新状态: $initialState")
         _state.emit(initialState)
     }
 
@@ -365,30 +427,34 @@ class VoskInputDevice(
         _state.value = Unzipping(Progress.UNKNOWN)
 
         operationsJob = scope.launch {
-            // 首先尝试从assets复制模型
-            val currentLocale = try {
-                // 使用应用的语言设置，而不是系统默认语言
-                val currentAppLocale = localeManager.locale.value
-                val localeResolutionResult = LocaleUtils.resolveSupportedLocale(
-                    androidx.core.os.LocaleListCompat.create(currentAppLocale),
-                    MODEL_URLS.keys
-                )
-                localeResolutionResult.supportedLocaleString
-            } catch (e: LocaleUtils.UnsupportedLocaleException) {
-                null
-            }
+            val currentAppLocale = localeManager.locale.value
+            val currentLocale = resolveVoskLanguageCode(currentAppLocale)
             
-            if (currentLocale != null && AssetModelManager.hasVoskModelInAssets(appContext, currentLocale)) {
-                Log.d(TAG, "Copying Vosk model from assets for language: $currentLocale")
-                val copySuccess = AssetModelManager.copyVoskModel(appContext, currentLocale)
-                if (copySuccess) {
-                    _state.value = NotLoaded
-                    return@launch
+            if (currentLocale != null) {
+                // noModels变体优先尝试从外部存储复制模型
+                if (!AppBuildConfig.HAS_MODELS_IN_ASSETS && AssetModelManager.hasVoskModelInExternalStorage(appContext, currentLocale)) {
+                    Log.d(TAG, "Copying Vosk model from external storage for language: $currentLocale")
+                    val copySuccess = AssetModelManager.copyVoskModelFromExternalStorage(appContext, currentLocale)
+                    if (copySuccess) {
+                        _state.value = NotLoaded
+                        return@launch
+                    }
+                    Log.w(TAG, "Failed to copy Vosk model from external storage")
                 }
-                Log.w(TAG, "Failed to copy Vosk model from assets, falling back to unzip")
+                
+                // 尝试从assets复制模型（withModels变体或fallback）
+                if (AssetModelManager.hasVoskModelInAssets(appContext, currentLocale)) {
+                    Log.d(TAG, "Copying Vosk model from assets for language: $currentLocale")
+                    val copySuccess = AssetModelManager.copyVoskModel(appContext, currentLocale)
+                    if (copySuccess) {
+                        _state.value = NotLoaded
+                        return@launch
+                    }
+                    Log.w(TAG, "Failed to copy Vosk model from assets, falling back to unzip")
+                }
             }
             
-            // 如果assets中没有模型或复制失败，则解压zip文件
+            // 如果没有可用的预置模型或复制失败，则解压zip文件
             unzipImpl()
         }
     }
@@ -436,13 +502,39 @@ class VoskInputDevice(
         operationsJob = scope.launch {
             val speechService: SpeechService
             try {
+                // 检查模型目录是否存在和有效
+                if (!modelDirectory.exists()) {
+                    Log.e(TAG, "Model directory does not exist: ${modelDirectory.absolutePath}")
+                    _state.value = ErrorLoading(IOException("Model directory not found: ${modelDirectory.absolutePath}"))
+                    return@launch
+                }
+                
+                if (!modelDirectory.isDirectory) {
+                    Log.e(TAG, "Model path is not a directory: ${modelDirectory.absolutePath}")
+                    _state.value = ErrorLoading(IOException("Model path is not a directory: ${modelDirectory.absolutePath}"))
+                    return@launch
+                }
+                
+                // 检查必要的模型文件是否存在
+                val requiredFiles = listOf("ivector", "conf", "am")
+                for (fileName in requiredFiles) {
+                    val file = File(modelDirectory, fileName)
+                    if (!file.exists()) {
+                        Log.e(TAG, "Required model file missing: $fileName in ${modelDirectory.absolutePath}")
+                        _state.value = ErrorLoading(IOException("Required model file missing: $fileName"))
+                        return@launch
+                    }
+                }
+                
+                Log.d(TAG, "Loading Vosk model from: ${modelDirectory.absolutePath}")
                 LibVosk.setLogLevel(if (BuildConfig.DEBUG) LogLevel.DEBUG else LogLevel.WARNINGS)
                 val model = Model(modelDirectory.absolutePath)
                 val recognizer = Recognizer(model, SAMPLE_RATE)
                 recognizer.setMaxAlternatives(ALTERNATIVE_COUNT)
                 speechService = SpeechService(recognizer, SAMPLE_RATE)
-            } catch (e: IOException) {
-                Log.e(TAG, "Can't load Vosk model", e)
+                Log.d(TAG, "✅ Vosk model loaded successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to load Vosk model from ${modelDirectory.absolutePath}", e)
                 _state.value = ErrorLoading(e)
                 return@launch
             }
@@ -528,6 +620,42 @@ class VoskInputDevice(
         deinit()
         // cancel everything
         scope.cancel()
+    }
+
+    /**
+     * 解析Vosk支持的语言代码，处理特殊映射情况（如中文）
+     */
+    private fun resolveVoskLanguageCode(locale: Locale): String? {
+        Log.d(TAG, "    🔍 resolveVoskLanguageCode调试:")
+        Log.d(TAG, "      📥 输入Locale: $locale")
+        
+        return try {
+            val localeResolutionResult = LocaleUtils.resolveSupportedLocale(
+                LocaleListCompat.create(locale),
+                MODEL_URLS.keys
+            )
+            Log.d(TAG, "      ✅ 标准解析成功: ${localeResolutionResult.supportedLocaleString}")
+            localeResolutionResult.supportedLocaleString
+        } catch (e: LocaleUtils.UnsupportedLocaleException) {
+            Log.d(TAG, "      ⚠️ 标准解析失败: ${e.message}")
+            // 特殊处理语言映射
+            val result = when {
+                locale.language == "zh" -> {
+                    Log.d(TAG, "      🔄 特殊映射: zh -> cn")
+                    "cn"  // 中文映射到cn
+                }
+                locale.language == "cn" -> {
+                    Log.d(TAG, "      🔄 特殊映射: cn -> cn")
+                    "cn"  // cn保持cn
+                }
+                else -> {
+                    Log.d(TAG, "      ❌ 无匹配的语言映射: ${locale.language}")
+                    null
+                }
+            }
+            Log.d(TAG, "      📤 最终结果: $result")
+            result
+        }
     }
 
     companion object {

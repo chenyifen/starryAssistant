@@ -203,9 +203,35 @@ class SherpaOnnxWakeDevice(
     }
 
     override fun processFrame(audio16bitPcm: ShortArray): Boolean {
-        if (_state.value != WakeState.Loaded) {
-            DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx model not ready, current state: ${_state.value}")
-            throw IOException("SherpaOnnx model has not been loaded yet")
+        // 检查模型状态，如果未加载则返回false而不是抛异常
+        when (val currentState = _state.value) {
+            WakeState.Loaded -> {
+                // 模型已加载，继续处理
+            }
+            WakeState.Loading -> {
+                // 模型正在加载中，返回false但不报错
+                return false
+            }
+            WakeState.NotLoaded, WakeState.NotDownloaded -> {
+                DebugLogger.logWakeWord(TAG, "⏳ SherpaOnnx model not ready, current state: $currentState")
+                return false
+            }
+            is WakeState.Downloading -> {
+                DebugLogger.logWakeWord(TAG, "⏳ SherpaOnnx model downloading, progress: ${currentState.progress}")
+                return false
+            }
+            is WakeState.ErrorDownloading -> {
+                DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx model download error: ${currentState.throwable.message}")
+                return false
+            }
+            is WakeState.ErrorLoading -> {
+                DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx model in error state: ${currentState.throwable.message}")
+                return false
+            }
+            WakeState.NoMicOrNotificationPermission -> {
+                DebugLogger.logWakeWordError(TAG, "❌ No microphone or notification permission")
+                return false
+            }
         }
 
         if (audio16bitPcm.size != frameSize()) {

@@ -55,6 +55,7 @@
     <string name="pref_speech_output_method_toast">提示（弹出消息）</string>
     <string name="pref_speech_output_method_snackbar">小贴士（底部消息）</string>
     <string name="pref_speech_output_method_nothing">无</string>
+    <string name="pref_speech_output_method_sherpa_onnx">SherpaOnnx TTS</string>
     <string name="pref_skill_not_available">此技能不可用与您的语言。欢迎贡献！</string>
     <string name="pref_skill_missing_permissions">需要下列权限：%1$s</string>
     <string name="pref_skill_grant_permissions">允许</string>
@@ -234,4 +235,13 @@
     <string name="skill_listening_disabled">唤醒词服务在设置中被停用</string>
     <string name="skill_name_listening">控制唤醒词聆听</string>
     <string name="skill_sentence_example_listening">停止聆听</string>
+    
+    <!-- 两阶段识别设置 -->
+    <string name="pref_input_method_two_pass">两阶段识别</string>
+    <string name="pref_input_method_two_pass_summary">实时Vosk + 高精度SenseVoice</string>
+    <string name="pref_two_pass_enable_second_pass">启用第二阶段识别</string>
+    <string name="pref_two_pass_enable_second_pass_summary">使用SenseVoice获得最终准确结果</string>
+    <string name="pref_two_pass_show_comparison_logs">显示对比日志</string>
+    <string name="pref_two_pass_show_comparison_logs_summary">在日志中显示详细的识别对比</string>
+    
 </resources>

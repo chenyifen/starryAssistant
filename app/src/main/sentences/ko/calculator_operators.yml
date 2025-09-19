@@ -1,0 +1,17 @@
+addition:
+  - 더하기|플러스|덧셈|합
+
+subtraction:
+  - 빼기|마이너스|뺄셈|차
+
+multiplication:
+  - 곱하기|곱셈|배
+
+division:
+  - 나누기|나눗셈|몫
+
+power:
+  - 제곱|거듭제곱|승
+
+square_root:
+  - 제곱근|루트

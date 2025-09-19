@@ -1,6 +1,7 @@
 package org.stypox.dicio.eval
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -79,8 +80,16 @@ class SkillHandler @Inject constructor(
                     // locale is not used here, because the skills directly use the sections locale
 
                     val newEnabledSkillsInfo = allSkillInfoList
-                        .filter { enabledSkills.getOrDefault(it.id, true) }
-                        .filter { it.isAvailable(skillContext) }
+                        .filter { skillInfo ->
+                            val enabled = enabledSkills.getOrDefault(skillInfo.id, true)
+                            Log.d(TAG, "🔧 技能启用检查: ${skillInfo.id} -> enabled=$enabled")
+                            enabled
+                        }
+                        .filter { skillInfo ->
+                            val available = skillInfo.isAvailable(skillContext)
+                            Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
+                            available
+                        }
 
                     _enabledSkillsInfo.value = newEnabledSkillsInfo
                     _skillRanker.value = SkillRanker(
@@ -96,6 +105,8 @@ class SkillHandler @Inject constructor(
     }
 
     companion object {
+        private val TAG = SkillHandler::class.simpleName
+        
         fun newForPreviews(context: Context): SkillHandler {
             return SkillHandler(
                 UserSettingsModule.newDataStoreForPreviews(),
