@@ -128,3 +128,11 @@ sherpa-onnx-cli text2token --tokens tokens.txt --tokens-type cjkchar keywords_ra
 ⸻
 
 如果您在操作过程中遇到其他问题，欢迎继续提问。
+
+
+
+pip install pypinyin
+
+
+
+
