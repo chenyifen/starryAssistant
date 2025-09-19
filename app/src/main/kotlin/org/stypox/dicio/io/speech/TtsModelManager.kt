@@ -14,15 +14,15 @@ import java.util.Locale
 object TtsModelManager {
     private const val TAG = "TtsModelManager"
     
-    // 使用应用外部文件目录，兼容分区存储
+    // 使用应用专用目录路径
     private fun getExternalTtsModelsPathInternal(context: Context): String {
-        // 优先使用应用外部文件目录（Android兼容）
+        // 使用应用专用目录，解决权限问题
         val appExternalDir = context.getExternalFilesDir("models/tts")
         if (appExternalDir != null) {
             return appExternalDir.absolutePath
         }
         
-        // 备用：传统路径（需要MANAGE_EXTERNAL_STORAGE权限）
+        // 备用：传统路径
         return "/storage/emulated/0/Dicio/models/tts"
     }
     
@@ -199,12 +199,12 @@ object TtsModelManager {
                 lexicon = "lexicon.txt",
                 dictDir = "dict"
             )
-                "ko" -> TtsModelConfig(
-                    modelDir = "vits-mimic3-ko_KO-kss_low",
-                    modelName = "ko_KO-kss_low.onnx",
-                    lexicon = "tokens.txt",
-                    dataDir = "espeak-ng-data"
-                )
+            "ko" -> TtsModelConfig(
+                modelDir = "vits-mimic3-ko_KO-kss_low",
+                modelName = "ko_KO-kss_low.onnx",
+                lexicon = "tokens.txt",
+                dataDir = "espeak-ng-data"
+            )
             "en" -> TtsModelConfig(
                 modelDir = "vits-piper-en_US-amy-low",
                 modelName = "en_US-amy-low.onnx",

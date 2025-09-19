@@ -381,17 +381,19 @@ class SherpaOnnxTtsSpeechDevice(
                 modelDir = "vits-zh-hf-fanchen-C",
                 modelName = "vits-zh-hf-fanchen-C.onnx",
                 lexicon = "lexicon.txt",
-                dictDir = "vits-zh-hf-fanchen-C/dict"
+                dictDir = "dict"
             )
             "ko" -> TtsModelConfig(
-                modelDir = "vits-kokoro-ko",
-                modelName = "model.onnx",
-                lexicon = "lexicon.txt"
+                modelDir = "vits-mimic3-ko_KO-kss_low",
+                modelName = "ko_KO-kss_low.onnx", 
+                lexicon = "tokens.txt",
+                dataDir = "espeak-ng-data"
             )
             "en" -> TtsModelConfig(
                 modelDir = "vits-piper-en_US-amy-low",
                 modelName = "en_US-amy-low.onnx",
-                dataDir = "vits-piper-en_US-amy-low/espeak-ng-data"
+                lexicon = "tokens.txt",
+                dataDir = "espeak-ng-data"
             )
             else -> null
         }
