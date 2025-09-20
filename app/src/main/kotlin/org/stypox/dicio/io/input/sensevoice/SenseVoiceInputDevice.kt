@@ -119,10 +119,14 @@ class SenseVoiceInputDevice private constructor(
     private var speechDetected = false
     private var speechStartTime = 0L
     private var lastSpeechTime = 0L
-    // 使用线程安全的集合和固定大小缓冲区
-    private val audioBuffer = java.util.concurrent.ConcurrentLinkedQueue<Float>()
+    // 参考SherpaOnnxSimulateAsr使用ArrayList进行高效缓冲管理
+    private val audioBuffer = arrayListOf<Float>()
+    private var bufferOffset = 0
     private val maxBufferSize = SAMPLE_RATE * 10 // 最多存储10秒音频
     private var partialText = ""
+    private var lastPartialRecognitionTime = 0L
+    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 200L // 参考demo改为200ms触发间隔
+    private var isPartialResultAdded = false // 参考demo的结果管理策略
     
     // 协程作用域 - 使用可重新创建的作用域
     private var scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -689,12 +693,13 @@ class SenseVoiceInputDevice private constructor(
                     break
                 }
                 
-                // 添加到缓冲区，控制大小防止内存溢出
-                samples.forEach { sample ->
-                    audioBuffer.offer(sample)
+                // 参考SherpaOnnxSimulateAsr的高效缓冲管理
+                synchronized(audioBuffer) {
+                    audioBuffer.addAll(samples.toList())
                     // 如果缓冲区太大，移除旧数据
                     while (audioBuffer.size > maxBufferSize) {
-                        audioBuffer.poll()
+                        audioBuffer.removeAt(0)
+                        if (bufferOffset > 0) bufferOffset--
                     }
                 }
                 
@@ -716,8 +721,9 @@ class SenseVoiceInputDevice private constructor(
                     }
                     lastSpeechTime = currentTime
                     
-                    // 进行实时识别 (更频繁的部分识别)
-                    if (audioBuffer.size >= SAMPLE_RATE / 2) { // 0.5秒的音频就开始部分识别
+                    // 参考SherpaOnnxSimulateAsr每200ms进行实时识别
+                    val elapsed = currentTime - lastPartialRecognitionTime
+                    if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= SAMPLE_RATE / 2) {
                         performPartialRecognition()
                     }
                     
@@ -782,32 +788,37 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
-     * 执行部分识别（实时反馈）
+     * 执行部分识别（实时反馈）- 参考SherpaOnnxSimulateAsr优化
      */
     private suspend fun performPartialRecognition() {
         try {
             val recognizer = senseVoiceRecognizer ?: return
             
-            if (audioBuffer.size < SAMPLE_RATE / 4) { // 至少0.25秒的音频
-                return
+            val currentTime = System.currentTimeMillis()
+            lastPartialRecognitionTime = currentTime
+            
+            // 参考SherpaOnnxSimulateAsr的缓冲管理方式
+            val audioData = synchronized(audioBuffer) {
+                if (audioBuffer.size < SAMPLE_RATE / 4) return // 至少0.25秒音频
+                audioBuffer.toFloatArray()
             }
             
-            // 安全地从队列中获取音频数据
-            val bufferList = audioBuffer.toList()
-            if (bufferList.size < SAMPLE_RATE / 4) return
-            
-            // 使用最近的音频进行识别，动态调整窗口大小
-            val windowSize = minOf(bufferList.size, SAMPLE_RATE * 3) // 最多3秒窗口
-            val audioData = bufferList.takeLast(windowSize).toFloatArray()
             val newText = recognizer.recognize(audioData)
             
             if (newText.isNotBlank() && newText != partialText) {
                 val oldText = partialText
                 partialText = newText
                 
-                // 发送部分识别结果
+                // 参考SherpaOnnxSimulateAsr的结果管理策略
                 withContext(Dispatchers.Main) {
-                    eventListener?.invoke(InputEvent.Partial(partialText))
+                    if (!isPartialResultAdded) {
+                        // 首次添加部分结果
+                        eventListener?.invoke(InputEvent.Partial(partialText))
+                        isPartialResultAdded = true
+                    } else {
+                        // 更新现有部分结果
+                        eventListener?.invoke(InputEvent.Partial(partialText))
+                    }
                 }
                 
                 Log.d(TAG, "🎯 部分识别更新: '$oldText' → '$partialText' (音频长度: ${audioData.size / SAMPLE_RATE.toFloat()}秒)")
@@ -858,9 +869,10 @@ class SenseVoiceInputDevice private constructor(
             
             Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioBuffer.size}样本，语音时长: ${speechDuration}ms")
             
-            // 安全地从队列中获取所有音频数据
-            val bufferList = audioBuffer.toList()
-            val audioData = bufferList.toFloatArray()
+            // 参考SherpaOnnxSimulateAsr的缓冲管理方式
+            val audioData = synchronized(audioBuffer) {
+                audioBuffer.toFloatArray()
+            }
             val finalText = recognizer.recognize(audioData)
             
             DebugLogger.logRecognition(TAG, "最终识别结果: \"$finalText\"")
@@ -894,8 +906,12 @@ class SenseVoiceInputDevice private constructor(
         speechDetected = false
         speechStartTime = 0L
         lastSpeechTime = 0L
-        audioBuffer.clear()
+        synchronized(audioBuffer) {
+            audioBuffer.clear()
+            bufferOffset = 0
+        }
         partialText = ""
+        isPartialResultAdded = false // 重置结果管理标志
         
         // 重置VAD状态
         try {
