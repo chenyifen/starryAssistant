@@ -159,6 +159,9 @@ dependencies {
     androidTestImplementation(libs.test.android.compose.ui.test.junit4)
     debugImplementation(libs.debug.compose.ui.tooling)
     debugImplementation(libs.debug.compose.ui.test.manifest)
+    
+    // Lottie for animations
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
 
     // Hilt Dependency Injection
     implementation(libs.hilt.android)

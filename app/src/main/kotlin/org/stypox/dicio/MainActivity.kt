@@ -5,12 +5,14 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.ACTION_ASSIST
 import android.content.Intent.ACTION_VOICE_COMMAND
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -27,13 +29,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import org.stypox.dicio.di.SttInputDeviceWrapper
-import org.stypox.dicio.di.WakeDeviceWrapper
-import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.io.wake.WakeService
-import org.stypox.dicio.io.wake.WakeState.Loaded
-import org.stypox.dicio.io.wake.WakeState.Loading
-import org.stypox.dicio.io.wake.WakeState.NotLoaded
 import org.stypox.dicio.ui.floating.FloatingWindowService
 import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
@@ -44,13 +40,7 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : BaseActivity() {
-
-    @Inject
-    lateinit var skillEvaluator: SkillEvaluator
-    @Inject
-    lateinit var sttInputDevice: SttInputDeviceWrapper
-    @Inject
-    lateinit var wakeDevice: WakeDeviceWrapper
+    // 移除唤醒服务相关依赖，这些将由FloatingWindowService管理
 
     private var sttPermissionJob: Job? = null
     private var wakeServiceJob: Job? = null
@@ -77,16 +67,14 @@ class MainActivity : BaseActivity() {
     }
 
     /**
-     * Automatically loads the LLM and the STT when the [ACTION_ASSIST] intent is received. Applies
-     * a backoff of [INTENT_BACKOFF_MILLIS], since during testing Android would send the assist
-     * intent to the app twice in a row.
+     * 处理助手意图 - 简化版本，只启动悬浮窗
      */
     private fun onAssistIntentReceived() {
         val now = Instant.now()
         if (nextAssistAllowed < now) {
             nextAssistAllowed = now.plusMillis(INTENT_BACKOFF_MILLIS)
-            Log.d(TAG, "Received assist intent")
-            sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
+            Log.d(TAG, "Received assist intent, starting floating window")
+            startFullScreenFloatingWindow()
         } else {
             Log.w(TAG, "Ignoring duplicate assist intent")
         }
@@ -108,10 +96,25 @@ class MainActivity : BaseActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent) // 更新当前intent
 
         handleWakeWordTurnOnScreen(intent)
         if (isAssistIntent(intent)) {
             onAssistIntentReceived()
+        }
+        
+        // 检查是否需要导航到设置页面
+        val navigateTo = intent.getStringExtra("navigate_to")
+        if (navigateTo == "settings") {
+            // 重新创建UI以显示设置页面
+            composeSetContent {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Navigation()
+                }
+            }
         }
     }
 
@@ -136,61 +139,67 @@ class MainActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
         isCreated += 1
 
+        // 处理意图
         handleWakeWordTurnOnScreen(intent)
         if (isAssistIntent(intent)) {
             onAssistIntentReceived()
-        } else if (intent.action != ACTION_WAKE_WORD) {
-            // load the input device, without starting to listen
-            sttInputDevice.tryLoad(null)
         }
 
-        // 检查并请求必要的权限
-        checkAndRequestPermissions()
+        // 检查是否需要导航到特定页面
+        val navigateTo = intent.getStringExtra("navigate_to")
         
-        // 启动悬浮窗服务
-        startFloatingWindowService()
-        
-        // 重新启用WakeService
-        Log.d("MainActivity", "🔊 重新启用WakeService")
-        WakeService.start(this)
-        wakeServiceJob?.cancel()
-        wakeServiceJob = lifecycleScope.launch {
-            wakeDevice.state
-                .map { it == NotLoaded || it == Loading || it == Loaded }
-                .combine(
-                    PermissionFlow.getInstance().getMultiplePermissionState(*wakeWordPermissions)
-                ) { wakeState, permGranted ->
-                    wakeState && permGranted.allGranted
-                }
-                // avoid restarting the service if the state changes but the resulting value
-                // in the flow remains true (which happens when the user stops the WakeService from
-                // the notification, which releases resources and makes the WakeDevice go from
-                // Loaded to NotLoaded)
-                .distinctUntilChanged()
-                .filter { it }
-                .collect { WakeService.start(this@MainActivity) }
-        }
-
-        sttPermissionJob?.cancel()
-        sttPermissionJob = lifecycleScope.launch {
-            // if the STT failed to load because of the missing permission, this will try again
-            PermissionFlow.getInstance().getPermissionState(Manifest.permission.RECORD_AUDIO)
-                .drop(1)
-                .filter { it.isGranted }
-                .collect { sttInputDevice.tryLoad(null) }
-        }
-
-        composeSetContent {
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                Box(
-                    modifier = Modifier.safeDrawingPadding()
+        if (navigateTo == "settings") {
+            // 如果是从悬浮窗点击设置按钮进入，显示完整的Navigation界面
+            composeSetContent {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     Navigation()
                 }
             }
+        } else {
+            // 启动满屏悬浮窗（唤醒服务将由悬浮窗管理）
+            startFullScreenFloatingWindow()
+
+            // 简化的UI，只显示启动信息
+            composeSetContent {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .safeDrawingPadding(),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = "语音助手已启动\n请使用悬浮窗进行交互",
+                            style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+
+    private fun startFullScreenFloatingWindow() {
+        // 检查悬浮窗权限
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (Settings.canDrawOverlays(this)) {
+                Log.d(TAG, "悬浮窗权限已授予，启动满屏悬浮窗")
+                FloatingWindowService.startFullScreen(this)
+            } else {
+                Log.d(TAG, "请求悬浮窗权限")
+                requestOverlayPermission()
+            }
+        } else {
+            // Android 6.0以下版本不需要悬浮窗权限
+            Log.d(TAG, "Android版本低于6.0，直接启动满屏悬浮窗")
+            FloatingWindowService.startFullScreen(this)
         }
     }
 
@@ -264,8 +273,8 @@ class MainActivity : BaseActivity() {
         
         if (result.allGranted) {
             Log.d(TAG, "所有权限已授予: ${result.grantedPermissions}")
-            // 权限授予后，尝试重新初始化WakeDevice
-            wakeDevice.download()
+            // 权限授予后，启动悬浮窗
+            startFullScreenFloatingWindow()
         } else {
             Log.w(TAG, "部分权限被拒绝: ${result.deniedPermissions}")
             // 可以显示权限说明对话框
@@ -280,8 +289,8 @@ class MainActivity : BaseActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if (Environment.isExternalStorageManager()) {
                         Log.d(TAG, "MANAGE_EXTERNAL_STORAGE权限已授予")
-                        // 权限授予后，尝试重新下载/初始化WakeDevice
-                        wakeDevice.download()
+                        // 权限授予后，启动悬浮窗
+                        startFullScreenFloatingWindow()
                     } else {
                         Log.w(TAG, "MANAGE_EXTERNAL_STORAGE权限被拒绝")
                     }
@@ -332,11 +341,19 @@ class MainActivity : BaseActivity() {
     }
 
     override fun onDestroy() {
-        // the wake word service remains active in the background,
-        // so we need to release resources that it does not need manually
-        sttInputDevice.reinitializeToReleaseResources()
+        // 取消协程作业
+        sttPermissionJob?.cancel()
+        wakeServiceJob?.cancel()
+        
+        // 停止服务
+        FloatingWindowService.stop(this)
+        
+        // 注意：不要在这里停止WakeService，因为它应该在后台持续运行
+        // 只有在用户明确关闭应用或系统资源不足时才停止
+        
         isCreated -= 1
         super.onDestroy()
     }
 
 }
+
