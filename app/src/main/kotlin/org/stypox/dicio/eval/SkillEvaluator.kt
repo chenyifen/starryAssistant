@@ -9,6 +9,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.dicio.skill.skill.InteractionPlan
@@ -27,6 +30,7 @@ import javax.inject.Singleton
 
 interface SkillEvaluator {
     val state: StateFlow<InteractionLog>
+    val inputEvents: SharedFlow<InputEvent>
 
     var permissionRequester: suspend (List<Permission>) -> Boolean
 
@@ -51,11 +55,19 @@ class SkillEvaluatorImpl(
         )
     )
     override val state: StateFlow<InteractionLog> = _state
+    
+    private val _inputEvents = MutableSharedFlow<InputEvent>(replay = 0)
+    override val inputEvents: SharedFlow<InputEvent> = _inputEvents.asSharedFlow()
 
     // must be kept up to date even when the activity is recreated, for this reason it is `var`
     override var permissionRequester: suspend (List<Permission>) -> Boolean = { false }
 
     override fun processInputEvent(event: InputEvent) {
+        // 发送事件到SharedFlow，让UI组件可以监听
+        scope.launch {
+            _inputEvents.emit(event)
+        }
+        
         scope.launch {
             suspendProcessInputEvent(event)
         }

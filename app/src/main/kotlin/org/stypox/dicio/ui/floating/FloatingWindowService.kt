@@ -1,19 +1,23 @@
 package org.stypox.dicio.ui.floating
 
+import android.Manifest
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.ContextCompat
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -30,12 +34,19 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import org.stypox.dicio.di.SkillContextInternal
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
+import org.stypox.dicio.io.wake.WakeService
+import org.stypox.dicio.io.wake.WakeState
 import org.stypox.dicio.ui.floating.components.FloatingAssistantUI
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 @AndroidEntryPoint
 class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
@@ -55,6 +66,11 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     private var windowManager: WindowManager? = null
     private var floatingView: View? = null
     private lateinit var floatingViewModel: FloatingWindowViewModel
+    private var isFullScreen = false
+    
+    // 服务管理相关
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var isWakeServiceStarted = false
     
     // LifecycleOwner implementation
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -105,10 +121,21 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
         if (canDrawOverlays()) {
             createFloatingWindow()
             lifecycleRegistry.currentState = Lifecycle.State.STARTED
+            
+            // 启动唤醒服务和ASR服务
+            startWakeServiceIfNeeded()
         } else {
             Log.w(TAG, "没有悬浮窗权限，无法创建悬浮窗")
             stopSelf()
         }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 检查是否是满屏模式
+        isFullScreen = intent?.getBooleanExtra(EXTRA_FULLSCREEN, false) ?: false
+        Log.d(TAG, "启动悬浮窗服务，满屏模式: $isFullScreen")
+        
+        return super.onStartCommand(intent, flags, startId)
     }
 
     private fun createFloatingWindow() {
@@ -121,19 +148,44 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT
-        )
-
-        params.gravity = Gravity.CENTER
-        params.x = 0
-        params.y = 0
+        // 根据模式设置窗口大小和位置
+        val displayMetrics = resources.displayMetrics
+        val params = if (isFullScreen) {
+            // 满屏模式
+            WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                layoutFlag,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.TOP or Gravity.START
+                x = 0
+                y = 0
+            }
+        } else {
+            // 小窗模式
+            val windowWidth = (300 * displayMetrics.density).toInt()
+            val windowHeight = (600 * displayMetrics.density).toInt() // 增加高度以容纳VoiceTextDisplay组件
+            
+            WindowManager.LayoutParams(
+                windowWidth,
+                windowHeight,
+                layoutFlag,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                        WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                PixelFormat.TRANSLUCENT
+            ).apply {
+                gravity = Gravity.CENTER_VERTICAL or Gravity.END
+                x = 20
+                y = 0
+            }
+        }
 
         // 创建 ComposeView
         val composeView = ComposeView(this)
@@ -167,15 +219,21 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     private fun FloatingAssistantContent() {
         val uiState by floatingViewModel.uiState.collectAsState()
         
-        Box(modifier = Modifier.fillMaxSize()) {
-            FloatingAssistantUI(
-                uiState = uiState,
-                onEnergyOrbClick = { floatingViewModel.onEnergyOrbClick() },
-                onSettingsClick = { floatingViewModel.onSettingsClick() },
-                onCommandClick = { command -> floatingViewModel.onCommandClick(command) },
-                onDismiss = { floatingViewModel.onDismiss() }
-            )
+        // 调试日志 - 检查Compose中的状态
+        LaunchedEffect(uiState.asrText, uiState.ttsText, uiState.assistantState) {
+            Log.d(TAG, "🎨 Compose状态更新: asrText='${uiState.asrText}', ttsText='${uiState.ttsText}', state=${uiState.assistantState}")
         }
+        
+                Box(modifier = Modifier.fillMaxSize()) {
+                    FloatingAssistantUI(
+                        uiState = uiState,
+                        onEnergyOrbClick = { floatingViewModel.onEnergyOrbClick() },
+                        onSettingsClick = { floatingViewModel.onSettingsClick() },
+                        onCommandClick = { command -> floatingViewModel.onCommandClick(command) },
+                        onDismiss = { floatingViewModel.onDismiss() },
+                        isFullScreen = isFullScreen
+                    )
+                }
     }
 
     private fun canDrawOverlays(): Boolean {
@@ -187,6 +245,60 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     }
     
     /**
+     * 启动唤醒服务（如果需要）
+     */
+    private fun startWakeServiceIfNeeded() {
+        // 检查麦克风权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "缺少麦克风权限，无法启动唤醒服务")
+            return
+        }
+
+        // 检查唤醒设备状态并启动服务
+        serviceScope.launch {
+            wakeDevice.state.collect { state ->
+                when (state) {
+                    WakeState.NotLoaded, WakeState.Loading, WakeState.Loaded -> {
+                        if (!isWakeServiceStarted && !WakeService.isRunning()) {
+                            Log.d(TAG, "启动唤醒服务，当前状态: $state")
+                            try {
+                                WakeService.start(this@FloatingWindowService)
+                                isWakeServiceStarted = true
+                                Log.d(TAG, "✅ 唤醒服务启动成功")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "❌ 启动唤醒服务失败", e)
+                            }
+                        } else if (WakeService.isRunning()) {
+                            isWakeServiceStarted = true
+                            Log.d(TAG, "唤醒服务已在运行")
+                        }
+                    }
+                    else -> {
+                        Log.w(TAG, "唤醒设备状态不适合启动服务: $state")
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * 停止唤醒服务（如果已启动）
+     */
+    private fun stopWakeServiceIfStarted() {
+        if (isWakeServiceStarted) {
+            try {
+                Log.d(TAG, "停止唤醒服务")
+                WakeService.stop(this)
+                isWakeServiceStarted = false
+                Log.d(TAG, "✅ 唤醒服务已停止")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 停止唤醒服务失败", e)
+            }
+        }
+    }
+
+    /**
      * 发送权限错误广播
      */
     private fun sendPermissionErrorBroadcast() {
@@ -197,6 +309,12 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
 
     override fun onDestroy() {
         super.onDestroy()
+        
+        // 停止唤醒服务和ASR服务
+        stopWakeServiceIfStarted()
+        
+        // 取消服务协程作用域
+        serviceScope.cancel()
         
         // 清理生命周期
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
@@ -214,9 +332,16 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
 
     companion object {
         private const val TAG = "FloatingWindowService"
+        private const val EXTRA_FULLSCREEN = "fullscreen"
         
         fun start(context: Context) {
             val intent = Intent(context, FloatingWindowService::class.java)
+            context.startService(intent)
+        }
+        
+        fun startFullScreen(context: Context) {
+            val intent = Intent(context, FloatingWindowService::class.java)
+            intent.putExtra(EXTRA_FULLSCREEN, true)
             context.startService(intent)
         }
         

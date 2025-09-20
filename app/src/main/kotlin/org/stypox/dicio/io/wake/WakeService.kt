@@ -37,6 +37,7 @@ import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.AudioDebugSaver
+import org.stypox.dicio.audio.AudioResourceCoordinator
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -49,6 +50,7 @@ class WakeService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + job)
 
     private val listening = AtomicBoolean(false)
+    private val audioRecordPaused = AtomicBoolean(false) // 用于暂停AudioRecord以避免与ASR冲突
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
@@ -56,6 +58,8 @@ class WakeService : Service() {
     lateinit var sttInputDevice: SttInputDeviceWrapper
     @Inject
     lateinit var wakeDevice: WakeDeviceWrapper
+    @Inject
+    lateinit var audioCoordinator: AudioResourceCoordinator
 
     private val handler = Handler(Looper.getMainLooper())
     private val releaseSttResourcesRunnable = Runnable {
@@ -84,6 +88,20 @@ class WakeService : Service() {
             wakeDevice.isHeyDicio.drop(1).collect { isHeyDicio ->
                 DebugLogger.logWakeWord(TAG, "🔄 Wake word type changed: ${if (isHeyDicio) "Hey Dicio" else "Custom"}")
                 createForegroundNotification(isHeyDicio)
+            }
+        }
+        
+        // 🔧 集成Pipeline协调器：监听Wake设备状态
+        scope.launch {
+            wakeDevice.state.collect { wakeState ->
+                audioCoordinator.updateWakeState(wakeState)
+            }
+        }
+        
+        // 🔧 集成Pipeline协调器：监听STT设备状态
+        scope.launch {
+            sttInputDevice.uiState.collect { sttState ->
+                audioCoordinator.updateSttState(sttState)
             }
         }
         
@@ -337,6 +355,12 @@ class WakeService : Service() {
             DebugLogger.logWakeWord(TAG, "✅ AudioRecord started successfully")
             
             while (listening.get()) {
+                // 🔧 Pipeline协调器：检查是否可以使用音频资源
+                if (!audioCoordinator.canWakeServiceUseAudio()) {
+                    Thread.sleep(100) // Pipeline不允许时等待100ms
+                    continue
+                }
+                
                 if (audio.size != wakeDevice.frameSize()) {
                     val oldSize = audio.size
                     audio = ShortArray(wakeDevice.frameSize())
@@ -389,13 +413,23 @@ class WakeService : Service() {
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
         DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
 
+        // 🔧 Pipeline协调器：通知检测到唤醒词
+        audioCoordinator.onWakeWordDetected()
+        DebugLogger.logWakeWord(TAG, "📊 Pipeline状态: ${audioCoordinator.getPipelineStatusInfo()}")
+
         // Start listening and pass STT events to the skill evaluator.
         // Note that this works even if the MainActivity is opened later!
         DebugLogger.logVoiceRecognition(TAG, "🎤 Starting STT input device...")
-        val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
-        DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
+        
+        // 🔧 Pipeline协调器：检查是否可以启动ASR
+        if (audioCoordinator.canStartAsr()) {
+            val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
+            DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
+        } else {
+            DebugLogger.logWakeWordError(TAG, "❌ Pipeline不允许启动ASR")
+        }
 
-        // Unload the STT after a while because it would be using RAM uselessly
+        // 🔧 保持原有的资源释放机制作为备用
         handler.removeCallbacks(releaseSttResourcesRunnable)
         handler.postDelayed(releaseSttResourcesRunnable, RELEASE_STT_RESOURCES_MILLIS)
         DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled STT resource release in ${RELEASE_STT_RESOURCES_MILLIS}ms")
