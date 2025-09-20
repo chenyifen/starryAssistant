@@ -10,6 +10,7 @@ object UserSettingsSerializer : Serializer<UserSettings> {
     override val defaultValue: UserSettings = UserSettings.getDefaultInstance()
         .toBuilder()
         .setAutoFinishSttPopup(true)
+        .setInputDevice(InputDevice.INPUT_DEVICE_SENSEVOICE)
         .build()
 
     override suspend fun readFrom(input: InputStream): UserSettings {

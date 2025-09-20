@@ -124,6 +124,8 @@ class MainActivity : BaseActivity() {
         // 检查并请求必要的权限
         checkAndRequestPermissions()
         
+        // 重新启用WakeService
+        Log.d("MainActivity", "🔊 重新启用WakeService")
         WakeService.start(this)
         wakeServiceJob?.cancel()
         wakeServiceJob = lifecycleScope.launch {
