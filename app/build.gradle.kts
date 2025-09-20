@@ -19,7 +19,8 @@ plugins {
     alias(libs.plugins.com.google.devtools.ksp)
     alias(libs.plugins.com.google.dagger.hilt.android)
     alias(libs.plugins.com.google.protobuf)
-    alias(libs.plugins.dicio.sentences.compiler.plugin)
+    // 使用传统方式应用插件，避免与buildscript冲突
+    id("org.stypox.dicio.sentencesCompilerPlugin")
 }
 
 android {
