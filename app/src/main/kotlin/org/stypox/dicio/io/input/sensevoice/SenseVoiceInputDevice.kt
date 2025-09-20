@@ -693,15 +693,15 @@ class SenseVoiceInputDevice private constructor(
                         speechStartTime = currentTime
                         Log.d(TAG, "🎤 检测到语音开始")
                         
-                        // 发送语音开始事件 (可选)
+                        // 发送语音开始事件
                         withContext(Dispatchers.Main) {
-                            // eventListener?.invoke(InputEvent.Partial(""))
+                            eventListener?.invoke(InputEvent.Partial("正在监听..."))
                         }
                     }
                     lastSpeechTime = currentTime
                     
-                    // 进行实时识别 (每隔一定时间)
-                    if (audioBuffer.size >= SAMPLE_RATE) { // 1秒的音频
+                    // 进行实时识别 (更频繁的部分识别)
+                    if (audioBuffer.size >= SAMPLE_RATE / 2) { // 0.5秒的音频就开始部分识别
                         performPartialRecognition()
                     }
                     
@@ -772,19 +772,21 @@ class SenseVoiceInputDevice private constructor(
         try {
             val recognizer = senseVoiceRecognizer ?: return
             
-            if (audioBuffer.size < SAMPLE_RATE / 2) { // 至少0.5秒的音频
+            if (audioBuffer.size < SAMPLE_RATE / 4) { // 至少0.25秒的音频
                 return
             }
             
             // 安全地从队列中获取音频数据
             val bufferList = audioBuffer.toList()
-            if (bufferList.size < SAMPLE_RATE / 2) return
+            if (bufferList.size < SAMPLE_RATE / 4) return
             
-            // 使用最近的音频进行识别
-            val audioData = bufferList.takeLast(SAMPLE_RATE * 2).toFloatArray() // 最近2秒
+            // 使用最近的音频进行识别，动态调整窗口大小
+            val windowSize = minOf(bufferList.size, SAMPLE_RATE * 3) // 最多3秒窗口
+            val audioData = bufferList.takeLast(windowSize).toFloatArray()
             val newText = recognizer.recognize(audioData)
             
             if (newText.isNotBlank() && newText != partialText) {
+                val oldText = partialText
                 partialText = newText
                 
                 // 发送部分识别结果
@@ -792,7 +794,7 @@ class SenseVoiceInputDevice private constructor(
                     eventListener?.invoke(InputEvent.Partial(partialText))
                 }
                 
-                DebugLogger.logRecognition(TAG, "部分识别: \"$partialText\"")
+                Log.d(TAG, "🎯 部分识别更新: '$oldText' → '$partialText' (音频长度: ${audioData.size / SAMPLE_RATE.toFloat()}秒)")
             }
             
         } catch (e: Exception) {
