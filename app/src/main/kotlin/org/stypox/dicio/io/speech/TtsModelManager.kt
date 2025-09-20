@@ -16,24 +16,28 @@ object TtsModelManager {
     
     // 根据构建变体选择TTS模型路径
     private fun getExternalTtsModelsPathInternal(context: Context): String {
-        // 检查构建变体
-        val buildVariant = context.packageName.contains("withModels")
-        Log.d(TAG, "🏷️ 构建变体检查: buildVariant=$buildVariant, packageName=${context.packageName}")
+        // 优先使用传统Dicio路径（所有变体统一）
+        val dicioPath = "/storage/emulated/0/Dicio/models/tts"
+        Log.d(TAG, "✅ 使用统一Dicio路径: $dicioPath")
         
+        // 检查Dicio路径是否存在
+        val dicioDir = File(dicioPath)
+        if (dicioDir.exists()) {
+            Log.d(TAG, "📁 Dicio路径存在，使用: $dicioPath")
+            return dicioPath
+        }
+        
+        // 如果Dicio路径不存在，withModels变体可以回退到应用专用目录
+        val buildVariant = context.packageName.contains("withModels")
         if (buildVariant) {
-            // withModels变体：使用应用专用目录
             val appExternalDir = context.getExternalFilesDir("models/tts")
-            Log.d(TAG, "🔍 getExternalFilesDir结果: $appExternalDir")
-            
             if (appExternalDir != null) {
-                Log.d(TAG, "✅ withModels变体使用应用专用目录: ${appExternalDir.absolutePath}")
+                Log.d(TAG, "⚠️ Dicio路径不存在，withModels变体回退到应用专用目录: ${appExternalDir.absolutePath}")
                 return appExternalDir.absolutePath
             }
         }
         
-        // main渠道(noModels)：使用传统Dicio路径
-        val dicioPath = "/storage/emulated/0/Dicio/models/tts"
-        Log.d(TAG, "✅ main渠道使用传统Dicio路径: $dicioPath")
+        Log.d(TAG, "⚠️ 所有路径都不存在，返回默认Dicio路径: $dicioPath")
         return dicioPath
     }
     
@@ -116,13 +120,19 @@ object TtsModelManager {
         return try {
             val modelConfig = getModelConfigForLanguage(languageCode) ?: return false
             
-            Log.d(TAG, "开始复制TTS模型 $languageCode 从assets到外部存储")
-            
             val assetPath = "$ASSETS_TTS_MODELS_PATH/${modelConfig.modelDir}"
             val externalPath = "${getExternalTtsModelsPathInternal(context)}/${modelConfig.modelDir}"
+            val externalDir = File(externalPath)
+            
+            // 检查模型是否已存在
+            if (externalDir.exists() && externalDir.listFiles()?.isNotEmpty() == true) {
+                Log.d(TAG, "TTS模型 $languageCode 已存在，跳过复制: $externalPath")
+                return true
+            }
+            
+            Log.d(TAG, "开始复制TTS模型 $languageCode 从assets到外部存储")
             
             // 创建外部目录
-            val externalDir = File(externalPath)
             if (!externalDir.exists()) {
                 externalDir.mkdirs()
             }
