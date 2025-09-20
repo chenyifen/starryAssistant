@@ -79,6 +79,8 @@
     <string name="pref_input_method">Input method</string>
     <string name="pref_input_method_summary">Choose the service to use to talk to Dicio</string>
     <string name="pref_input_method_text">Only text box</string>
+    <string name="pref_input_method_sensevoice">SenseVoice multilingual ASR</string>
+    <string name="pref_input_method_sensevoice_summary">High-accuracy offline multilingual speech recognition powered by SenseVoice</string>
     <string name="pref_input_method_vosk">Vosk offline speech recognition</string>
     <string name="pref_input_method_vosk_summary">Downloads and runs a Vosk SpeechToText model offline inside Dicio</string>
     <string name="pref_input_method_external_popup">External SpeechToText popup</string>

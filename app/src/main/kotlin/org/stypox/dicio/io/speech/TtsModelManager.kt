@@ -14,16 +14,27 @@ import java.util.Locale
 object TtsModelManager {
     private const val TAG = "TtsModelManager"
     
-    // 使用应用专用目录路径
+    // 根据构建变体选择TTS模型路径
     private fun getExternalTtsModelsPathInternal(context: Context): String {
-        // 使用应用专用目录，解决权限问题
-        val appExternalDir = context.getExternalFilesDir("models/tts")
-        if (appExternalDir != null) {
-            return appExternalDir.absolutePath
+        // 检查构建变体
+        val buildVariant = context.packageName.contains("withModels")
+        Log.d(TAG, "🏷️ 构建变体检查: buildVariant=$buildVariant, packageName=${context.packageName}")
+        
+        if (buildVariant) {
+            // withModels变体：使用应用专用目录
+            val appExternalDir = context.getExternalFilesDir("models/tts")
+            Log.d(TAG, "🔍 getExternalFilesDir结果: $appExternalDir")
+            
+            if (appExternalDir != null) {
+                Log.d(TAG, "✅ withModels变体使用应用专用目录: ${appExternalDir.absolutePath}")
+                return appExternalDir.absolutePath
+            }
         }
         
-        // 备用：传统路径
-        return "/storage/emulated/0/Dicio/models/tts"
+        // main渠道(noModels)：使用传统Dicio路径
+        val dicioPath = "/storage/emulated/0/Dicio/models/tts"
+        Log.d(TAG, "✅ main渠道使用传统Dicio路径: $dicioPath")
+        return dicioPath
     }
     
     // Assets中的TTS模型路径
@@ -78,7 +89,18 @@ object TtsModelManager {
             
             val exists = modelFile.exists() && modelFile.isFile
             Log.d(TAG, "检查外部存储TTS模型 $languageCode: $exists")
-            Log.d(TAG, "  路径: ${modelFile.absolutePath}")
+            Log.d(TAG, "  完整路径: ${modelFile.absolutePath}")
+            Log.d(TAG, "  父目录存在: ${modelFile.parentFile?.exists()}")
+            Log.d(TAG, "  父目录可读: ${modelFile.parentFile?.canRead()}")
+            
+            // 如果模型不存在，列出父目录内容
+            if (!exists && modelFile.parentFile?.exists() == true) {
+                val parentFiles = modelFile.parentFile?.listFiles()
+                Log.d(TAG, "  父目录内容 (${parentFiles?.size ?: 0} 个文件):")
+                parentFiles?.forEach { file ->
+                    Log.d(TAG, "    - ${file.name} (${if (file.isDirectory) "目录" else "文件, ${file.length()}字节"})")
+                }
+            }
             
             exists
         } catch (e: Exception) {
@@ -129,17 +151,36 @@ object TtsModelManager {
         var actualLanguageCode = languageCode
         
         if (baseConfig == null) {
-            Log.w(TAG, "⚠️ 未找到 $languageCode 语言的TTS模型，回退到英语")
+            Log.w(TAG, "⚠️ 未找到 $languageCode 语言的TTS模型配置，回退到英语")
             baseConfig = getModelConfigForLanguage("en")
             actualLanguageCode = "en"
             
             if (baseConfig == null) {
-                Log.e(TAG, "❌ 连英语TTS模型都未找到")
+                Log.e(TAG, "❌ 连英语TTS模型配置都未找到")
                 return null
             }
         }
         
         Log.d(TAG, "📦 使用TTS模型语言: $actualLanguageCode")
+        Log.d(TAG, "📦 基础配置: modelDir=${baseConfig.modelDir}, modelName=${baseConfig.modelName}")
+        
+        // 详细检查外部存储路径
+        val externalTtsPath = getExternalTtsModelsPathInternal(context)
+        Log.d(TAG, "📁 外部存储基础路径: $externalTtsPath")
+        
+        val externalBaseDir = File(externalTtsPath)
+        Log.d(TAG, "📂 外部存储基础目录状态:")
+        Log.d(TAG, "  - 存在: ${externalBaseDir.exists()}")
+        Log.d(TAG, "  - 可读: ${externalBaseDir.canRead()}")
+        Log.d(TAG, "  - 是目录: ${externalBaseDir.isDirectory}")
+        
+        if (externalBaseDir.exists()) {
+            val subDirs = externalBaseDir.listFiles()
+            Log.d(TAG, "  - 子目录列表 (${subDirs?.size ?: 0} 个):")
+            subDirs?.forEach { subDir ->
+                Log.d(TAG, "    * ${subDir.name} (${if (subDir.isDirectory) "目录" else "文件"})")
+            }
+        }
         
         // 优先检查assets（withModels变体）
         if (hasTtsModelInAssets(context, actualLanguageCode)) {
@@ -157,7 +198,6 @@ object TtsModelManager {
         }
         
         // 检查外部存储是否有模型（noModels变体）
-        val externalTtsPath = getExternalTtsModelsPathInternal(context)
         if (hasTtsModelInExternalStorage(context, actualLanguageCode)) {
             Log.d(TAG, "✅ 使用外部存储TTS模型: $actualLanguageCode")
             return baseConfig.copy(

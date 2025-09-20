@@ -3,6 +3,7 @@ package org.stypox.dicio.io.wake.sherpa
 import android.content.Context
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -91,6 +92,7 @@ class SherpaOnnxWakeDevice(
             if (keywordSpotter != null && stream != null) {
                 _state.value = WakeState.Loaded
                 DebugLogger.logWakeWord(TAG, "✅ SherpaOnnx KWS model loaded successfully")
+                DebugLogger.logWakeWord(TAG, "🔗 KeywordSpotter实例ID: ${keywordSpotter.hashCode()}")
             } else {
                 _state.value = WakeState.ErrorLoading(IOException("Failed to initialize SherpaOnnx KeywordSpotter or stream"))
                 DebugLogger.logWakeWordError(TAG, "❌ Failed to initialize SherpaOnnx KeywordSpotter or stream")
@@ -304,11 +306,40 @@ class SherpaOnnxWakeDevice(
 
     override fun destroy() {
         DebugLogger.logWakeWord(TAG, "🧹 Destroying SherpaOnnxWakeDevice resources")
-        stream?.release()
-        keywordSpotter?.release()
-        stream = null
-        keywordSpotter = null
-        _state.value = WakeState.NotLoaded
+        
+        try {
+            // 安全释放stream资源
+            stream?.let { s ->
+                try {
+                    s.release()
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "释放OnlineStream时出错", e)
+                }
+            }
+            stream = null
+            
+            // 安全释放KeywordSpotter资源
+            keywordSpotter?.let { kws ->
+                try {
+                    kws.release()
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "释放KeywordSpotter时出错", e)
+                }
+            }
+            keywordSpotter = null
+            
+            // 取消协程作用域
+            try {
+                scope.cancel()
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "取消协程作用域时出错", e)
+            }
+            
+            _state.value = WakeState.NotLoaded
+            DebugLogger.logWakeWord(TAG, "✅ SherpaOnnxWakeDevice资源释放完成")
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ 销毁SherpaOnnxWakeDevice失败", e)
+        }
     }
 
     override fun isHeyDicio(): Boolean {

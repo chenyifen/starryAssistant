@@ -181,6 +181,9 @@ dependencies {
     implementation(libs.jna) { artifact { type = "aar" } }
     implementation(libs.vosk.android)
     
+    // SherpaOnnx AAR (静态链接版本)
+    implementation(files("libs/sherpa-onnx-static-link-onnxruntime-1.12.4.aar"))
+    
     // LiteRT / Tensorflow Lite
     implementation(libs.litert)
 

@@ -52,11 +52,40 @@ class SherpaOnnxTtsSpeechDevice(
     }
 
     private fun initializeTts() {
+        // 添加详细的路径检查
+        Log.d(TAG, "  🔍 开始检查TTS模型可用性...")
+        
+        // 检查外部存储路径
+        val externalTtsPath = TtsModelManager.getExternalTtsModelsPath(context)
+        Log.d(TAG, "  📁 外部存储TTS路径: $externalTtsPath")
+        
+        val externalDir = java.io.File(externalTtsPath)
+        Log.d(TAG, "  📂 外部存储目录状态:")
+        Log.d(TAG, "    - 存在: ${externalDir.exists()}")
+        Log.d(TAG, "    - 可读: ${externalDir.canRead()}")
+        Log.d(TAG, "    - 是目录: ${externalDir.isDirectory}")
+        
+        if (externalDir.exists()) {
+            val subDirs = externalDir.listFiles()
+            Log.d(TAG, "    - 子目录数量: ${subDirs?.size ?: 0}")
+            subDirs?.forEach { subDir ->
+                Log.d(TAG, "      * ${subDir.name} (${if (subDir.isDirectory) "目录" else "文件"})")
+            }
+        }
+        
         try {
             val modelConfig = TtsModelManager.getTtsModelConfig(context, locale)
             if (modelConfig != null) {
                 Log.d(TAG, "  📦 加载TTS模型: ${modelConfig.modelDir}")
                 Log.d(TAG, "  🔧 使用模式: ${if (modelConfig.useAssets) "Assets" else "外部存储"}")
+                
+                // 验证模型文件是否真实存在
+                val modelFile = java.io.File(modelConfig.modelDir, modelConfig.modelName)
+                Log.d(TAG, "  📄 模型文件路径: ${modelFile.absolutePath}")
+                Log.d(TAG, "  📄 模型文件状态:")
+                Log.d(TAG, "    - 存在: ${modelFile.exists()}")
+                Log.d(TAG, "    - 可读: ${modelFile.canRead()}")
+                Log.d(TAG, "    - 大小: ${if (modelFile.exists()) "${modelFile.length() / 1024 / 1024}MB" else "N/A"}")
                 
                 // 处理dataDir和dictDir，需要复制到外部存储（参考demo代码）
                 var processedDataDir = modelConfig.dataDir
@@ -84,6 +113,7 @@ class SherpaOnnxTtsSpeechDevice(
                     }
                 }
                 
+                // TODO: 修复AAR版本的API差异
                 val config = getOfflineTtsConfig(
                     modelDir = modelConfig.modelDir,
                     modelName = modelConfig.modelName,
@@ -91,7 +121,10 @@ class SherpaOnnxTtsSpeechDevice(
                     dataDir = processedDataDir,
                     dictDir = processedDictDir,
                     ruleFsts = processedRuleFsts,
-                    ruleFars = modelConfig.ruleFars
+                    ruleFars = modelConfig.ruleFars,
+                    acousticModelName = "", // AAR版本新增参数
+                    vocoder = "", // AAR版本新增参数
+                    voices = "" // AAR版本新增参数
                 )
                 
                 // 根据模型来源选择初始化方式（参考SherpaOnnxWakeDevice的实现）
@@ -372,32 +405,7 @@ class SherpaOnnxTtsSpeechDevice(
         val ruleFars: String = ""
     )
 
-    /**
-     * 根据语言获取对应的TTS模型配置
-     */
-    private fun getTtsModelConfig(locale: Locale): TtsModelConfig? {
-        return when (locale.language) {
-            "zh" -> TtsModelConfig(
-                modelDir = "vits-zh-hf-fanchen-C",
-                modelName = "vits-zh-hf-fanchen-C.onnx",
-                lexicon = "lexicon.txt",
-                dictDir = "dict"
-            )
-            "ko" -> TtsModelConfig(
-                modelDir = "vits-mimic3-ko_KO-kss_low",
-                modelName = "ko_KO-kss_low.onnx", 
-                lexicon = "tokens.txt",
-                dataDir = "espeak-ng-data"
-            )
-            "en" -> TtsModelConfig(
-                modelDir = "vits-piper-en_US-amy-low",
-                modelName = "en_US-amy-low.onnx",
-                lexicon = "tokens.txt",
-                dataDir = "espeak-ng-data"
-            )
-            else -> null
-        }
-    }
+    // 删除重复的TTS模型配置，统一使用TtsModelManager
 
     companion object {
         private val TAG = SherpaOnnxTtsSpeechDevice::class.simpleName

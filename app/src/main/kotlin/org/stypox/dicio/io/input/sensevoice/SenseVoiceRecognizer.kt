@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.stypox.dicio.util.DebugLogger
@@ -60,7 +61,8 @@ class SenseVoiceRecognizer private constructor(
                     val config = OfflineRecognizerConfig(
                         modelConfig = OfflineModelConfig(
                             senseVoice = OfflineSenseVoiceModelConfig(
-                                model = modelPaths.modelPath
+                                model = modelPaths.modelPath,
+                                useInverseTextNormalization = true // 逆文本规范化 - 关键修复！
                             ),
                             tokens = modelPaths.tokensPath,
                             numThreads = 2,
@@ -72,6 +74,8 @@ class SenseVoiceRecognizer private constructor(
                     )
                     Log.d(TAG, "   ✅ SenseVoice配置: model=${modelPaths.modelPath}")
                     Log.d(TAG, "   ✅ 配置: threads=2, provider=cpu, decodingMethod=greedy_search")
+                    Log.d(TAG, "   🌍 语言支持: SenseVoice自动多语言检测")
+                    Log.d(TAG, "   📝 逆文本规范化: 启用")
                     
                     // 根据模型来源创建识别器
                     Log.d(TAG, "🚀 创建OfflineRecognizer实例...")
@@ -85,6 +89,7 @@ class SenseVoiceRecognizer private constructor(
                     
                     Log.d(TAG, "✅ OfflineRecognizer创建成功！")
                     Log.d(TAG, "🎉 SenseVoice识别器初始化完成")
+                    Log.d(TAG, "🔗 实例ID: ${recognizer.hashCode()}")
                     
                     SenseVoiceRecognizer(recognizer, modelPaths)
                 } catch (e: Exception) {
@@ -107,69 +112,79 @@ class SenseVoiceRecognizer private constructor(
      */
     suspend fun recognize(audioData: FloatArray): String {
         return withContext(Dispatchers.IO) {
+            // 使用实例级别的互斥锁确保线程安全
             recognitionMutex.withLock {
-                try {
-                    if (audioData.isEmpty()) {
-                        return@withLock ""
-                    }
-                    
-                    val durationSeconds = String.format("%.2f", audioData.size.toFloat() / SAMPLE_RATE)
-                    DebugLogger.logAudio(TAG, "开始SenseVoice识别，音频长度: ${audioData.size} (${durationSeconds}秒)")
-                    
-                    // 创建音频流
-                    val stream = try {
-                        recognizer.createStream()
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ 创建stream失败", e)
-                        return@withLock ""
-                    }
-                    
-                    if (stream == null) {
-                        Log.e(TAG, "❌ Stream创建返回null")
-                        return@withLock ""
-                    }
-                    
                     try {
-                        // 输入音频数据
-                        DebugLogger.logAudio(TAG, "向stream输入音频数据...")
-                        stream.acceptWaveform(audioData, SAMPLE_RATE)
-                        DebugLogger.logAudio(TAG, "音频数据输入完成")
-                        
-                        // 运行识别 (注意：无需调用inputFinished，参考HandsFree实现)
-                        DebugLogger.logAudio(TAG, "开始解码识别...")
-                        try {
-                            recognizer.decode(stream)
-                            DebugLogger.logAudio(TAG, "解码完成，准备获取结果...")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "❌ 解码过程失败", e)
+                        if (audioData.isEmpty()) {
                             return@withLock ""
                         }
                         
-                        // 获取结果 - 按照SherpaOnnx demo的标准方式
-                        DebugLogger.logAudio(TAG, "获取识别结果...")
-                        val result = recognizer.getResult(stream)
-                        val resultText = result.text.trim()
+                        // 验证recognizer和配置有效性
+                        DebugLogger.logAudio(TAG, "✅ Recognizer ID: ${recognizer.hashCode()}")
+                        DebugLogger.logAudio(TAG, "🔧 模型路径: ${modelInfo.modelPath}")
+                        DebugLogger.logAudio(TAG, "📄 Tokens路径: ${modelInfo.tokensPath}")
+                        DebugLogger.logAudio(TAG, "🗂️ 来源: ${if (modelInfo.isFromAssets) "Assets" else "文件系统"}")
                         
-                        DebugLogger.logRecognition(TAG, "SenseVoice识别结果: \"$resultText\"")
+                        // 验证音频数据
+                        val durationSeconds = String.format("%.2f", audioData.size.toFloat() / SAMPLE_RATE)
+                        val audioMin = audioData.minOrNull() ?: 0f
+                        val audioMax = audioData.maxOrNull() ?: 0f
+                        DebugLogger.logAudio(TAG, "开始SenseVoice识别，音频长度: ${audioData.size} (${durationSeconds}秒)")
+                        DebugLogger.logAudio(TAG, "🎵 音频范围: [$audioMin, $audioMax]")
                         
-                        // 返回识别文本
-                        resultText
-                    } finally {
-                        // 安全释放流资源
-                        try {
-                            stream.release()
-                            DebugLogger.logAudio(TAG, "Stream资源已释放")
+                        // 创建音频数据副本以确保数据完整性
+                        val audioDataCopy = audioData.copyOf()
+                        DebugLogger.logAudio(TAG, "📋 音频数据已复制: ${audioDataCopy.size} samples")
+                        
+                        // 创建音频流 - 添加更多安全检查
+                        DebugLogger.logAudio(TAG, "准备创建stream...")
+                        val stream = try {
+                            val createdStream = recognizer.createStream()
+                            DebugLogger.logAudio(TAG, "✅ Stream创建成功: ${createdStream.hashCode()}")
+                            createdStream
                         } catch (e: Exception) {
-                            Log.e(TAG, "❌ 释放stream资源失败", e)
+                            Log.e(TAG, "❌ 创建stream失败", e)
+                            return@withLock ""
                         }
+                        
+                        try {
+                            // 完全按照SherpaOnnxSimulateStreamingAsr官方示例的精确模式
+                            DebugLogger.logAudio(TAG, "向stream输入音频数据...")
+                            stream.acceptWaveform(audioDataCopy, SAMPLE_RATE)
+                            DebugLogger.logAudio(TAG, "音频数据输入完成")
+                            
+                            DebugLogger.logAudio(TAG, "开始解码识别...")
+                            recognizer.decode(stream)
+                            DebugLogger.logAudio(TAG, "解码完成，准备获取结果...")
+                            
+                            DebugLogger.logAudio(TAG, "获取识别结果...")
+                            val result = recognizer.getResult(stream)
+                            
+                            // 立即释放stream资源 - 与官方示例保持一致
+                            stream.release()
+                            DebugLogger.logAudio(TAG, "stream资源已释放")
+                            
+                            val resultText = result.text.trim()
+                            DebugLogger.logRecognition(TAG, "SenseVoice识别结果: \"$resultText\"")
+                            
+                            resultText
+                        } catch (e: Exception) {
+                            // 确保在异常情况下也释放stream
+                            try {
+                                stream.release()
+                                DebugLogger.logAudio(TAG, "异常情况下释放stream资源")
+                            } catch (releaseException: Exception) {
+                                Log.e(TAG, "释放stream时发生异常", releaseException)
+                            }
+                            throw e // 重新抛出原始异常
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "SenseVoice识别过程异常", e)
+                        ""
                     }
-                } catch (e: Exception) {
-                    Log.e(TAG, "SenseVoice识别过程异常", e)
-                    ""
                 }
             }
         }
-    }
     
     /**
      * 获取识别器信息
@@ -183,8 +198,13 @@ class SenseVoiceRecognizer private constructor(
      */
     fun release() {
         try {
-            recognizer.release()
-            DebugLogger.logModelManagement(TAG, "SenseVoice识别器资源已释放")
+            // 使用实例级别的互斥锁确保不会在释放时还有正在进行的识别操作
+            runBlocking {
+                recognitionMutex.withLock {
+                    recognizer.release()
+                    DebugLogger.logModelManagement(TAG, "SenseVoice识别器资源已释放")
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "释放SenseVoice识别器资源失败", e)
         }
