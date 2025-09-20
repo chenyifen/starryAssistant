@@ -13,7 +13,7 @@ object DebugLogger {
     // 各模块的调试开关
     private const val DEBUG_WAKE_WORD = DEBUG_ENABLED && true
     private const val DEBUG_VOICE_RECOGNITION = DEBUG_ENABLED && true
-    private const val DEBUG_AUDIO_PROCESSING = DEBUG_ENABLED && true
+    private const val DEBUG_AUDIO_PROCESSING = DEBUG_ENABLED && false 
     private const val DEBUG_MODEL_MANAGEMENT = DEBUG_ENABLED && true
     private const val DEBUG_STATE_MACHINE = DEBUG_ENABLED && true
     
@@ -134,6 +134,6 @@ inline fun <T> measureTimeAndLog(tag: String?, operation: String, block: () -> T
     val startTime = System.currentTimeMillis()
     val result = block()
     val endTime = System.currentTimeMillis()
-    DebugLogger.logPerformance(tag, operation, endTime - startTime)
+    //TODO chenyifen DebugLogger.logPerformance(tag, operation, endTime - startTime)
     return result
 }

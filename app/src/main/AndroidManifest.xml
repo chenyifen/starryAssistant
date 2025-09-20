@@ -33,6 +33,9 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
 
+    <!-- 悬浮窗权限 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
     <!-- allowBackup=false because of a critical nasty bug: https://medium.com/p/924c91bafcac -->
     <application
         android:name=".App"
@@ -126,5 +129,11 @@
             android:foregroundServiceType="microphone"
             android:icon="@mipmap/ic_launcher"
             android:label="@string/wake_service_label" />
+
+        <service
+            android:name=".ui.floating.FloatingWindowService"
+            android:enabled="true"
+            android:exported="false"
+            android:label="@string/floating_window_service_label" />
     </application>
 </manifest>

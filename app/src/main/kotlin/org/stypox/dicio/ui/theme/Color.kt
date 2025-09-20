@@ -217,6 +217,19 @@ val surfaceContainerDarkHighContrast = Color(0xFF1D211B)
 val surfaceContainerHighDarkHighContrast = Color(0xFF272B25)
 val surfaceContainerHighestDarkHighContrast = Color(0xFF32362F)
 
+// 未来感科技霓虹风格颜色
+val EnergyBlue = Color(0xFF4ADFFF)      // 电光蓝
+val VioletGlow = Color(0xFF9A4DFF)      // 紫罗兰光泽
+val AuroraGreen = Color(0xFF4DFFB8)     // 极光绿
+val GalaxyGray = Color(0xFF121212)      // 银河灰
+val NeonWhite = Color(0xFFFFFFFF)       // 霓虹白
+val DeepSpace = Color(0xFF0A0A0A)       // 深空黑
+
+// 透明度变体
+val EnergyBlueAlpha50 = Color(0x804ADFFF)
+val VioletGlowAlpha50 = Color(0x809A4DFF)
+val AuroraGreenAlpha50 = Color(0x804DFFB8)
+
 
 
 
