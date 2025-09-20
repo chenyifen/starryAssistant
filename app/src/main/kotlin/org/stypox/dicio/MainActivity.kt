@@ -185,7 +185,6 @@ class MainActivity : BaseActivity() {
         }
     }
 
-
     private fun startFullScreenFloatingWindow() {
         // 检查悬浮窗权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

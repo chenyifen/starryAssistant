@@ -93,22 +93,51 @@ class SherpaOnnxTtsSpeechDevice(
                 var processedRuleFsts = modelConfig.ruleFsts
                 
                 if (modelConfig.useAssets) {
-                    // 从Assets加载，需要复制数据目录到外部存储
+                    // 从Assets加载，TtsModelManager已经返回了完整的assets路径，但某些文件仍需要复制到外部存储
                     if (modelConfig.dataDir.isNotEmpty()) {
-                        val copiedDataDir = copyDataDirFromAssets(modelConfig.dataDir)
-                        processedDataDir = "$copiedDataDir/${modelConfig.dataDir}"
-                        Log.d(TAG, "  📁 数据目录已复制: $processedDataDir")
+                        // dataDir已经是完整的assets路径，如: "models/tts/vits-zh-hf-fanchen-C/espeak-ng-data"
+                        val externalFilesDir = context.getExternalFilesDir(null)!!.absolutePath
+                        val externalDataPath = "$externalFilesDir/${modelConfig.dataDir}"
+                        
+                        if (File(externalDataPath).exists()) {
+                            Log.d(TAG, "  📁 数据目录已存在，直接使用: $externalDataPath")
+                            processedDataDir = externalDataPath
+                        } else {
+                            Log.d(TAG, "  📁 数据目录不存在，开始复制: ${modelConfig.dataDir}")
+                            // 直接使用TtsModelManager返回的完整assets路径
+                            copyAssetsToExternal(modelConfig.dataDir)
+                            processedDataDir = "$externalFilesDir/${modelConfig.dataDir}"
+                            Log.d(TAG, "  📁 数据目录已复制: $processedDataDir")
+                        }
                     }
                     
                     if (modelConfig.dictDir.isNotEmpty()) {
-                        val copiedDictDir = copyDataDirFromAssets("${modelConfig.modelDir}/${modelConfig.dictDir}")
-                        processedDictDir = "$copiedDictDir/${modelConfig.modelDir}/${modelConfig.dictDir}"
+                        // dictDir已经是完整的assets路径，如: "models/tts/vits-zh-hf-fanchen-C/dict"
+                        val externalFilesDir = context.getExternalFilesDir(null)!!.absolutePath
+                        val externalDictPath = "$externalFilesDir/${modelConfig.dictDir}"
                         
-                        // 根据demo代码，当有dictDir时自动设置ruleFsts
-                        if (modelConfig.ruleFsts.isEmpty()) {
-                            processedRuleFsts = "${modelConfig.modelDir}/phone.fst,${modelConfig.modelDir}/date.fst,${modelConfig.modelDir}/number.fst"
+                        if (File(externalDictPath).exists()) {
+                            Log.d(TAG, "  📚 字典目录已存在，直接使用: $externalDictPath")
+                            processedDictDir = externalDictPath
+                            
+                            // 根据demo代码，当有dictDir时自动设置ruleFsts
+                            if (modelConfig.ruleFsts.isEmpty()) {
+                                val externalModelPath = "$externalFilesDir/${modelConfig.modelDir}"
+                                processedRuleFsts = "$externalModelPath/phone.fst,$externalModelPath/date.fst,$externalModelPath/number.fst"
+                            }
+                        } else {
+                            Log.d(TAG, "  📚 字典目录不存在，开始复制: ${modelConfig.dictDir}")
+                            // 直接使用TtsModelManager返回的完整assets路径
+                            copyAssetsToExternal(modelConfig.dictDir)
+                            processedDictDir = "$externalFilesDir/${modelConfig.dictDir}"
+                            
+                            // 根据demo代码，当有dictDir时自动设置ruleFsts
+                            if (modelConfig.ruleFsts.isEmpty()) {
+                                val externalModelPath = "$externalFilesDir/${modelConfig.modelDir}"
+                                processedRuleFsts = "$externalModelPath/phone.fst,$externalModelPath/date.fst,$externalModelPath/number.fst"
+                            }
+                            Log.d(TAG, "  📚 字典目录已复制: $processedDictDir")
                         }
-                        Log.d(TAG, "  📚 字典目录已复制: $processedDictDir")
                         Log.d(TAG, "  📝 规则FSTs: $processedRuleFsts")
                     }
                 }
@@ -128,19 +157,30 @@ class SherpaOnnxTtsSpeechDevice(
                 )
                 
                 // 根据模型来源选择初始化方式（参考SherpaOnnxWakeDevice的实现）
-                tts = if (modelConfig.useAssets) {
-                    Log.d(TAG, "  📱 从Assets加载TTS模型")
-                    OfflineTts(assetManager = context.assets, config = config)
-                } else {
-                    Log.d(TAG, "  💾 从外部存储加载TTS模型")
-                    OfflineTts(assetManager = null, config = config)
+                try {
+                    tts = if (modelConfig.useAssets) {
+                        Log.d(TAG, "  📱 从Assets加载TTS模型")
+                        OfflineTts(assetManager = context.assets, config = config)
+                    } else {
+                        Log.d(TAG, "  💾 从外部存储加载TTS模型")
+                        OfflineTts(assetManager = null, config = config)
+                    }
+                    
+                    initializedCorrectly = true
+                    
+                    Log.d(TAG, "  ✅ SherpaOnnx TTS初始化成功")
+                    Log.d(TAG, "  🎵 采样率: ${tts?.sampleRate()}")
+                    Log.d(TAG, "  🎤 说话人数量: ${tts?.numSpeakers()}")
+                    
+                } catch (e: Exception) {
+                    Log.e(TAG, "  ❌ SherpaOnnx OfflineTts创建失败: ${e.message}", e)
+                    Log.e(TAG, "  📋 配置信息: modelDir=${modelConfig.modelDir}, useAssets=${modelConfig.useAssets}")
+                    Log.e(TAG, "  📋 处理后路径: dataDir=$processedDataDir, dictDir=$processedDictDir")
+                    tts = null
+                    initializedCorrectly = false
+                    handleInitializationError(R.string.android_tts_error)
+                    return
                 }
-                
-                initializedCorrectly = true
-                
-                Log.d(TAG, "  ✅ SherpaOnnx TTS初始化成功")
-                Log.d(TAG, "  🎵 采样率: ${tts?.sampleRate()}")
-                Log.d(TAG, "  🎤 说话人数量: ${tts?.numSpeakers()}")
                 
             } else {
                 Log.e(TAG, "  ❌ 未找到TTS模型: $locale")
@@ -311,17 +351,6 @@ class SherpaOnnxTtsSpeechDevice(
         cleanup()
     }
 
-    /**
-     * 从Assets复制数据目录到外部存储（参考demo代码）
-     */
-    private fun copyDataDirFromAssets(assetPath: String): String {
-        Log.d(TAG, "复制数据目录: $assetPath")
-        copyAssetsToExternal(assetPath)
-        
-        val externalFilesDir = context.getExternalFilesDir(null)!!.absolutePath
-        Log.d(TAG, "外部文件目录: $externalFilesDir")
-        return externalFilesDir
-    }
     
     /**
      * 递归复制Assets目录到外部存储（参考demo代码）

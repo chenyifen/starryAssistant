@@ -621,6 +621,10 @@ class SenseVoiceInputDevice private constructor(
                     // 如果连续错误太多，停止录制
                     if (consecutiveErrors >= maxConsecutiveErrors) {
                         Log.e(TAG, "❌ 连续错误过多($consecutiveErrors)，停止录制")
+                        // 确保状态正确重置
+                        isListening.set(false)
+                        isRecording.set(false)
+                        _uiState.value = SttState.ErrorLoading(Exception("连续音频错误过多"))
                         break
                     }
                     
@@ -629,15 +633,27 @@ class SenseVoiceInputDevice private constructor(
                     
                 } catch (e: IllegalStateException) {
                     Log.e(TAG, "❌ AudioRecord状态异常", e)
+                    // 确保状态正确重置
+                    isListening.set(false)
+                    isRecording.set(false)
+                    _uiState.value = SttState.ErrorLoading(e)
                     break
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     Log.d(TAG, "🛑 录制协程被取消")
+                    // 确保状态正确重置
+                    isListening.set(false)
+                    isRecording.set(false)
+                    _uiState.value = SttState.Loaded
                     throw e // 重新抛出取消异常
                 } catch (e: Exception) {
                     if (isRecording.get()) {
                         Log.e(TAG, "❌ 录制音频数据异常", e)
                         consecutiveErrors++
                         if (consecutiveErrors >= maxConsecutiveErrors) {
+                            // 确保状态正确重置
+                            isListening.set(false)
+                            isRecording.set(false)
+                            _uiState.value = SttState.ErrorLoading(Exception("连续音频异常过多"))
                             break
                         }
                     } else {
