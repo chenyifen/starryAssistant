@@ -20,12 +20,14 @@ import okhttp3.OkHttpClient
 import org.stypox.dicio.io.wake.WakeDevice
 import org.stypox.dicio.io.wake.WakeState
 import org.stypox.dicio.io.wake.oww.OpenWakeWordDevice
+import org.stypox.dicio.io.wake.oww.HiNudgeOpenWakeWordDevice
 import org.stypox.dicio.io.wake.sherpa.SherpaOnnxWakeDevice
 import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.settings.datastore.WakeDevice.UNRECOGNIZED
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_OWW
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_SHERPA_ONNX
+import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_HI_NUDGE
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_UNSET
 import org.stypox.dicio.util.distinctUntilChangedBlockingFirst
 import javax.inject.Singleton
@@ -104,6 +106,7 @@ class WakeDeviceWrapperImpl(
             WAKE_DEVICE_UNSET -> SherpaOnnxWakeDevice(appContext) // 默认使用SherpaOnnx
             WAKE_DEVICE_OWW -> OpenWakeWordDevice(appContext, okHttpClient)
             WAKE_DEVICE_SHERPA_ONNX -> SherpaOnnxWakeDevice(appContext)
+            WAKE_DEVICE_HI_NUDGE -> HiNudgeOpenWakeWordDevice(appContext)
             WAKE_DEVICE_NOTHING -> null
         }
     }

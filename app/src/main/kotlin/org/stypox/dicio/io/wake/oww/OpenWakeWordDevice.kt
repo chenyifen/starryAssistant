@@ -182,25 +182,15 @@ class OpenWakeWordDevice(
             audio[i] = audio16bitPcm[i].toFloat() / 32768.0f
         }
 
-        // 计算音频幅度用于调试
-        val amplitude = audio.maxOf { kotlin.math.abs(it) }
         
         // 处理音频帧并获取置信度
         val confidence = measureTimeAndLog(TAG, "Process audio frame") {
             model!!.processFrame(audio)
         }
         
-               val threshold = 0.01f // 进一步降低阈值测试模型响应  TODO
+        val threshold = 0.01f
         val detected = confidence > threshold
         
-        // 保存有音频信号的音频数据用于调试
-        if (amplitude > 0.0f) {
-            AudioDebugSaver.saveWakeAudio(appContext, audio16bitPcm, amplitude, confidence)
-        }
-        
-        // 记录检测结果
-        DebugLogger.logWakeWordDetection(TAG, confidence, threshold, detected)
-        DebugLogger.logAudioStats(TAG, audio16bitPcm.size, amplitude, threshold)
         
         return detected
     }
@@ -216,6 +206,7 @@ class OpenWakeWordDevice(
     }
 
     override fun isHeyDicio(): Boolean = !userWakeFileExists
+    
 
     companion object {
         val TAG = OpenWakeWordDevice::class.simpleName ?: "OpenWakeWordDevice"
@@ -257,3 +248,4 @@ class OpenWakeWordDevice(
         }
     }
 }
+

@@ -166,6 +166,28 @@ class AudioResourceCoordinator @Inject constructor() {
                     }
                 }
             }
+            SttState.NotLoaded -> {
+                // STT未加载或已停止，如果之前在ASR状态，现在应该回到唤醒监听
+                if (currentState is AudioPipelineState.AsrListening || 
+                    currentState is AudioPipelineState.Processing) {
+                    return if (wakeState == WakeState.Loaded) {
+                        AudioPipelineState.WakeListening
+                    } else {
+                        AudioPipelineState.Idle
+                    }
+                }
+            }
+            null -> {
+                // STT状态为null，如果之前在ASR状态，现在应该回到唤醒监听
+                if (currentState is AudioPipelineState.AsrListening || 
+                    currentState is AudioPipelineState.Processing) {
+                    return if (wakeState == WakeState.Loaded) {
+                        AudioPipelineState.WakeListening
+                    } else {
+                        AudioPipelineState.Idle
+                    }
+                }
+            }
             else -> {
                 // 其他STT状态不影响Pipeline状态
             }
