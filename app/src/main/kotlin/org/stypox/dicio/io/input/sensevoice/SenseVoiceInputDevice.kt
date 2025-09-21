@@ -686,67 +686,77 @@ class SenseVoiceInputDevice private constructor(
     private suspend fun processAudioForRecognition() {
         Log.d(TAG, "🧠 开始音频处理和VAD检测...")
         
-        while (isListening.get()) {
-            for (samples in samplesChannel) {
-                if (samples.isEmpty()) {
-                    Log.d(TAG, "收到空音频数据，处理结束")
-                    break
-                }
-                
-                // 参考SherpaOnnxSimulateAsr的高效缓冲管理
-                synchronized(audioBuffer) {
-                    audioBuffer.addAll(samples.toList())
-                    // 如果缓冲区太大，移除旧数据
-                    while (audioBuffer.size > maxBufferSize) {
-                        audioBuffer.removeAt(0)
-                        if (bufferOffset > 0) bufferOffset--
+        try {
+            while (isListening.get()) {
+                for (samples in samplesChannel) {
+                    if (samples.isEmpty()) {
+                        Log.d(TAG, "收到空音频数据，处理结束")
+                        break
                     }
-                }
-                
-                // VAD检测
-                val isSpeech = detectSpeech(samples)
-                val currentTime = System.currentTimeMillis()
-                
-                if (isSpeech) {
-                    if (!speechDetected) {
-                        // 语音开始
-                        speechDetected = true
-                        speechStartTime = currentTime
-                        Log.d(TAG, "🎤 检测到语音开始")
-                        
-                        // 发送语音开始事件
-                        withContext(Dispatchers.Main) {
-                            eventListener?.invoke(InputEvent.Partial("正在监听..."))
+                    
+                    // 参考SherpaOnnxSimulateAsr的高效缓冲管理
+                    synchronized(audioBuffer) {
+                        audioBuffer.addAll(samples.toList())
+                        // 如果缓冲区太大，移除旧数据
+                        while (audioBuffer.size > maxBufferSize) {
+                            audioBuffer.removeAt(0)
+                            if (bufferOffset > 0) bufferOffset--
                         }
                     }
-                    lastSpeechTime = currentTime
                     
-                    // 参考SherpaOnnxSimulateAsr每200ms进行实时识别
-                    val elapsed = currentTime - lastPartialRecognitionTime
-                    if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= SAMPLE_RATE / 2) {
-                        performPartialRecognition()
+                    // VAD检测
+                    val isSpeech = detectSpeech(samples)
+                    val currentTime = System.currentTimeMillis()
+                    
+                    if (isSpeech) {
+                        if (!speechDetected) {
+                            // 语音开始
+                            speechDetected = true
+                            speechStartTime = currentTime
+                            Log.d(TAG, "🎤 检测到语音开始")
+                            
+                            // 发送语音开始事件
+                            withContext(Dispatchers.Main) {
+                                eventListener?.invoke(InputEvent.Partial("正在监听..."))
+                            }
+                        }
+                        lastSpeechTime = currentTime
+                        
+                        // 参考SherpaOnnxSimulateAsr每200ms进行实时识别
+                        val elapsed = currentTime - lastPartialRecognitionTime
+                        if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= SAMPLE_RATE / 2) {
+                            performPartialRecognition()
+                        }
+                        
+                    } else if (speechDetected) {
+                        // 检查是否静音超时
+                        val silenceDuration = currentTime - lastSpeechTime
+                        if (silenceDuration > SPEECH_TIMEOUT_MS) {
+                            Log.d(TAG, "🔇 检测到静音超时，停止监听")
+                            stopListeningAndProcess()
+                            break
+                        }
                     }
                     
-                } else if (speechDetected) {
-                    // 检查是否静音超时
-                    val silenceDuration = currentTime - lastSpeechTime
-                    if (silenceDuration > SPEECH_TIMEOUT_MS) {
-                        Log.d(TAG, "🔇 检测到静音超时，停止监听")
+                    // 检查最大录制时间
+                    if (speechDetected && (currentTime - speechStartTime) > MAX_RECORDING_DURATION_MS) {
+                        Log.d(TAG, "⏰ 达到最大录制时间，停止监听")
                         stopListeningAndProcess()
                         break
                     }
                 }
-                
-                // 检查最大录制时间
-                if (speechDetected && (currentTime - speechStartTime) > MAX_RECORDING_DURATION_MS) {
-                    Log.d(TAG, "⏰ 达到最大录制时间，停止监听")
-                    stopListeningAndProcess()
-                    break
-                }
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            Log.d(TAG, "🛑 音频处理协程被取消")
+            // 正常的协程取消，不需要记录为错误
+            throw e // 重新抛出取消异常
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 音频处理异常", e)
+            // 设置错误状态
+            _uiState.value = SttState.ErrorLoading(e)
+        } finally {
+            Log.d(TAG, "🏁 音频处理结束")
         }
-        
-        Log.d(TAG, "🏁 音频处理结束")
     }
     
     /**

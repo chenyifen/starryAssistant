@@ -154,6 +154,10 @@ fun wakeDevice() = ListSetting(
             name = stringResource(R.string.pref_wake_method_sherpa_onnx),
         ),
         ListSetting.Value(
+            value = WakeDevice.WAKE_DEVICE_HI_NUDGE,
+            name = "하이넛지 (Hi Nudge Korean)",
+        ),
+        ListSetting.Value(
             value = WakeDevice.WAKE_DEVICE_NOTHING,
             name = stringResource(R.string.pref_wake_method_disabled),
         )

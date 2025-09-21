@@ -42,18 +42,18 @@ fun FloatingAssistantUI(
     
     Box(
         modifier = modifier
-            .fillMaxSize()
+            .wrapContentSize() // 根据内容调整大小
             .background(
                 if (isFullScreen) {
                     // 满屏模式：深色半透明背景
                     DeepSpace.copy(alpha = 0.8f)
                 } else {
-                    // 小窗模式：调试边框
-                    Color.Red.copy(alpha = 0.2f)
+                    // 小窗模式：透明背景
+                    Color.Transparent
                 }
             )
-            .padding(if (isFullScreen) 32.dp else 16.dp),
-        contentAlignment = Alignment.Center
+            .padding(if (isFullScreen) 32.dp else 4.dp), // 进一步减少小窗模式的padding
+        contentAlignment = if (isFullScreen) Alignment.Center else Alignment.TopCenter // 小窗模式向上对齐
     ) {
         // 背景模糊效果（仅在显示命令建议时）
         if (uiState.showCommandSuggestions) {
@@ -68,20 +68,15 @@ fun FloatingAssistantUI(
         
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(if (isFullScreen) 16.dp else 8.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isFullScreen) 16.dp else 2.dp), // 进一步减少间距
             modifier = Modifier.wrapContentSize()
         ) {
-            // 语音UI动画（Lottie）- 根据模式调整大小
-            VoiceUIAnimationWithFallback(
+            // 语音UI动画（Lottie）- 缩小尺寸，紧凑布局，内置状态文本
+            VoiceUIAnimationWithStatusText(
                 state = uiState.assistantState,
                 energyLevel = uiState.energyLevel,
                 onClick = onEnergyOrbClick,
-                size = if (isFullScreen) 280 else 120  // 调整动画大小，为文本留出更多空间
-            )
-            
-            // 状态文本 - 根据模式调整字体大小
-            StatusText(
-                state = uiState.assistantState,
+                size = if (isFullScreen) 200 else 60,  // 大幅缩小动画尺寸
                 isWakeWordActive = uiState.isWakeWordActive,
                 isFullScreen = isFullScreen
             )
@@ -94,16 +89,18 @@ fun FloatingAssistantUI(
                 isFullScreen = isFullScreen
             )
             
-            // 设置图标 - 放在右上角
-            Box(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                PolyhedronSettingsIcon(
-                    onClick = onSettingsClick,
-                    modifier = Modifier
-                        .size(if (isFullScreen) 40.dp else 28.dp)
-                        .align(Alignment.TopEnd)
-                )
+            // 设置图标 - 只在有足够空间时显示
+            if (isFullScreen || uiState.asrText.isBlank() && uiState.ttsText.isBlank()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PolyhedronSettingsIcon(
+                        onClick = onSettingsClick,
+                        modifier = Modifier
+                            .size(if (isFullScreen) 40.dp else 20.dp) // 进一步缩小设置图标
+                            .align(Alignment.TopEnd)
+                    )
+                }
             }
         }
     }
@@ -115,14 +112,39 @@ private fun StatusText(
     isWakeWordActive: Boolean,
     isFullScreen: Boolean = false
 ) {
+    val context = LocalContext.current
+    
+    // 获取当前系统语言
+    val currentLanguage = java.util.Locale.getDefault().language
+    
     val text = when (state) {
         AssistantState.IDLE -> if (isWakeWordActive) {
-            "Hi Nudget: 하이넛지"
+            when (currentLanguage) {
+                "zh" -> "说\"Hi Nudget\"唤醒我"
+                "ko" -> "\"Hi Nudget\"라고 말해주세요"
+                "en" -> "Say \"Hi Nudget\" to wake me"
+                else -> "Say \"Hi Nudget\" to wake me"
+            }
         } else {
-            "叫我\"小艺小艺\""
+            when (currentLanguage) {
+                "zh" -> "叫我\"小艺小艺\""
+                "ko" -> "\"작은 예술\"이라고 불러주세요"
+                "en" -> "Call me \"Little Art\""
+                else -> "Call me \"Little Art\""
+            }
         }
-        AssistantState.LISTENING -> "듣고 있어요…"
-        AssistantState.THINKING -> "생각하고 있어요…"
+        AssistantState.LISTENING -> when (currentLanguage) {
+            "zh" -> "正在聆听..."
+            "ko" -> "듣고 있어요..."
+            "en" -> "Listening..."
+            else -> "Listening..."
+        }
+        AssistantState.THINKING -> when (currentLanguage) {
+            "zh" -> "正在思考..."
+            "ko" -> "생각하고 있어요..."
+            "en" -> "Thinking..."
+            else -> "Thinking..."
+        }
     }
     
     val textColor = when (state) {
@@ -145,10 +167,10 @@ private fun StatusText(
     Text(
         text = text,
         color = textColor.copy(alpha = glowAnimation),
-        fontSize = if (isFullScreen) 20.sp else 12.sp,  // 满屏模式使用更大字体
+        fontSize = if (isFullScreen) 18.sp else 10.sp,  // 进一步缩小字体
         fontWeight = FontWeight.Medium,
         textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = if (isFullScreen) 16.dp else 8.dp)
+        modifier = Modifier.padding(horizontal = if (isFullScreen) 16.dp else 4.dp) // 减少水平padding
     )
 }
 
@@ -159,9 +181,13 @@ private fun VoiceTextDisplay(
     state: AssistantState,
     isFullScreen: Boolean = false
 ) {
-    // 动态高度和宽度
-    val maxWidth = if (isFullScreen) 700.dp else 280.dp
-    val minHeight = if (isFullScreen) 120.dp else 100.dp // 小窗模式下也需要足够的高度
+    // 只有在有文本时才显示
+    if (asrText.isBlank() && ttsText.isBlank()) {
+        return
+    }
+    
+    // 动态宽度，小窗模式更紧凑
+    val maxWidth = if (isFullScreen) 700.dp else 180.dp
     
     // 添加调试日志
     android.util.Log.d("FloatingAssistantUI", "🎨 VoiceTextDisplay渲染: asrText='$asrText', ttsText='$ttsText', isFullScreen=$isFullScreen")
@@ -169,82 +195,40 @@ private fun VoiceTextDisplay(
     Card(
         modifier = Modifier
             .widthIn(max = maxWidth)
-            .heightIn(min = minHeight)
-            .animateContentSize(), // 恢复动态尺寸
+            .wrapContentHeight() // 根据内容调整高度
+            .animateContentSize(),
         colors = CardDefaults.cardColors(
-            containerColor = DeepSpace.copy(alpha = 0.8f) // 恢复原来的背景色
+            containerColor = DeepSpace.copy(alpha = if (isFullScreen) 0.8f else 0.9f) // 小窗模式稍微不透明一些
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-        shape = RoundedCornerShape(if (isFullScreen) 16.dp else 12.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isFullScreen) 8.dp else 2.dp), // 小窗模式减少阴影
+        shape = RoundedCornerShape(if (isFullScreen) 16.dp else 6.dp) // 小窗模式更小的圆角
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(if (isFullScreen) 24.dp else 16.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isFullScreen) 12.dp else 8.dp)
+                .padding(if (isFullScreen) 24.dp else 8.dp), // 进一步减少小窗模式的padding
+            verticalArrangement = Arrangement.spacedBy(if (isFullScreen) 12.dp else 4.dp) // 进一步减少间距
         ) {
-            // 当前状态指示器
-            CurrentStateIndicator(
-                state = state,
-                isFullScreen = isFullScreen
-            )
+            // ASR实时识别文本区域 - 只有有文本时才显示
+            if (asrText.isNotBlank()) {
+                AsrTextSection(
+                    asrText = asrText,
+                    state = state,
+                    isFullScreen = isFullScreen
+                )
+            }
             
-            // ASR实时识别文本区域
-            AsrTextSection(
-                asrText = asrText,
-                state = state,
-                isFullScreen = isFullScreen
-            )
-            
-            // TTS回复文本区域
-            TtsTextSection(
-                ttsText = ttsText,
-                isFullScreen = isFullScreen
-            )
+            // TTS回复文本区域 - 只有有文本时才显示
+            if (ttsText.isNotBlank()) {
+                TtsTextSection(
+                    ttsText = ttsText,
+                    isFullScreen = isFullScreen
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun CurrentStateIndicator(
-    state: AssistantState,
-    isFullScreen: Boolean
-) {
-    val (text, color, icon) = when (state) {
-        AssistantState.IDLE -> Triple("待机中", VioletGlow.copy(alpha = 0.7f), "💤")
-        AssistantState.LISTENING -> Triple("正在听取...", AuroraGreen, "🎧")
-        AssistantState.THINKING -> Triple("正在思考...", EnergyBlue, "🤔")
-    }
-    
-    // 状态指示器的脉冲动画
-    val pulseAnimation by rememberInfiniteTransition(label = "pulse").animateFloat(
-        initialValue = 0.7f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse"
-    )
-    
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = icon,
-            fontSize = if (isFullScreen) 20.sp else 16.sp,
-            modifier = Modifier.padding(end = 8.dp)
-        )
-        Text(
-            text = text,
-            color = color.copy(alpha = pulseAnimation),
-            fontSize = if (isFullScreen) 16.sp else 12.sp,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
 
 @Composable
 private fun AsrTextSection(
@@ -252,58 +236,42 @@ private fun AsrTextSection(
     state: AssistantState,
     isFullScreen: Boolean
 ) {
-    Column {
-        // ASR标题
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = "🎤 您说：",
-                color = EnergyBlue.copy(alpha = 0.8f),
-                fontSize = if (isFullScreen) 14.sp else 10.sp,
-                fontWeight = FontWeight.Medium
-            )
-            
-            // 如果正在监听，显示动态指示器
-            if (state == AssistantState.LISTENING) {
-                Spacer(modifier = Modifier.width(8.dp))
-                ListeningIndicator(isFullScreen = isFullScreen)
-            }
-        }
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // ASR文本内容
-        Box(
+    // 简化的ASR文本显示，只显示内容
+    if (asrText.isNotEmpty()) {
+        Text(
+            text = asrText,
+            color = EnergyBlue,
+            fontSize = if (isFullScreen) 16.sp else 10.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = if (isFullScreen) 22.sp else 14.sp,
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    color = GalaxyGray.copy(alpha = 0.3f),
-                    shape = RoundedCornerShape(8.dp)
+                    color = EnergyBlue.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp)
                 )
-                .padding(if (isFullScreen) 16.dp else 12.dp)
-                .heightIn(min = if (isFullScreen) 40.dp else 30.dp)
+                .padding(if (isFullScreen) 12.dp else 6.dp)
+        )
+    } else if (state == AssistantState.LISTENING) {
+        // 监听状态显示简单的指示
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = EnergyBlue.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp)
+                )
+                .padding(if (isFullScreen) 12.dp else 6.dp)
         ) {
-            if (asrText.isNotEmpty()) {
-                Text(
-                    text = asrText,
-                    color = EnergyBlue,
-                    fontSize = if (isFullScreen) 16.sp else 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = if (isFullScreen) 22.sp else 16.sp,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            } else {
-                val placeholderText = if (state == AssistantState.LISTENING) "正在识别您的语音..." else "等待语音输入"
-                Text(
-                    text = placeholderText,
-                    color = VioletGlow.copy(alpha = 0.5f),
-                    fontSize = if (isFullScreen) 14.sp else 10.sp,
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                    modifier = Modifier.align(Alignment.CenterStart)
-                )
-            }
+            ListeningIndicator(isFullScreen = isFullScreen)
+            Spacer(modifier = Modifier.width(if (isFullScreen) 8.dp else 4.dp))
+            Text(
+                text = "正在聆听...",
+                color = EnergyBlue.copy(alpha = 0.7f),
+                fontSize = if (isFullScreen) 14.sp else 8.sp,
+                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+            )
         }
     }
 }
@@ -313,38 +281,22 @@ private fun TtsTextSection(
     ttsText: String,
     isFullScreen: Boolean
 ) {
-    Column {
-        // TTS标题
+    // 简化的TTS文本显示，只显示内容
+    if (ttsText.isNotEmpty()) {
         Text(
-            text = "🤖 小艺回复：",
-            color = AuroraGreen.copy(alpha = 0.8f),
-            fontSize = if (isFullScreen) 14.sp else 10.sp,
-            fontWeight = FontWeight.Medium
-        )
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        // TTS文本内容
-        Box(
+            text = ttsText,
+            color = AuroraGreen,
+            fontSize = if (isFullScreen) 16.sp else 10.sp,
+            fontWeight = FontWeight.Normal,
+            lineHeight = if (isFullScreen) 22.sp else 14.sp,
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    color = Color.Black.copy(alpha = 0.8f), // 使用更深的背景色增强对比度
-                    shape = RoundedCornerShape(8.dp)
+                    color = AuroraGreen.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp)
                 )
-                .padding(if (isFullScreen) 16.dp else 12.dp)
-                .heightIn(min = if (isFullScreen) 40.dp else 30.dp)
-        ) {
-            // 强制显示测试文本，确保组件可见
-            Text(
-                text = if (ttsText.isNotEmpty()) "TTS: $ttsText" else "TTS: 测试文本 - 如果你能看到这个，说明组件正常",
-                color = Color.Cyan, // 使用明显的青色
-                fontSize = if (isFullScreen) 18.sp else 14.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = if (isFullScreen) 24.sp else 18.sp,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+                .padding(if (isFullScreen) 12.dp else 6.dp)
+        )
     }
 }
 

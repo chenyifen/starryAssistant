@@ -150,10 +150,11 @@ class FloatingWindowViewModel(
         // 简化状态逻辑：只根据STT状态判断，不显示思考中状态
         val assistantState = when {
             sttState is SttState.Listening -> {
-                // 开始新的监听时，清空之前的ASR文本（如果不是部分识别状态）
+                // 开始新的监听时，清空之前的ASR和TTS文本
                 if (currentState.assistantState != AssistantState.LISTENING) {
-                    android.util.Log.d("FloatingWindowViewModel", "🎤 开始新的监听，清空ASR文本")
+                    android.util.Log.d("FloatingWindowViewModel", "🎤 开始新的监听，清空ASR和TTS文本")
                     currentAsrText = ""
+                    currentTtsText = "" // 清除之前的TTS回复
                 }
                 AssistantState.LISTENING
             }
@@ -232,8 +233,12 @@ class FloatingWindowViewModel(
         
         when (currentState.assistantState) {
             AssistantState.IDLE -> {
-                // 开始监听
-                android.util.Log.d("FloatingWindowViewModel", "🎤 开始语音监听...")
+                // 开始监听时清除之前的TTS回复
+                android.util.Log.d("FloatingWindowViewModel", "🎤 开始语音监听，清除之前的TTS回复...")
+                currentTtsText = ""
+                currentAsrText = ""
+                updateCurrentUiState()
+                
                 // 直接调用sttInputDevice.tryLoad，让它将事件发送到SkillEvaluator
                 // SkillEvaluator会通过SharedFlow将事件传递给我们的handleInputEvent
                 sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
