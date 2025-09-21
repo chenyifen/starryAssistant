@@ -122,8 +122,9 @@ class SherpaOnnxTtsSpeechDevice(
                             
                             // 根据demo代码，当有dictDir时自动设置ruleFsts
                             if (modelConfig.ruleFsts.isEmpty()) {
-                                val externalModelPath = "$externalFilesDir/${modelConfig.modelDir}"
-                                processedRuleFsts = "$externalModelPath/phone.fst,$externalModelPath/date.fst,$externalModelPath/number.fst"
+                                // 使用正确的Dicio路径而不是应用专用目录
+                                val dicioModelPath = "/storage/emulated/0/Dicio/models/tts/${modelConfig.modelDir.substringAfterLast("/")}"
+                                processedRuleFsts = "$dicioModelPath/phone.fst,$dicioModelPath/date.fst,$dicioModelPath/number.fst"
                             }
                         } else {
                             Log.d(TAG, "  📚 字典目录不存在，开始复制: ${modelConfig.dictDir}")
@@ -133,8 +134,9 @@ class SherpaOnnxTtsSpeechDevice(
                             
                             // 根据demo代码，当有dictDir时自动设置ruleFsts
                             if (modelConfig.ruleFsts.isEmpty()) {
-                                val externalModelPath = "$externalFilesDir/${modelConfig.modelDir}"
-                                processedRuleFsts = "$externalModelPath/phone.fst,$externalModelPath/date.fst,$externalModelPath/number.fst"
+                                // 使用正确的Dicio路径而不是应用专用目录
+                                val dicioModelPath = "/storage/emulated/0/Dicio/models/tts/${modelConfig.modelDir.substringAfterLast("/")}"
+                                processedRuleFsts = "$dicioModelPath/phone.fst,$dicioModelPath/date.fst,$dicioModelPath/number.fst"
                             }
                             Log.d(TAG, "  📚 字典目录已复制: $processedDictDir")
                         }
@@ -143,8 +145,15 @@ class SherpaOnnxTtsSpeechDevice(
                 }
                 
                 // TODO: 修复AAR版本的API差异
+                // 确保使用正确的modelDir路径
+                val processedModelDir = if (modelConfig.useAssets) {
+                    modelConfig.modelDir // assets路径保持不变
+                } else {
+                    // 外部存储：使用正确的Dicio路径
+                    "/storage/emulated/0/Dicio/models/tts/${modelConfig.modelDir.substringAfterLast("/")}"
+                }
                 val config = getOfflineTtsConfig(
-                    modelDir = modelConfig.modelDir,
+                    modelDir = processedModelDir,
                     modelName = modelConfig.modelName,
                     lexicon = modelConfig.lexicon,
                     dataDir = processedDataDir,
@@ -158,6 +167,24 @@ class SherpaOnnxTtsSpeechDevice(
                 
                 // 根据模型来源选择初始化方式（参考SherpaOnnxWakeDevice的实现）
                 try {
+                    // 验证关键文件是否存在
+                    if (!modelConfig.useAssets) {
+                        val modelFile = File(processedModelDir, modelConfig.modelName)
+                        if (!modelFile.exists()) {
+                            Log.e(TAG, "  ❌ 模型文件不存在: ${modelFile.absolutePath}")
+                            throw Exception("模型文件不存在: ${modelFile.absolutePath}")
+                        }
+                        Log.d(TAG, "  ✅ 模型文件验证通过: ${modelFile.absolutePath}")
+                    }
+                    
+                    Log.d(TAG, "  🔧 TTS配置详情:")
+                    Log.d(TAG, "    - modelDir: $processedModelDir")
+                    Log.d(TAG, "    - modelName: ${modelConfig.modelName}")
+                    Log.d(TAG, "    - dataDir: $processedDataDir")
+                    Log.d(TAG, "    - dictDir: $processedDictDir")
+                    Log.d(TAG, "    - ruleFsts: $processedRuleFsts")
+                    Log.d(TAG, "    - useAssets: ${modelConfig.useAssets}")
+                    
                     tts = if (modelConfig.useAssets) {
                         Log.d(TAG, "  📱 从Assets加载TTS模型")
                         OfflineTts(assetManager = context.assets, config = config)
@@ -174,8 +201,43 @@ class SherpaOnnxTtsSpeechDevice(
                     
                 } catch (e: Exception) {
                     Log.e(TAG, "  ❌ SherpaOnnx OfflineTts创建失败: ${e.message}", e)
-                    Log.e(TAG, "  📋 配置信息: modelDir=${modelConfig.modelDir}, useAssets=${modelConfig.useAssets}")
-                    Log.e(TAG, "  📋 处理后路径: dataDir=$processedDataDir, dictDir=$processedDictDir")
+                    Log.e(TAG, "  📋 配置信息: modelDir=$processedModelDir, useAssets=${modelConfig.useAssets}")
+                    Log.e(TAG, "  📋 处理后路径: dataDir=$processedDataDir, dictDir=$processedDictDir, ruleFsts=$processedRuleFsts")
+                    
+                    // 尝试不使用ruleFsts重新初始化（可能是ruleFsts导致的崩溃）
+                    if (processedRuleFsts.isNotEmpty()) {
+                        Log.w(TAG, "  🔄 尝试不使用ruleFsts重新初始化TTS...")
+                        try {
+                            val fallbackConfig = getOfflineTtsConfig(
+                                modelDir = processedModelDir,
+                                modelName = modelConfig.modelName,
+                                lexicon = modelConfig.lexicon,
+                                dataDir = processedDataDir,
+                                dictDir = processedDictDir,
+                                ruleFsts = "", // 清空ruleFsts
+                                ruleFars = modelConfig.ruleFars,
+                                acousticModelName = "",
+                                vocoder = "",
+                                voices = ""
+                            )
+                            
+                            tts = if (modelConfig.useAssets) {
+                                OfflineTts(assetManager = context.assets, config = fallbackConfig)
+                            } else {
+                                OfflineTts(assetManager = null, config = fallbackConfig)
+                            }
+                            
+                            initializedCorrectly = true
+                            Log.w(TAG, "  ⚠️ TTS初始化成功（已禁用ruleFsts）")
+                            Log.d(TAG, "  🎵 采样率: ${tts?.sampleRate()}")
+                            Log.d(TAG, "  🎤 说话人数量: ${tts?.numSpeakers()}")
+                            return
+                            
+                        } catch (fallbackException: Exception) {
+                            Log.e(TAG, "  ❌ 回退初始化也失败: ${fallbackException.message}", fallbackException)
+                        }
+                    }
+                    
                     tts = null
                     initializedCorrectly = false
                     handleInitializationError(R.string.android_tts_error)

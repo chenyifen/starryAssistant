@@ -46,7 +46,7 @@ class SenseVoiceInputDevice private constructor(
         
         // VAD和录制控制参数
         private const val VAD_FRAME_SIZE = 512 // VAD处理帧大小 (32ms @ 16kHz)
-        private const val SPEECH_TIMEOUT_MS = 3000L // 静音3秒后自动停止
+        private const val SPEECH_TIMEOUT_MS = 4000L // 静音8秒后自动停止，给用户更多思考时间
         private const val MAX_RECORDING_DURATION_MS = 30000L // 最长录制时间30秒
         private const val MIN_SPEECH_DURATION_MS = 500L // 最短有效语音时间
 
@@ -802,7 +802,6 @@ class SenseVoiceInputDevice private constructor(
                 if (audioBuffer.size < SAMPLE_RATE / 4) return // 至少0.25秒音频
                 audioBuffer.toFloatArray()
             }
-            
             val newText = recognizer.recognize(audioData)
             
             if (newText.isNotBlank() && newText != partialText) {
@@ -869,10 +868,9 @@ class SenseVoiceInputDevice private constructor(
             
             Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioBuffer.size}样本，语音时长: ${speechDuration}ms")
             
-            // 参考SherpaOnnxSimulateAsr的缓冲管理方式
-            val audioData = synchronized(audioBuffer) {
-                audioBuffer.toFloatArray()
-            }
+            // 安全地从队列中获取所有音频数据
+            val bufferList = audioBuffer.toList()
+            val audioData = bufferList.toFloatArray()
             val finalText = recognizer.recognize(audioData)
             
             DebugLogger.logRecognition(TAG, "最终识别结果: \"$finalText\"")
