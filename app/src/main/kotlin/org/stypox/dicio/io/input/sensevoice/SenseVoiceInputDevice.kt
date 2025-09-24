@@ -703,10 +703,8 @@ class SenseVoiceInputDevice private constructor(
                             speechStartTime = currentTime
                             Log.d(TAG, "🎤 检测到语音开始")
                             
-                            // 发送语音开始事件
-                            withContext(Dispatchers.Main) {
-                                eventListener?.invoke(InputEvent.Partial("正在监听..."))
-                            }
+                            // 不发送状态文本，避免干扰真实的ASR结果显示
+                            // 语音开始事件由UI状态管理器处理
                         }
                         lastSpeechTime = currentTime
                         

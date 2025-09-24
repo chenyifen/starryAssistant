@@ -83,14 +83,21 @@ fun LottieAnimationController(
                     property = LottieProperty.OPACITY,
                     value = 0,
                     keyPath = arrayOf("Shape Layer 13", "**")
+                ),
+                // 动态替换文本内容
+                rememberLottieDynamicProperty(
+                    property = LottieProperty.TEXT,
+                    value = displayText,
+                    keyPath = arrayOf("**") // 匹配所有文本层
                 )
             )
         )
         
-        // 自定义文本覆盖（当需要显示不同文本时）
-        if (animationState == LottieAnimationState.ACTIVE && displayText != "I'm here for you!") {
-            // TODO: 添加自定义文本显示组件
-            DebugLogger.logUI(TAG, "🎨 Custom text: $displayText")
+        // 文本已通过 LottieProperty.TEXT 动态替换，无需额外处理
+        LaunchedEffect(displayText) {
+            if (displayText.isNotEmpty()) {
+                DebugLogger.logUI(TAG, "🎨 Animation text updated: $displayText")
+            }
         }
     }
 }

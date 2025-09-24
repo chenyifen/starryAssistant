@@ -66,11 +66,13 @@ class DraggableFloatingOrb(
     // 动画状态管理器
     private val animationStateManager = LottieAnimationStateManager()
     
-    // 移除了textStateManager，现在直接使用currentAsrText和currentTtsText
+    // 当前文本状态 - 使用MutableState以便Compose能检测变化
+    private val currentAsrText = mutableStateOf("")
+    private val currentTtsText = mutableStateOf("")
     
-    // 当前文本状态
-    private var currentAsrText = ""
-    private var currentTtsText = ""
+    // 性能优化：状态缓存
+    private var lastUiState: VoiceAssistantUIState? = null
+    private var lastDisplayText = ""
     
     // 拖拽处理器
     private var dragTouchHandler: DragTouchHandler? = null
@@ -78,9 +80,9 @@ class DraggableFloatingOrb(
     // 边缘吸附状态
     private var isAtEdge = false
     
-    // 拖拽状态
-    private var isDragging = false
-    private var isLongPressing = false
+    // 拖拽状态 - 使用MutableState以便Compose能检测变化
+    private val isDragging = mutableStateOf(false)
+    private val isLongPressing = mutableStateOf(false)
     
     // 点击回调
     var onOrbClick: (() -> Unit)? = null
@@ -115,6 +117,13 @@ class DraggableFloatingOrb(
             composeView.setContent {
                 // 不使用AppTheme，因为Service不是Activity
                 // 使用完全透明的背景
+                
+                // 在Composable内部读取状态，以便触发重组
+                val asrText by currentAsrText
+                val ttsText by currentTtsText
+                val dragging by isDragging
+                val longPressing by isLongPressing
+                
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -122,11 +131,11 @@ class DraggableFloatingOrb(
                 ) {
                     FloatingOrbContent(
                         animationStateManager = animationStateManager,
-                        asrText = currentAsrText,
-                        ttsText = currentTtsText,
+                        currentAsrText = asrText,
+                        currentTtsText = ttsText,
                         isAtEdge = isAtEdge,
-                        isDragging = isDragging,
-                        isLongPressing = isLongPressing,
+                        isDragging = dragging,
+                        isLongPressing = longPressing,
                         onOrbClick = { handleOrbClick() },
                         onOrbLongPress = { handleOrbLongPress() },
                         onDragStart = { handleDragStart() },
@@ -198,12 +207,12 @@ class DraggableFloatingOrb(
     /**
      * 获取当前ASR文本
      */
-    fun getCurrentAsrText(): String = currentAsrText
+    fun getCurrentAsrText(): String = currentAsrText.value
     
     /**
      * 获取当前TTS文本
      */
-    fun getCurrentTtsText(): String = currentTtsText
+    fun getCurrentTtsText(): String = currentTtsText.value
     
     /**
      * 创建WindowManager布局参数
@@ -223,15 +232,26 @@ class DraggableFloatingOrb(
             // 像素格式 - 使用RGBA_8888支持完全透明
             format = PixelFormat.RGBA_8888
             
-            // 窗口大小
+            // 窗口大小 - 动态计算以容纳悬浮球和文本显示区域
             width = WindowManager.LayoutParams.WRAP_CONTENT
-            height = WindowManager.LayoutParams.WRAP_CONTENT
+            height = calculateWindowHeight()
             
             // 窗口位置
             gravity = Gravity.TOP or Gravity.START
             x = 100 // 初始X位置
             y = 200 // 初始Y位置
         }
+    }
+    
+    /**
+     * 计算窗口高度
+     */
+    private fun calculateWindowHeight(): Int {
+        val orbHeight = if (isAtEdge) FloatingOrbConfig.edgeOrbSizePx else FloatingOrbConfig.orbSizePx
+        val textAreaHeight = if (isAtEdge) 0 else 150 // 边缘状态时不显示文本，不需要额外高度
+        val spacing = 24 // 8dp spacing * 3 (density factor)
+        
+        return (orbHeight + textAreaHeight + spacing).toInt()
     }
     
     /**
@@ -325,7 +345,7 @@ class DraggableFloatingOrb(
             isAtEdge = atEdge
             DebugLogger.logUI(TAG, "🧲 Edge state changed: $atEdge")
             
-            // 重新创建视图以应用新的尺寸
+            // 更新窗口布局参数以适应新的尺寸
             if (isShowing) {
                 val currentView = floatingView
                 if (currentView != null) {
@@ -334,12 +354,19 @@ class DraggableFloatingOrb(
                     val currentX = layoutParams.x
                     val currentY = layoutParams.y
                     
-                    // 隐藏并重新显示
-                    hide()
-                    show()
+                    // 更新窗口高度
+                    layoutParams.height = calculateWindowHeight()
                     
-                    // 恢复位置
-                    updatePosition(currentX, currentY)
+                    try {
+                        windowManager.updateViewLayout(currentView, layoutParams)
+                        DebugLogger.logUI(TAG, "🔄 Window layout updated for edge state: $atEdge, height: ${layoutParams.height}")
+                    } catch (e: Exception) {
+                        DebugLogger.logUI(TAG, "❌ Failed to update window layout: ${e.message}")
+                        // 如果更新失败，回退到重新创建视图
+                        hide()
+                        show()
+                        updatePosition(currentX, currentY)
+                    }
                 }
             }
         }
@@ -390,19 +417,67 @@ class DraggableFloatingOrb(
     private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
         DebugLogger.logUI(TAG, "🔄 Voice assistant state changed: ${state.uiState}, display: '${state.displayText}'")
         
-        // 更新ASR和TTS文本状态
-        val asrTextChanged = currentAsrText != state.asrText
-        val ttsTextChanged = currentTtsText != state.ttsText
+        // 性能优化：检测变化类型
+        val asrTextChanged = currentAsrText.value != state.asrText
+        val ttsTextChanged = currentTtsText.value != state.ttsText
+        val uiStateChanged = lastUiState != state.uiState
+        val displayTextChanged = lastDisplayText != state.displayText
         
+        // 更新文本状态
         if (asrTextChanged) {
-            currentAsrText = state.asrText
+            currentAsrText.value = state.asrText
             DebugLogger.logUI(TAG, "📝 ASR text updated: '${state.asrText}'")
         }
         
         if (ttsTextChanged) {
-            currentTtsText = state.ttsText
+            currentTtsText.value = state.ttsText
             DebugLogger.logUI(TAG, "🎵 TTS text updated: '${state.ttsText}'")
         }
+        
+        // 性能优化：智能更新策略
+        when {
+            // 情况1：仅文本变化 - 使用文本就地更新，避免refreshUI()
+            (asrTextChanged || ttsTextChanged) && !uiStateChanged && !displayTextChanged -> {
+                DebugLogger.logUI(TAG, "⚡ Text-only update, skipping UI rebuild")
+                updateTextOnly()
+            }
+            
+            // 情况2：UI状态或显示文本变化 - 需要完整UI更新
+            uiStateChanged || displayTextChanged -> {
+                updateUIState(state)
+                if (asrTextChanged || ttsTextChanged) {
+                    updateTextOnly()
+                }
+            }
+            
+            // 情况3：无变化 - 跳过更新
+            else -> {
+                DebugLogger.logUI(TAG, "⏭️ No significant changes, skipping update")
+            }
+        }
+        
+        // 记录技能结果
+        state.result?.let { result ->
+            DebugLogger.logUI(TAG, "🎯 Skill result: ${result.title} - ${result.content}")
+        }
+    }
+    
+    /**
+     * 性能优化：文本就地更新 - 避免refreshUI()
+     */
+    private fun updateTextOnly() {
+        // Compose会自动检测状态变化并重组相关组件
+        // 无需调用refreshUI()，大幅提升性能
+        DebugLogger.logUI(TAG, "📝 Text updated in-place (ASR: '${currentAsrText.value}', TTS: '${currentTtsText.value}')")
+    }
+    
+    /**
+     * 性能优化：UI状态更新 - 带缓存的状态切换
+     */
+    private fun updateUIState(state: VoiceAssistantFullState) {
+        // 更新缓存
+        lastUiState = state.uiState
+        lastDisplayText = state.displayText
         
         // 根据UI状态更新动画 - 中央状态文本
         when (state.uiState) {
@@ -414,17 +489,14 @@ class DraggableFloatingOrb(
                 animationStateManager.triggerWakeWord(displayText)
             }
             VoiceAssistantUIState.LISTENING -> {
-                // LISTENING状态显示"LISTENING"，ASR文本显示在下方
                 animationStateManager.setActive("LISTENING")
                 DebugLogger.logUI(TAG, "👂 LISTENING state activated")
             }
             VoiceAssistantUIState.THINKING -> {
-                // THINKING状态显示"THINKING"
                 animationStateManager.setLoading()
                 DebugLogger.logUI(TAG, "🤔 THINKING state activated")
             }
             VoiceAssistantUIState.SPEAKING -> {
-                // SPEAKING状态显示"SPEAKING"，TTS文本显示在下方
                 animationStateManager.setActive("SPEAKING")
                 DebugLogger.logUI(TAG, "🎵 SPEAKING state activated")
             }
@@ -434,82 +506,32 @@ class DraggableFloatingOrb(
             }
         }
         
-        // 如果文本发生变化，需要重新渲染UI
-        if (asrTextChanged || ttsTextChanged) {
-            refreshUI()
-        }
-        
-        // 记录技能结果
-        state.result?.let { result ->
-            DebugLogger.logUI(TAG, "🎯 Skill result: ${result.title} - ${result.content}")
-        }
-    }
-    
-    /**
-     * 刷新UI - 只在文本变化时调用，避免不必要的重新渲染
-     */
-    private fun refreshUI() {
-        if (isShowing) {
-            val currentView = floatingView
-            if (currentView != null) {
-                // 保存当前位置和状态
-                val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
-                val currentX = layoutParams.x
-                val currentY = layoutParams.y
-                val currentDragging = isDragging
-                val currentLongPressing = isLongPressing
-                
-                // 隐藏并重新显示
-                hide()
-                show()
-                
-                // 恢复位置和状态
-                updatePosition(currentX, currentY)
-                isDragging = currentDragging
-                isLongPressing = currentLongPressing
-                
-                DebugLogger.logUI(TAG, "🔄 UI refreshed for text changes")
-            }
-        }
+        DebugLogger.logUI(TAG, "🎨 UI state updated: ${state.uiState}")
     }
     
     /**
      * 更新拖拽状态
      */
-    private fun updateDragState(dragging: Boolean = isDragging, longPressing: Boolean = isLongPressing) {
-        if (isDragging != dragging || isLongPressing != longPressing) {
-            isDragging = dragging
-            isLongPressing = longPressing
+    private fun updateDragState(dragging: Boolean = isDragging.value, longPressing: Boolean = isLongPressing.value) {
+        if (isDragging.value != dragging || isLongPressing.value != longPressing) {
+            isDragging.value = dragging
+            isLongPressing.value = longPressing
             
-            // 触发重新组合
-            if (isShowing) {
-                val currentView = floatingView
-                if (currentView != null) {
-                    // 保存当前位置
-                    val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
-                    val currentX = layoutParams.x
-                    val currentY = layoutParams.y
-                    
-                    // 隐藏并重新显示
-                    hide()
-                    show()
-                    
-                    // 恢复位置
-                    updatePosition(currentX, currentY)
-                }
-            }
+            DebugLogger.logUI(TAG, "🎨 Drag state updated: dragging=$dragging, longPressing=$longPressing")
+            
+            // Compose会自动检测MutableState变化并重组，无需手动刷新
         }
     }
 }
 
 /**
- * 悬浮球内容组件 (仅包含Lottie动画，状态文本显示在动画内部)
+ * 悬浮球内容组件 (包含Lottie动画和下方的ASR/TTS文本显示)
  */
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
-    asrText: String = "",
-    ttsText: String = "",
+    currentAsrText: String,
+    currentTtsText: String,
     isAtEdge: Boolean = false,
     isDragging: Boolean = false,
     isLongPressing: Boolean = false,
@@ -533,7 +555,7 @@ private fun FloatingOrbContent(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // 悬浮球 - 容器大小等于动画大小，去掉多余空间
         Box(
@@ -554,7 +576,7 @@ private fun FloatingOrbContent(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Lottie动画 - 中央状态文本由动画内部显示
+            // Lottie动画
             LottieAnimationController(
                 animationState = animationState,
                 displayText = displayText,
@@ -562,14 +584,20 @@ private fun FloatingOrbContent(
             )
         }
         
-        // 悬浮球下方的文本显示区域 - 只在非边缘状态时显示
+        // ASR/TTS文本显示区域 - 在边缘时隐藏
         if (!isAtEdge) {
+            val shouldShowText = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
+            DebugLogger.logUI("FloatingOrbContent", "📱 Text display: ASR='$currentAsrText', TTS='$currentTtsText', shouldShow=$shouldShowText, isAtEdge=$isAtEdge")
+            
             FloatingTextDisplay(
-                asrText = asrText,
-                ttsText = ttsText,
-                isVisible = asrText.isNotBlank() || ttsText.isNotBlank()
+                userText = currentAsrText,
+                aiText = currentTtsText,
+                isVisible = shouldShowText
             )
+        } else {
+            DebugLogger.logUI("FloatingOrbContent", "🚫 Text display hidden due to edge state")
         }
     }
 }
+
 
