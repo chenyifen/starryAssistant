@@ -3,6 +3,7 @@ package org.stypox.dicio.ui.floating.state
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import org.dicio.skill.skill.SkillOutput
 import org.stypox.dicio.di.SpeechOutputDeviceWrapper
 import org.stypox.dicio.di.SttInputDeviceWrapper
@@ -71,6 +72,18 @@ class VoiceAssistantStateProvider @Inject constructor(
     private val conversationHistory = mutableListOf<ConversationMessage>()
     private val maxHistorySize = 50 // 最多保留50条对话记录
     
+    // 性能优化：ASR文本去重
+    private var lastAsrText = ""
+    private var lastTtsText = ""
+    
+    // 性能优化：状态变化类型
+    enum class StateChangeType {
+        ASR_TEXT_ONLY,      // 仅ASR文本变化 - 轻量更新
+        TTS_TEXT_ONLY,      // 仅TTS文本变化 - 轻量更新  
+        UI_STATE_CHANGE,    // UI状态变化 - 完整更新
+        MIXED_CHANGE        // 混合变化 - 完整更新
+    }
+    
     init {
         // 初始化全局实例
         initialize(this)
@@ -116,13 +129,43 @@ class VoiceAssistantStateProvider @Inject constructor(
     }
     
     /**
+     * 判断是否为状态文本（非真实ASR结果）
+     */
+    private fun isStatusText(text: String): Boolean {
+        val statusTexts = listOf(
+            "正在监听...",
+            "正在监听",
+            "Listening...",
+            "Listening",
+            "正在处理...",
+            "正在处理",
+            "Processing...",
+            "Processing"
+        )
+        return statusTexts.any { it.equals(text, ignoreCase = true) }
+    }
+    
+    /**
      * 处理InputEvent - 主要用于ASR实时文本更新
      */
     private fun handleInputEvent(inputEvent: InputEvent) {
         when (inputEvent) {
             is InputEvent.Partial -> {
-                DebugLogger.logUI(TAG, "📝 ASR partial result: ${inputEvent.utterance}")
-                updateState(asrText = inputEvent.utterance)
+                // 过滤掉状态文本，只显示真正的ASR转录结果
+                val utterance = inputEvent.utterance
+                if (isStatusText(utterance)) {
+                    DebugLogger.logUI(TAG, "📝 Filtering out status text: $utterance")
+                    return
+                }
+                
+                // 性能优化：ASR文本去重，相同文本不触发更新
+                if (utterance != lastAsrText) {
+                    lastAsrText = utterance
+                    DebugLogger.logUI(TAG, "📝 ASR partial result: $utterance")
+                    updateState(asrText = utterance)
+                } else {
+                    DebugLogger.logUI(TAG, "📝 ASR text unchanged, skipping update: $utterance")
+                }
             }
             
             is InputEvent.Final -> {
@@ -324,27 +367,19 @@ class VoiceAssistantStateProvider @Inject constructor(
      * 添加状态监听器
      */
     fun addListener(listener: (VoiceAssistantFullState) -> Unit) {
-        synchronized(listeners) {
-            listeners.add(listener)
-            DebugLogger.logUI(TAG, "📡 Added listener, total: ${listeners.size}")
-        }
+        listeners.add(listener)
+        DebugLogger.logUI(TAG, "📡 Added listener, total: ${listeners.size}")
         
         // 立即通知当前状态
-        try {
-            listener(_currentState)
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error notifying new listener: ${e.message}")
-        }
+        listener(_currentState)
     }
     
     /**
      * 移除状态监听器
      */
     fun removeListener(listener: (VoiceAssistantFullState) -> Unit) {
-        synchronized(listeners) {
-            listeners.remove(listener)
-            DebugLogger.logUI(TAG, "📡 Removed listener, total: ${listeners.size}")
-        }
+        listeners.remove(listener)
+        DebugLogger.logUI(TAG, "📡 Removed listener, total: ${listeners.size}")
     }
     
     /**
@@ -376,28 +411,10 @@ class VoiceAssistantStateProvider @Inject constructor(
     }
     
     /**
-     * 清空ASR文本
-     */
-    fun clearASRText() {
-        _currentState = _currentState.copy(asrText = "", timestamp = System.currentTimeMillis())
-        DebugLogger.logUI(TAG, "🧹 ASR text cleared")
-        notifyListeners()
-    }
-    
-    /**
      * 设置TTS文本
      */
     fun setTTSText(text: String) {
         updateState(ttsText = text)
-    }
-    
-    /**
-     * 清空TTS文本
-     */
-    fun clearTTSText() {
-        _currentState = _currentState.copy(ttsText = "", timestamp = System.currentTimeMillis())
-        DebugLogger.logUI(TAG, "🧹 TTS text cleared")
-        notifyListeners()
     }
     
     /**
@@ -514,32 +531,64 @@ class VoiceAssistantStateProvider @Inject constructor(
             timestamp = System.currentTimeMillis()
         )
         
-        // 只有状态真正改变时才通知（忽略timestamp差异）
-        val stateChanged = previousState.uiState != _currentState.uiState ||
-                          previousState.displayText != _currentState.displayText ||
-                          previousState.confidence != _currentState.confidence ||
-                          previousState.asrText != _currentState.asrText ||
-                          previousState.ttsText != _currentState.ttsText ||
-                          previousState.result != _currentState.result ||
-                          previousState.conversationHistory != _currentState.conversationHistory
-        
-        if (stateChanged) {
-            DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}', asr: '${_currentState.asrText}', tts: '${_currentState.ttsText}'")
-            notifyListeners()
+        // 只有状态真正改变时才通知
+        if (_currentState != previousState) {
+            // 性能优化：分析变化类型，选择通知策略
+            val changeType = analyzeStateChange(previousState, _currentState)
+            DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}', changeType: $changeType")
+            
+            when (changeType) {
+                StateChangeType.ASR_TEXT_ONLY, StateChangeType.TTS_TEXT_ONLY -> {
+                    // 轻量级通知：仅文本变化，直接在主线程调用
+                    notifyListenersLight()
+                }
+                else -> {
+                    // 完整通知：UI状态变化，使用协程
+                    notifyListeners()
+                }
+            }
         }
     }
     
     /**
-     * 通知所有监听器
+     * 分析状态变化类型
+     */
+    private fun analyzeStateChange(oldState: VoiceAssistantFullState, newState: VoiceAssistantFullState): StateChangeType {
+        val uiStateChanged = oldState.uiState != newState.uiState
+        val displayTextChanged = oldState.displayText != newState.displayText
+        val asrTextChanged = oldState.asrText != newState.asrText
+        val ttsTextChanged = oldState.ttsText != newState.ttsText
+        val resultChanged = oldState.result != newState.result
+        val historyChanged = oldState.conversationHistory != newState.conversationHistory
+        
+        return when {
+            uiStateChanged || displayTextChanged || resultChanged || historyChanged -> StateChangeType.UI_STATE_CHANGE
+            asrTextChanged && !ttsTextChanged -> StateChangeType.ASR_TEXT_ONLY
+            ttsTextChanged && !asrTextChanged -> StateChangeType.TTS_TEXT_ONLY
+            asrTextChanged && ttsTextChanged -> StateChangeType.MIXED_CHANGE
+            else -> StateChangeType.UI_STATE_CHANGE // 默认完整更新
+        }
+    }
+    
+    /**
+     * 轻量级通知：直接在主线程调用，避免协程开销
+     */
+    private fun notifyListenersLight() {
+        listeners.forEach { listener ->
+            try {
+                listener(_currentState)
+            } catch (e: Exception) {
+                DebugLogger.logUI(TAG, "❌ Error notifying listener (light): ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 完整通知：使用协程处理复杂状态变化
      */
     private fun notifyListeners() {
         scope.launch {
-            // 创建监听器的副本以避免并发修改异常
-            val listenersCopy = synchronized(listeners) {
-                listeners.toList()
-            }
-            
-            listenersCopy.forEach { listener ->
+            listeners.forEach { listener ->
                 try {
                     listener(_currentState)
                 } catch (e: Exception) {
@@ -587,12 +636,16 @@ class VoiceAssistantStateProvider @Inject constructor(
             speechOutputDeviceWrapper.runWhenFinishedSpeaking {
                 DebugLogger.logUI(TAG, "🎵 TTS playback completed")
                 
-                // TTS播放完成，清空TTS文本并回到空闲状态
-                updateState(
-                    uiState = VoiceAssistantUIState.IDLE,
-                    ttsText = "",
-                    displayText = ""
-                )
+                // TTS播放完成，延迟2秒后清空TTS文本，让用户有时间看到回复
+                scope.launch {
+                    delay(2000) // 延迟2秒
+                    updateState(
+                        uiState = VoiceAssistantUIState.IDLE,
+                        ttsText = "",
+                        displayText = ""
+                    )
+                    DebugLogger.logUI(TAG, "🧹 TTS text cleared after delay")
+                }
             }
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Error setting up TTS completion callback: ${e.message}")
@@ -663,9 +716,7 @@ class VoiceAssistantStateProvider @Inject constructor(
         // 取消注册唤醒词回调
         WakeWordCallbackManager.unregisterCallback(this)
         
-        // 清空监听器 - 线程安全
-        synchronized(listeners) {
-            listeners.clear()
-        }
+        // 清空监听器
+        listeners.clear()
     }
 }
