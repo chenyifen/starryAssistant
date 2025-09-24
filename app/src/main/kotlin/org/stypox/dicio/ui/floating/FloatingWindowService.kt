@@ -284,18 +284,12 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
 
     /**
      * 停止唤醒服务（如果已启动）
+     * 注意：现在WakeService是持续监听模式，悬浮窗关闭时不停止它
      */
     private fun stopWakeServiceIfStarted() {
-        if (isWakeServiceStarted) {
-            try {
-                Log.d(TAG, "停止唤醒服务")
-                WakeService.stop(this)
-                isWakeServiceStarted = false
-                Log.d(TAG, "✅ 唤醒服务已停止")
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ 停止唤醒服务失败", e)
-            }
-        }
+        // 持续监听模式：悬浮窗关闭时不停止WakeService
+        Log.d(TAG, "悬浮窗关闭，但保持WakeService持续监听")
+        isWakeServiceStarted = false // 重置标志，但不停止服务
     }
 
     /**

@@ -27,6 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import org.stypox.dicio.MainActivity
@@ -37,7 +38,6 @@ import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.AudioDebugSaver
-import org.stypox.dicio.audio.AudioResourceCoordinator
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -51,6 +51,7 @@ class WakeService : Service() {
 
     private val listening = AtomicBoolean(false)
     private val audioRecordPaused = AtomicBoolean(false) // 用于暂停AudioRecord以避免与ASR冲突
+    private var currentAudioRecord: AudioRecord? = null // 当前的AudioRecord实例
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
@@ -58,8 +59,6 @@ class WakeService : Service() {
     lateinit var sttInputDevice: SttInputDeviceWrapper
     @Inject
     lateinit var wakeDevice: WakeDeviceWrapper
-    @Inject
-    lateinit var audioCoordinator: AudioResourceCoordinator
 
     private val handler = Handler(Looper.getMainLooper())
     private val releaseSttResourcesRunnable = Runnable {
@@ -91,19 +90,6 @@ class WakeService : Service() {
             }
         }
         
-        // 🔧 集成Pipeline协调器：监听Wake设备状态
-        scope.launch {
-            wakeDevice.state.collect { wakeState ->
-                audioCoordinator.updateWakeState(wakeState)
-            }
-        }
-        
-        // 🔧 集成Pipeline协调器：监听STT设备状态
-        scope.launch {
-            sttInputDevice.uiState.collect { sttState ->
-                audioCoordinator.updateSttState(sttState)
-            }
-        }
         
         // 启动时清理旧的音频调试文件
         if (DebugLogger.isAudioSaveEnabled()) {
@@ -112,7 +98,9 @@ class WakeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // 只有明确的停止指令才停止服务
         if (intent?.action == ACTION_STOP_WAKE_SERVICE) {
+            DebugLogger.logWakeWord(TAG, "🛑 Received explicit stop command")
             listening.set(false)
             return START_NOT_STICKY
         }
@@ -124,35 +112,59 @@ class WakeService : Service() {
             return START_NOT_STICKY
         }
 
-        if (listening.getAndSet(true)) {
-            return START_STICKY // if we were already listening, do nothing more
+        // 如果已经在监听，直接返回，保持持续监听
+        if (listening.get()) {
+            DebugLogger.logWakeWord(TAG, "🔄 Service already listening, maintaining persistent mode")
+            return START_STICKY
         }
 
         if (ContextCompat.checkSelfPermission(this, RECORD_AUDIO) != PERMISSION_GRANTED) {
-            stopWithMessage("Could not start WakeService: microphone permission not granted")
-            return START_NOT_STICKY
+            DebugLogger.logWakeWordError(TAG, "❌ Microphone permission not granted")
+            // 不停止服务，等待权限恢复
+            return START_STICKY
         }
 
-        when (wakeDevice.state.value) {
-            WakeState.NotLoaded,
-            WakeState.Loading,
-            WakeState.Loaded -> {}
-            else -> {
-                stopWithMessage("Could not start WakeService: wake word device not ready")
-                return START_NOT_STICKY
-            }
+        // 启动持续监听
+        startPersistentListening()
+        return START_STICKY
+    }
+    
+    /**
+     * 启动持续监听模式
+     */
+    private fun startPersistentListening() {
+        DebugLogger.logWakeWord(TAG, "🚀 Starting persistent wake word listening")
+        listening.set(true)
+        
+        // 主动触发模型加载
+        if (wakeDevice.state.value == WakeState.NotLoaded) {
+            DebugLogger.logWakeWord(TAG, "🔄 主动触发模型加载...")
+            wakeDevice.download()
         }
-
+        
         scope.launch {
             try {
-                listenForWakeWord()
-                stopWithMessage() // exit normally, as the user just stopped the service
+                // 持续监听循环，只有明确停止才退出
+                while (listening.get()) {
+                    try {
+                        listenForWakeWord()
+                        
+                        // 如果listenForWakeWord正常退出，等待一下再重启
+                        if (listening.get()) {
+                            DebugLogger.logWakeWord(TAG, "🔄 Wake word listening ended, restarting in 1s...")
+                            delay(1000)
+                        }
+                    } catch (e: Exception) {
+                        DebugLogger.logWakeWordError(TAG, "❌ Error in wake word listening, retrying in 3s...", e)
+                        delay(3000) // 错误时等待更长时间
+                    }
+                }
+                DebugLogger.logWakeWord(TAG, "🏁 Persistent listening stopped")
             } catch (t: Throwable) {
-                stopWithMessage("Cannot continue listening for wake word", t)
+                DebugLogger.logWakeWordError(TAG, "❌ Fatal error in persistent listening", t)
+                stopWithMessage("Fatal error in persistent listening", t)
             }
         }
-
-        return START_STICKY
     }
 
     override fun onDestroy() {
@@ -315,8 +327,8 @@ class WakeService : Service() {
                     return
                 }
                 WakeState.NotLoaded -> {
-                    DebugLogger.logWakeWordError(TAG, "❌ 模型未加载")
-                    return
+                    DebugLogger.logWakeWord(TAG, "🔄 模型未加载，尝试加载...")
+                    wakeDevice.download()
                 }
                 else -> break
             }
@@ -343,7 +355,9 @@ class WakeService : Service() {
             DebugLogger.logWakeWordError(TAG, "❌ Failed to create any AudioRecord configuration")
             return
         }
-
+        
+        // 保存当前AudioRecord引用
+        currentAudioRecord = ar
         DebugLogger.logAudioProcessing(TAG, "🎵 AudioRecord created successfully")
 
         var audio = ShortArray(0)
@@ -353,12 +367,31 @@ class WakeService : Service() {
         try {
             ar.startRecording()
             DebugLogger.logWakeWord(TAG, "✅ AudioRecord started successfully")
+            DebugLogger.logWakeWord(TAG, "🔄 Starting audio processing loop...")
             
             while (listening.get()) {
-                // 🔧 Pipeline协调器：检查是否可以使用音频资源
-                if (!audioCoordinator.canWakeServiceUseAudio()) {
-                    Thread.sleep(100) // Pipeline不允许时等待100ms
-                    continue
+                // 检查是否需要暂停AudioRecord以让ASR使用
+                if (audioRecordPaused.get()) {
+                    DebugLogger.logWakeWord(TAG, "⏸️ AudioRecord paused for ASR, waiting...")
+                    while (audioRecordPaused.get() && listening.get()) {
+                        Thread.sleep(50) // 短暂等待
+                    }
+                    if (!listening.get()) {
+                        DebugLogger.logWakeWord(TAG, "🛑 Listening stopped while paused")
+                        break
+                    }
+                    DebugLogger.logWakeWord(TAG, "▶️ AudioRecord resumed, continuing wake word detection")
+                    
+                    // 重新启动AudioRecord（如果之前被停止了）
+                    if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                        try {
+                            ar.startRecording()
+                            DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR pause")
+                        } catch (e: Exception) {
+                            DebugLogger.logWakeWordError(TAG, "❌ Failed to restart AudioRecord after ASR", e)
+                            break
+                        }
+                    }
                 }
                 
                 if (audio.size != wakeDevice.frameSize()) {
@@ -367,32 +400,48 @@ class WakeService : Service() {
                     DebugLogger.logAudioProcessing(TAG, "🔄 Audio buffer resized: $oldSize -> ${audio.size}")
                 }
 
-                val bytesRead = ar.read(audio, 0, audio.size)
-                frameCount++
-                
-                if (bytesRead > 0) {
-                    val wakeWordDetected = wakeDevice.processFrame(audio)
-                    val now = Instant.now()
+                // 只有在AudioRecord正在录制时才读取数据
+                if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING && !audioRecordPaused.get()) {
+                    val bytesRead = ar.read(audio, 0, audio.size)
+                    frameCount++
                     
-                    if (wakeWordDetected) {
-                        if (now > nextWakeWordAllowed) {
-                            DebugLogger.logWakeWord(TAG, "🎯 WAKE WORD DETECTED! Frame #$frameCount")
-                            nextWakeWordAllowed = now.plusMillis(WAKE_WORD_BACKOFF_MILLIS)
-                            onWakeWordDetected()
-                        } else {
-                            val remainingMs = nextWakeWordAllowed.toEpochMilli() - now.toEpochMilli()
-                            DebugLogger.logWakeWord(TAG, "⏳ Wake word detected but in backoff period (${remainingMs}ms remaining)")
-                        }
+                    // 每100帧记录一次调试信息
+                    if (frameCount % 100 == 0) {
+                        DebugLogger.logAudioProcessing(TAG, "🔄 Frame #$frameCount, bytesRead=$bytesRead")
                     }
-
-                    lastHeard.set(now)
                     
-                    // 每1000帧记录一次状态
-                    if (frameCount % 1000 == 0) {
-                        DebugLogger.logAudioProcessing(TAG, "📊 Processed $frameCount frames, still listening...")
+                    if (bytesRead > 0) {
+                        val wakeWordDetected = wakeDevice.processFrame(audio)
+                        val now = Instant.now()
+                        
+                        if (wakeWordDetected) {
+                            if (now > nextWakeWordAllowed) {
+                                DebugLogger.logWakeWord(TAG, "🎯 WAKE WORD DETECTED! Frame #$frameCount")
+                                nextWakeWordAllowed = now.plusMillis(WAKE_WORD_BACKOFF_MILLIS)
+                                onWakeWordDetected()
+                            } else {
+                                val remainingMs = nextWakeWordAllowed.toEpochMilli() - now.toEpochMilli()
+                                DebugLogger.logWakeWord(TAG, "⏳ Wake word detected but in backoff period (${remainingMs}ms remaining)")
+                            }
+                        }
+
+                        lastHeard.set(now)
+                        
+                        // 每1000帧记录一次状态
+                        if (frameCount % 1000 == 0) {
+                            DebugLogger.logAudioProcessing(TAG, "📊 Processed $frameCount frames, still listening...")
+                        }
+                    } else if (bytesRead == 0) {
+                        // 0字节可能是正常的，特别是在暂停/恢复期间
+                        if (frameCount % 1000 == 0) {
+                            DebugLogger.logWakeWord(TAG, "⚠️ AudioRecord read 0 bytes (frame #$frameCount)")
+                        }
+                    } else {
+                        DebugLogger.logWakeWordError(TAG, "❌ AudioRecord read failed: $bytesRead bytes")
                     }
                 } else {
-                    DebugLogger.logWakeWordError(TAG, "❌ AudioRecord read failed: $bytesRead bytes")
+                    // AudioRecord不在录制状态或被暂停，短暂等待
+                    Thread.sleep(10)
                 }
             }
         } catch (e: Exception) {
@@ -400,39 +449,48 @@ class WakeService : Service() {
             throw e
         } finally {
             DebugLogger.logWakeWord(TAG, "🛑 Stopping AudioRecord (processed $frameCount frames)")
-            ar.stop()
-            ar.release()
+            try {
+                ar.stop()
+                ar.release()
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "❌ Error releasing AudioRecord", e)
+            }
+            currentAudioRecord = null
         }
     }
 
     private fun onWakeWordDetected() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
+        
+        // 暂停WakeService的AudioRecord以让ASR使用
+        pauseAudioRecordForASR()
 
         val intent = Intent(this, MainActivity::class.java)
         intent.setAction(ACTION_WAKE_WORD)
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
         DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
 
-        // 🔧 Pipeline协调器：通知检测到唤醒词
-        audioCoordinator.onWakeWordDetected()
-        DebugLogger.logWakeWord(TAG, "📊 Pipeline状态: ${audioCoordinator.getPipelineStatusInfo()}")
-
         // Start listening and pass STT events to the skill evaluator.
         // Note that this works even if the MainActivity is opened later!
         DebugLogger.logVoiceRecognition(TAG, "🎤 Starting STT input device...")
         
-        // 🔧 Pipeline协调器：检查是否可以启动ASR
-        if (audioCoordinator.canStartAsr()) {
-            val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
-            DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
-        } else {
-            DebugLogger.logWakeWordError(TAG, "❌ Pipeline不允许启动ASR")
-        }
+        // 直接启动ASR，不需要协调器检查
+        val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
+        DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
 
-        // 🔧 保持原有的资源释放机制作为备用
+        // 🔧 保持原有的资源释放机制作为备用，并在STT完成后恢复WakeService
         handler.removeCallbacks(releaseSttResourcesRunnable)
-        handler.postDelayed(releaseSttResourcesRunnable, RELEASE_STT_RESOURCES_MILLIS)
-        DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled STT resource release in ${RELEASE_STT_RESOURCES_MILLIS}ms")
+        val resumeWakeServiceRunnable = Runnable {
+            if (MainActivity.isCreated <= 0) {
+                // if the main activity is neither visible nor in the background,
+                // then unload the STT after a while because it would be using resources uselessly
+                sttInputDevice.reinitializeToReleaseResources()
+            }
+            // 恢复WakeService的AudioRecord
+            resumeAudioRecordAfterASR()
+        }
+        handler.postDelayed(resumeWakeServiceRunnable, RELEASE_STT_RESOURCES_MILLIS)
+        DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled STT resource release and WakeService resume in ${RELEASE_STT_RESOURCES_MILLIS}ms")
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0) {
             // start the activity directly on versions prior to Android 10,
@@ -472,6 +530,54 @@ class WakeService : Service() {
             notificationManager.cancel(TRIGGERED_NOTIFICATION_ID)
             notificationManager.notify(TRIGGERED_NOTIFICATION_ID, notification)
         }
+    }
+    
+    /**
+     * 暂停WakeService的AudioRecord以让ASR使用音频资源
+     */
+    private fun pauseAudioRecordForASR() {
+        DebugLogger.logWakeWord(TAG, "⏸️ Pausing WakeService AudioRecord for ASR")
+        audioRecordPaused.set(true)
+        
+        // 给AudioRecord一些时间停止
+        scope.launch {
+            delay(100) // 等待100ms让AudioRecord循环检查暂停状态
+            currentAudioRecord?.let { ar ->
+                try {
+                    if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        ar.stop()
+                        DebugLogger.logWakeWord(TAG, "🛑 WakeService AudioRecord stopped for ASR")
+                    }
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "❌ Error stopping AudioRecord for ASR", e)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 恢复WakeService的AudioRecord在ASR完成后
+     */
+    private fun resumeAudioRecordAfterASR() {
+        DebugLogger.logWakeWord(TAG, "▶️ Resuming WakeService AudioRecord after ASR")
+        audioRecordPaused.set(false)
+        
+        // 尝试重新启动AudioRecord（如果它被停止了）
+        scope.launch {
+            delay(200) // 给ASR一些时间完全释放音频资源
+            currentAudioRecord?.let { ar ->
+                try {
+                    if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING && listening.get()) {
+                        ar.startRecording()
+                        DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR completion")
+                    }
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "❌ Error restarting AudioRecord after ASR", e)
+                }
+            }
+        }
+        
+        DebugLogger.logWakeWord(TAG, "✅ WakeService AudioRecord resume scheduled")
     }
 
     companion object {
@@ -563,6 +669,6 @@ class WakeService : Service() {
         private const val WAKE_WORD_BACKOFF_MILLIS = 4000L
         private const val ACTION_STOP_WAKE_SERVICE =
             "org.stypox.dicio.io.wake.WakeService.ACTION_STOP"
-        private const val RELEASE_STT_RESOURCES_MILLIS = 1000L * 60 * 5 // 5 minutes
+        private const val RELEASE_STT_RESOURCES_MILLIS = 1000L * 10 // 10 seconds - 缩短时间以快速恢复WakeService
     }
 }

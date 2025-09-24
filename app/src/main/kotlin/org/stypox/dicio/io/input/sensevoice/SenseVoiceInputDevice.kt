@@ -22,7 +22,6 @@ import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.input.SttInputDevice
 import org.stypox.dicio.io.input.SttState
 import org.stypox.dicio.util.DebugLogger
-import org.stypox.dicio.audio.AudioResourceCoordinator
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -54,17 +53,6 @@ class SenseVoiceInputDevice private constructor(
         @Volatile
         private var INSTANCE: SenseVoiceInputDevice? = null
         
-        // 音频协调器（通过依赖注入设置）
-        @Volatile
-        private var audioCoordinator: AudioResourceCoordinator? = null
-
-        /**
-         * 设置音频协调器（由依赖注入系统调用）
-         */
-        fun setAudioCoordinator(coordinator: AudioResourceCoordinator) {
-            audioCoordinator = coordinator
-            Log.d(TAG, "🔧 设置音频协调器")
-        }
 
         /**
          * 获取单例实例
