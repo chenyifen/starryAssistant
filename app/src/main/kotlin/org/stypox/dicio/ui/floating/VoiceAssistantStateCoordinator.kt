@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.stypox.dicio.di.SttInputDeviceWrapper
+import org.stypox.dicio.di.SkillContextInternal
 import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.input.SttState
@@ -31,7 +32,8 @@ import javax.inject.Singleton
 @Singleton
 class VoiceAssistantStateCoordinator @Inject constructor(
     private val sttInputDeviceWrapper: SttInputDeviceWrapper,
-    private val skillEvaluator: SkillEvaluator
+    private val skillEvaluator: SkillEvaluator,
+    private val skillContext: SkillContextInternal
 ) : WakeWordCallback {
     
     companion object {
@@ -197,7 +199,7 @@ class VoiceAssistantStateCoordinator @Inject constructor(
                 DebugLogger.logUI(TAG, "💬 New skill output generated")
                 
                 val speechOutput = try {
-                    lastAnswer.getSpeechOutput(skillEvaluator as org.dicio.skill.context.SkillContext)
+                    lastAnswer.getSpeechOutput(skillContext)
                 } catch (e: Exception) {
                     DebugLogger.logUI(TAG, "❌ Error getting speech output: ${e.message}")
                     "回复生成错误"
@@ -238,7 +240,7 @@ class VoiceAssistantStateCoordinator @Inject constructor(
     private fun setupTTSCallback(speechOutput: String) {
         if (speechOutput.isNotBlank()) {
             try {
-                val speechOutputDevice = (skillEvaluator as org.dicio.skill.context.SkillContext).speechOutputDevice
+                val speechOutputDevice = skillContext.speechOutputDevice
                 speechOutputDevice.runWhenFinishedSpeaking {
                     DebugLogger.logUI(TAG, "🏁 TTS playback finished")
                     updateUIState(VoiceAssistantUIState.IDLE, "")

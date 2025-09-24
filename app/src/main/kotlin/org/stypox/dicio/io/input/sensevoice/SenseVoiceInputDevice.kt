@@ -870,11 +870,14 @@ class SenseVoiceInputDevice private constructor(
             val finalText = recognizer.recognize(audioData)
             
             DebugLogger.logRecognition(TAG, "最终识别结果: \"$finalText\"")
+            Log.d(TAG, "🔍 识别结果详情: 长度=${finalText.length}, 是否空白=${finalText.isBlank()}")
             
             withContext(Dispatchers.Main) {
                 if (finalText.isNotBlank()) {
+                    Log.d(TAG, "✅ 发送Final事件: \"$finalText\"")
                     eventListener?.invoke(InputEvent.Final(listOf(Pair(finalText, 1.0f))))
                 } else {
+                    Log.d(TAG, "⚠️ 识别结果为空，发送None事件")
                     eventListener?.invoke(InputEvent.None)
                 }
             }
