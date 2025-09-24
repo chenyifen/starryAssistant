@@ -66,6 +66,7 @@ class DragTouchHandler(
     var onOrbLongPress: (() -> Unit)? = null
     var onDragStart: (() -> Unit)? = null
     var onDragEnd: (() -> Unit)? = null
+    var onEdgeStateChanged: ((Boolean) -> Unit)? = null
     
     companion object {
         private const val PREF_KEY_X = "orb_position_x"
@@ -78,6 +79,18 @@ class DragTouchHandler(
         screenBounds = FloatingOrbConfig.getScreenBounds()
         DebugLogger.logUI(TAG, "📏 Screen bounds: ${screenBounds.width}x${screenBounds.height}, orb size: ${screenBounds.orbSize}")
         restorePosition()
+        
+        // 触摸监听器现在由DraggableFloatingOrb直接设置
+    }
+    
+    /**
+     * 设置触摸监听器
+     */
+    private fun setupTouchListener() {
+        floatingView.setOnTouchListener { _, event ->
+            onTouchEvent(event)
+        }
+        DebugLogger.logUI(TAG, "👆 Touch listener set up")
     }
     
     /**
@@ -294,6 +307,10 @@ class DragTouchHandler(
         var snapX = currentX
         var snapY = currentY
         
+        // 检测是否在边缘
+        val wasAtEdge = isAtEdge(currentX, currentY)
+        var willBeAtEdge = false
+        
         // 只有距离小于阈值时才吸附
         if (edgeDistances.min < FloatingOrbConfig.Drag.EDGE_SNAP_THRESHOLD) {
             when (edgeDistances.nearestEdge) {
@@ -303,13 +320,118 @@ class DragTouchHandler(
                 FloatingOrbConfig.Edge.BOTTOM -> snapY = screenBounds.maxY
             }
             
+            willBeAtEdge = true
             DebugLogger.logUI(TAG, "🧲 Snapping to edge: ($snapX, $snapY)")
             updateWindowPosition(snapX, snapY)
+        } else {
+            willBeAtEdge = isAtEdge(snapX, snapY)
+        }
+        
+        // 如果边缘状态发生变化，通知回调
+        if (wasAtEdge != willBeAtEdge) {
+            DebugLogger.logUI(TAG, "🧲 Edge state changed: $wasAtEdge -> $willBeAtEdge")
+            onEdgeStateChanged?.invoke(willBeAtEdge)
         }
         
         // 保存最终位置
         savePosition(snapX, snapY)
     }
+    
+    /**
+     * 检测是否在屏幕边缘
+     */
+    private fun isAtEdge(x: Int, y: Int): Boolean {
+        val edgeThreshold = FloatingOrbConfig.Drag.EDGE_SNAP_THRESHOLD
+        return x <= edgeThreshold || 
+               x >= screenBounds.maxX - edgeThreshold ||
+               y <= edgeThreshold || 
+               y >= screenBounds.maxY - edgeThreshold
+    }
+    
+    /**
+     * 处理触摸事件
+     */
+    fun onTouchEvent(event: MotionEvent): Boolean {
+        DebugLogger.logUI(TAG, "👆 Touch event: ${event.action}")
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                DebugLogger.logUI(TAG, "👆 Touch down at (${event.rawX}, ${event.rawY})")
+                initialTouchX = event.rawX
+                initialTouchY = event.rawY
+                
+                val layoutParams = floatingView.layoutParams as WindowManager.LayoutParams
+                initialX = layoutParams.x
+                initialY = layoutParams.y
+                
+                // 开始长按检测
+                startLongPressDetection()
+                return true
+            }
+            
+            MotionEvent.ACTION_MOVE -> {
+                DebugLogger.logUI(TAG, "👆 Touch move - isLongPressing: $isLongPressing, isDragging: $isDragging")
+                if (isLongPressing) {
+                    // 长按后开始拖拽
+                    if (!isDragging) {
+                        DebugLogger.logUI(TAG, "🤏 Starting drag from move")
+                        startDragging()
+                    }
+                    
+                    // 更新位置
+                    val deltaX = (event.rawX - initialTouchX).toInt()
+                    val deltaY = (event.rawY - initialTouchY).toInt()
+                    
+                    val newX = screenBounds.clampX(initialX + deltaX)
+                    val newY = screenBounds.clampY(initialY + deltaY)
+                    
+                    updateWindowPosition(newX, newY)
+                    return true
+                } else {
+                    // 检查是否移动距离超过阈值
+                    val deltaX = event.rawX - initialTouchX
+                    val deltaY = event.rawY - initialTouchY
+                    val distance = kotlin.math.sqrt(deltaX * deltaX + deltaY * deltaY)
+                    
+                    if (distance > FloatingOrbConfig.Drag.CLICK_THRESHOLD) {
+                        // 移动距离太大，取消长按检测
+                        cancelLongPressDetection()
+                    }
+                    return true // 继续消费触摸事件
+                }
+                return false
+            }
+            
+            MotionEvent.ACTION_UP -> {
+                DebugLogger.logUI(TAG, "👆 Touch up")
+                
+                if (isDragging) {
+                    // 结束拖拽
+                    isDragging = false
+                    endDragging()
+                } else if (isLongPressing) {
+                    // 长按释放
+                    isLongPressing = false
+                } else {
+                    // 普通点击
+                    handleClick()
+                }
+                
+                cancelLongPressDetection()
+                resetState()
+                return true
+            }
+            
+            MotionEvent.ACTION_CANCEL -> {
+                DebugLogger.logUI(TAG, "👆 Touch cancelled")
+                cancelLongPressDetection()
+                resetState()
+                return true
+            }
+        }
+        
+        return false
+    }
+    
 }
 
 /**

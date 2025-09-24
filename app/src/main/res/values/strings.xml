@@ -258,4 +258,18 @@
     <string name="pref_stt_play_sound">Play sound when listening</string>
     <string name="pref_stt_play_sound_start_and_end">Play sound at start and end</string>
     
+    <!-- Floating Assistant Text Display -->
+    <string name="floating_text_listening">Listening…</string>
+    <string name="floating_text_processing">Processing…</string>
+    <string name="floating_text_thinking">Thinking…</string>
+    <string name="floating_text_speaking">Speaking…</string>
+    <string name="floating_text_wake_detected">Wake word detected</string>
+    <string name="floating_text_error">Error occurred</string>
+    <string name="floating_text_ready">Ready</string>
+    <string name="floating_text_idle">I\'m here for you!</string>
+    <string name="floating_text_no_input">No input detected</string>
+    <string name="floating_text_timeout">Timeout</string>
+    <string name="floating_text_initializing">Initializing…</string>
+    <string name="floating_text_loading">Loading…</string>
+    
 </resources>

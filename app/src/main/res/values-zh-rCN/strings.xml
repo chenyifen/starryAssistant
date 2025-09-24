@@ -246,4 +246,18 @@
     <string name="pref_two_pass_show_comparison_logs">显示对比日志</string>
     <string name="pref_two_pass_show_comparison_logs_summary">在日志中显示详细的识别对比</string>
     
+    <!-- 悬浮助手文本显示 -->
+    <string name="floating_text_listening">正在听取…</string>
+    <string name="floating_text_processing">正在处理…</string>
+    <string name="floating_text_thinking">正在思考…</string>
+    <string name="floating_text_speaking">正在回复…</string>
+    <string name="floating_text_wake_detected">检测到唤醒词</string>
+    <string name="floating_text_error">出现错误</string>
+    <string name="floating_text_ready">准备就绪</string>
+    <string name="floating_text_idle">我在这里为您服务！</string>
+    <string name="floating_text_no_input">未检测到输入</string>
+    <string name="floating_text_timeout">超时</string>
+    <string name="floating_text_initializing">正在初始化…</string>
+    <string name="floating_text_loading">正在加载…</string>
+    
 </resources>

@@ -16,7 +16,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.border
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -28,8 +32,12 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
 import org.stypox.dicio.ui.floating.DragTouchHandler
-import org.stypox.dicio.ui.floating.draggableOrb
 import org.stypox.dicio.ui.floating.FloatingOrbConfig
+import org.stypox.dicio.ui.floating.components.FloatingTextDisplay
+import org.stypox.dicio.ui.floating.components.FloatingTextStateManager
+import org.stypox.dicio.ui.floating.components.LottieAnimationController
+import org.stypox.dicio.ui.floating.components.LottieAnimationState
+import org.stypox.dicio.ui.floating.components.LottieAnimationStateManager
 import org.stypox.dicio.util.DebugLogger
 
 /**
@@ -56,8 +64,18 @@ class DraggableFloatingOrb(
     // 动画状态管理器
     private val animationStateManager = LottieAnimationStateManager()
     
+    // 文本显示状态管理器
+    private val textStateManager = FloatingTextStateManager(context)
+    
     // 拖拽处理器
     private var dragTouchHandler: DragTouchHandler? = null
+    
+    // 边缘吸附状态
+    private var isAtEdge = false
+    
+    // 拖拽状态
+    private var isDragging = false
+    private var isLongPressing = false
     
     // 点击回调
     var onOrbClick: (() -> Unit)? = null
@@ -95,6 +113,10 @@ class DraggableFloatingOrb(
                 ) {
                     FloatingOrbContent(
                         animationStateManager = animationStateManager,
+                        textStateManager = textStateManager,
+                        isAtEdge = isAtEdge,
+                        isDragging = isDragging,
+                        isLongPressing = isLongPressing,
                         onOrbClick = { handleOrbClick() },
                         onOrbLongPress = { handleOrbLongPress() },
                         onDragStart = { handleDragStart() },
@@ -115,6 +137,12 @@ class DraggableFloatingOrb(
                 onOrbLongPress = { handleOrbLongPress() }
                 onDragStart = { handleDragStart() }
                 onDragEnd = { handleDragEnd() }
+                onEdgeStateChanged = { atEdge -> setEdgeState(atEdge) }
+            }
+            
+            // 在ComposeView上设置触摸监听器
+            composeView.setOnTouchListener { _, event ->
+                dragTouchHandler?.onTouchEvent(event) ?: false
             }
             
             // 默认设置为待机状态
@@ -148,6 +176,11 @@ class DraggableFloatingOrb(
      * 获取动画状态管理器
      */
     fun getAnimationStateManager(): LottieAnimationStateManager = animationStateManager
+    
+    /**
+     * 获取文本状态管理器
+     */
+    fun getTextStateManager(): FloatingTextStateManager = textStateManager
     
     /**
      * 创建WindowManager布局参数
@@ -190,7 +223,17 @@ class DraggableFloatingOrb(
      * 处理悬浮球长按
      */
     private fun handleOrbLongPress() {
-        DebugLogger.logUI(TAG, "👆 Orb long pressed")
+        DebugLogger.logUI(TAG, "👆 Orb long pressed - entering drag mode")
+        
+        // 添加震动反馈
+        addHapticFeedback()
+        
+        // 更新动画状态显示长按反馈
+        animationStateManager.setActive("可拖拽")
+        
+        // 更新UI状态
+        updateDragState(longPressing = true)
+        
         onOrbLongPress?.invoke()
     }
     
@@ -199,8 +242,15 @@ class DraggableFloatingOrb(
      */
     private fun handleDragStart() {
         DebugLogger.logUI(TAG, "🤏 Drag started")
-        // 可以在这里改变动画状态，比如显示拖拽提示
+        
+        // 更新动画状态显示拖拽状态
         animationStateManager.setActive("拖拽中...")
+        
+        // 添加震动反馈
+        addHapticFeedback()
+        
+        // 更新UI状态
+        updateDragState(dragging = true, longPressing = true)
     }
     
     /**
@@ -208,8 +258,32 @@ class DraggableFloatingOrb(
      */
     private fun handleDragEnd() {
         DebugLogger.logUI(TAG, "🤏 Drag ended")
+        
         // 拖拽结束后回到待机状态
         animationStateManager.setIdle()
+        
+        // 添加震动反馈
+        addHapticFeedback()
+        
+        // 更新UI状态
+        updateDragState(dragging = false, longPressing = false)
+    }
+    
+    /**
+     * 添加触觉反馈
+     */
+    private fun addHapticFeedback() {
+        try {
+            floatingView?.let { view ->
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_START)
+                } else {
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "❌ Haptic feedback failed: ${e.message}")
+        }
     }
     
     /**
@@ -223,14 +297,79 @@ class DraggableFloatingOrb(
             windowManager.updateViewLayout(view, layoutParams)
         }
     }
+    
+    /**
+     * 设置边缘吸附状态
+     */
+    fun setEdgeState(atEdge: Boolean) {
+        if (isAtEdge != atEdge) {
+            isAtEdge = atEdge
+            DebugLogger.logUI(TAG, "🧲 Edge state changed: $atEdge")
+            
+            // 重新创建视图以应用新的尺寸
+            if (isShowing) {
+                val currentView = floatingView
+                if (currentView != null) {
+                    // 保存当前位置
+                    val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
+                    val currentX = layoutParams.x
+                    val currentY = layoutParams.y
+                    
+                    // 隐藏并重新显示
+                    hide()
+                    show()
+                    
+                    // 恢复位置
+                    updatePosition(currentX, currentY)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 获取当前是否在边缘
+     */
+    fun isAtEdge(): Boolean = isAtEdge
+    
+    /**
+     * 更新拖拽状态
+     */
+    private fun updateDragState(dragging: Boolean = isDragging, longPressing: Boolean = isLongPressing) {
+        if (isDragging != dragging || isLongPressing != longPressing) {
+            isDragging = dragging
+            isLongPressing = longPressing
+            
+            // 触发重新组合
+            if (isShowing) {
+                val currentView = floatingView
+                if (currentView != null) {
+                    // 保存当前位置
+                    val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
+                    val currentX = layoutParams.x
+                    val currentY = layoutParams.y
+                    
+                    // 隐藏并重新显示
+                    hide()
+                    show()
+                    
+                    // 恢复位置
+                    updatePosition(currentX, currentY)
+                }
+            }
+        }
+    }
 }
 
 /**
- * 悬浮球内容组件
+ * 悬浮球内容组件 (包含文本显示)
  */
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
+    textStateManager: FloatingTextStateManager,
+    isAtEdge: Boolean = false,
+    isDragging: Boolean = false,
+    isLongPressing: Boolean = false,
     onOrbClick: () -> Unit,
     onOrbLongPress: () -> Unit,
     onDragStart: () -> Unit,
@@ -239,22 +378,89 @@ private fun FloatingOrbContent(
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
     
-    Box(
-        modifier = Modifier
-            .size(FloatingOrbConfig.orbSizeDp) // 使用动态配置的尺寸
-            .draggableOrb(
-                onOrbClick = onOrbClick,
-                onOrbLongPress = onOrbLongPress,
-                onDragStart = onDragStart,
-                onDragEnd = onDragEnd
-            ),
-        contentAlignment = Alignment.Center
+    // 文本状态
+    val userText by textStateManager.userText
+    val aiText by textStateManager.aiText
+    val isTextVisible by textStateManager.isVisible
+    
+    // 动画效果
+    val scale by animateFloatAsState(
+        targetValue = when {
+            isDragging -> 1.1f
+            isLongPressing -> 1.05f
+            else -> 1.0f
+        },
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "scale"
+    )
+    
+    val alpha by animateFloatAsState(
+        targetValue = when {
+            isDragging -> 0.9f
+            isLongPressing -> 0.95f
+            else -> 1.0f
+        },
+        animationSpec = tween(200),
+        label = "alpha"
+    )
+    
+    val shadowElevation by animateDpAsState(
+        targetValue = when {
+            isDragging -> 12.dp
+            isLongPressing -> 8.dp
+            else -> 4.dp
+        },
+        animationSpec = tween(200),
+        label = "shadow"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Lottie动画
-        LottieAnimationController(
-            animationState = animationState,
-            displayText = displayText,
-            size = FloatingOrbConfig.animationSizeInt // 使用动态配置的尺寸
-        )
+        // 悬浮球
+        Box(
+            modifier = Modifier
+                .size(if (isAtEdge) FloatingOrbConfig.edgeOrbSizeDp else FloatingOrbConfig.orbSizeDp) // 根据边缘状态使用不同尺寸
+                .scale(scale) // 动画缩放
+                .graphicsLayer(alpha = alpha) // 透明度动画
+                .shadow(
+                    elevation = shadowElevation,
+                    shape = CircleShape
+                ) // 阴影动画
+                .let { modifier ->
+                    // 拖拽状态时添加边框
+                    if (isDragging || isLongPressing) {
+                        modifier.border(
+                            width = 2.dp,
+                            color = if (isDragging) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                            shape = CircleShape
+                        )
+                    } else {
+                        modifier
+                    }
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            // Lottie动画
+            LottieAnimationController(
+                animationState = animationState,
+                displayText = displayText,
+                size = if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeInt else FloatingOrbConfig.animationSizeInt // 根据边缘状态使用不同尺寸
+            )
+        }
+        
+        // 文本显示区域 (边缘状态时隐藏)
+        if (!isAtEdge) {
+            FloatingTextDisplay(
+                userText = userText,
+                aiText = aiText,
+                isVisible = isTextVisible,
+                modifier = Modifier.wrapContentHeight()
+            )
+        }
     }
 }

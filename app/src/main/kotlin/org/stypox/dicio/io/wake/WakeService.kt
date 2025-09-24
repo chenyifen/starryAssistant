@@ -38,6 +38,7 @@ import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.AudioDebugSaver
+import org.stypox.dicio.io.wake.WakeWordCallbackManager
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -136,6 +137,9 @@ class WakeService : Service() {
         DebugLogger.logWakeWord(TAG, "🚀 Starting persistent wake word listening")
         listening.set(true)
         
+        // 通知回调：开始监听
+        WakeWordCallbackManager.notifyListeningStarted()
+        
         // 主动触发模型加载
         if (wakeDevice.state.value == WakeState.NotLoaded) {
             DebugLogger.logWakeWord(TAG, "🔄 主动触发模型加载...")
@@ -169,6 +173,10 @@ class WakeService : Service() {
 
     override fun onDestroy() {
         listening.set(false)
+        
+        // 通知回调：停止监听
+        WakeWordCallbackManager.notifyListeningStopped()
+        
         job.cancel()
         wakeDevice.reinitializeToReleaseResources()
         super.onDestroy()
@@ -461,6 +469,9 @@ class WakeService : Service() {
 
     private fun onWakeWordDetected() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
+        
+        // 通知所有注册的回调
+        WakeWordCallbackManager.notifyWakeWordDetected()
         
         // 暂停WakeService的AudioRecord以让ASR使用
         pauseAudioRecordForASR()

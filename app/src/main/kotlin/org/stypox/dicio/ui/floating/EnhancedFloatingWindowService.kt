@@ -19,11 +19,27 @@ import kotlinx.coroutines.cancel
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
+import org.stypox.dicio.io.wake.WakeService
+import org.stypox.dicio.io.wake.WakeWordCallback
+import org.stypox.dicio.io.wake.WakeWordCallbackManager
 import org.stypox.dicio.ui.floating.components.DraggableFloatingOrb
 import org.stypox.dicio.ui.floating.components.LottieAnimationState
 import org.stypox.dicio.ui.floating.components.LottieAnimationTexts
 import org.stypox.dicio.util.DebugLogger
 import javax.inject.Inject
+
+/**
+ * 语音助手状态枚举
+ */
+enum class VoiceAssistantState {
+    IDLE,           // 空闲状态，等待唤醒
+    WAKE_DETECTED,  // 检测到唤醒词
+    LISTENING,      // 正在听取用户语音
+    PROCESSING,     // 正在处理语音识别结果
+    THINKING,       // 正在进行技能评估和处理
+    SPEAKING,       // 正在播放TTS回复
+    ERROR           // 错误状态
+}
 
 /**
  * 增强版悬浮窗服务
@@ -39,7 +55,8 @@ import javax.inject.Inject
 class EnhancedFloatingWindowService : Service(), 
     LifecycleOwner, 
     ViewModelStoreOwner, 
-    SavedStateRegistryOwner {
+    SavedStateRegistryOwner,
+    WakeWordCallback {
     
     private val TAG = "EnhancedFloatingWindowService"
     
@@ -62,15 +79,8 @@ class EnhancedFloatingWindowService : Service(),
     // UI控制器
     private var assistantUIController: AssistantUIController? = null
     
-    // 广播接收器
-    private val halfScreenDismissReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == "org.stypox.dicio.HALF_SCREEN_DISMISSED") {
-                DebugLogger.logUI(TAG, "📡 Received half screen dismiss broadcast")
-                handleContractToOrb()
-            }
-        }
-    }
+    // 语音助手状态管理器
+    private var voiceAssistantState = VoiceAssistantState.IDLE
     
     override fun onCreate() {
         super.onCreate()
@@ -78,6 +88,10 @@ class EnhancedFloatingWindowService : Service(),
         
         // 运行配置测试
         FloatingOrbConfigTest.runAllTests(applicationContext)
+        
+        // 注册唤醒词回调
+        WakeWordCallbackManager.registerCallback(this)
+        DebugLogger.logUI(TAG, "📞 Registered wake word callback")
         
         // 初始化生命周期
         savedStateRegistryController.performRestore(null)
@@ -90,9 +104,6 @@ class EnhancedFloatingWindowService : Service(),
             stopSelf()
             return
         }
-        
-        // 注册广播接收器
-        registerReceiver(halfScreenDismissReceiver, IntentFilter("org.stypox.dicio.HALF_SCREEN_DISMISSED"))
         
         // 初始化组件
         initializeComponents()
@@ -109,12 +120,9 @@ class EnhancedFloatingWindowService : Service(),
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
         
-        // 取消注册广播接收器
-        try {
-            unregisterReceiver(halfScreenDismissReceiver)
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "⚠️ Error unregistering receiver: ${e.message}")
-        }
+        // 取消注册唤醒词回调
+        WakeWordCallbackManager.unregisterCallback(this)
+        DebugLogger.logUI(TAG, "📞 Unregistered wake word callback")
         
         // 隐藏悬浮球
         hideFloatingOrb()
@@ -154,10 +162,10 @@ class EnhancedFloatingWindowService : Service(),
     private fun initializeComponents() {
         DebugLogger.logUI(TAG, "🔧 Initializing components")
         
-        // 创建UI控制器
+        // 创建UI控制器 (已屏蔽半屏功能)
         assistantUIController = AssistantUIController(this).apply {
-            // 设置回调
-            onExpandToHalfScreen = { handleExpandToHalfScreen() }
+            // 屏蔽半屏相关回调，改为文本显示模式
+            onExpandToHalfScreen = { handleTextDisplayMode() }
             onContractToOrb = { handleContractToOrb() }
         }
         
@@ -217,19 +225,15 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     /**
-     * 处理展开到半屏
+     * 处理文本显示模式 (替代半屏展开)
      */
-    private fun handleExpandToHalfScreen() {
-        DebugLogger.logUI(TAG, "📈 Expanding to half screen")
+    private fun handleTextDisplayMode() {
+        DebugLogger.logUI(TAG, "📝 Switching to text display mode")
         
-        // 设置激活状态
+        // 设置激活状态但不隐藏悬浮球
         floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.READY)
         
-        // 启动半屏Activity
-        HalfScreenAssistantActivity.startFromClick(applicationContext)
-        
-        // 隐藏悬浮球（半屏显示时）
-        floatingOrb?.hide()
+        // TODO: 启动语音识别和文本显示
     }
     
     /**
@@ -258,6 +262,7 @@ class EnhancedFloatingWindowService : Service(),
         assistantUIController?.expandToHalfScreen()
     }
     
+    
     /**
      * 更新动画状态
      */
@@ -271,6 +276,65 @@ class EnhancedFloatingWindowService : Service(),
             LottieAnimationState.ACTIVE -> animationManager?.setActive(text ?: LottieAnimationTexts.DEFAULT)
             LottieAnimationState.WAKE_WORD -> animationManager?.triggerWakeWord(text ?: LottieAnimationTexts.WAKE_WORD_DETECTED)
         }
+    }
+    
+    // ========================================
+    // WakeWordCallback 接口实现
+    // ========================================
+    
+    override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
+        DebugLogger.logUI(TAG, "🎯 Wake word detected! confidence=$confidence, word='$wakeWord'")
+        
+        // 更新语音助手状态
+        voiceAssistantState = VoiceAssistantState.WAKE_DETECTED
+        
+        // 更新悬浮球动画状态
+        updateAnimationState(LottieAnimationState.WAKE_WORD, wakeWord)
+        
+        // 更新文本显示
+        floatingOrb?.getTextStateManager()?.setWakeDetected()
+        
+        // 进入文本显示模式（替代原来的半屏模式）
+        handleTextDisplayMode()
+    }
+    
+    override fun onWakeWordListeningStarted() {
+        DebugLogger.logUI(TAG, "👂 Wake word listening started")
+        
+        // 更新语音助手状态
+        voiceAssistantState = VoiceAssistantState.LISTENING
+        
+        // 更新悬浮球动画状态
+        updateAnimationState(LottieAnimationState.LOADING)
+        
+        // 更新文本显示
+        floatingOrb?.getTextStateManager()?.setReady()
+    }
+    
+    override fun onWakeWordListeningStopped() {
+        DebugLogger.logUI(TAG, "🔇 Wake word listening stopped")
+        
+        // 更新语音助手状态
+        voiceAssistantState = VoiceAssistantState.IDLE
+        
+        // 更新悬浮球动画状态
+        updateAnimationState(LottieAnimationState.IDLE)
+        
+        // 清空文本显示
+        floatingOrb?.getTextStateManager()?.clearAllText()
+    }
+    
+    override fun onWakeWordError(error: Throwable) {
+        DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
+        
+        // 更新语音助手状态
+        voiceAssistantState = VoiceAssistantState.ERROR
+        
+        // 更新悬浮球动画状态
+        updateAnimationState(LottieAnimationState.IDLE)
+        
+        // 显示错误信息
+        floatingOrb?.getTextStateManager()?.setError()
     }
     
     companion object {
