@@ -113,7 +113,6 @@ class DraggableFloatingOrb(
                 ) {
                     FloatingOrbContent(
                         animationStateManager = animationStateManager,
-                        textStateManager = textStateManager,
                         isAtEdge = isAtEdge,
                         isDragging = isDragging,
                         isLongPressing = isLongPressing,
@@ -228,9 +227,7 @@ class DraggableFloatingOrb(
         // 添加震动反馈
         addHapticFeedback()
         
-        // 更新动画状态显示长按反馈
-        animationStateManager.setActive("可拖拽")
-        
+        // 长按时不改变动画状态，保持当前状态
         // 更新UI状态
         updateDragState(longPressing = true)
         
@@ -243,8 +240,7 @@ class DraggableFloatingOrb(
     private fun handleDragStart() {
         DebugLogger.logUI(TAG, "🤏 Drag started")
         
-        // 更新动画状态显示拖拽状态
-        animationStateManager.setActive("拖拽中...")
+        // 拖拽时不改变动画状态，保持当前状态
         
         // 添加震动反馈
         addHapticFeedback()
@@ -259,8 +255,7 @@ class DraggableFloatingOrb(
     private fun handleDragEnd() {
         DebugLogger.logUI(TAG, "🤏 Drag ended")
         
-        // 拖拽结束后回到待机状态
-        animationStateManager.setIdle()
+        // 拖拽结束后恢复原来的动画状态（不强制设为待机）
         
         // 添加震动反馈
         addHapticFeedback()
@@ -361,12 +356,11 @@ class DraggableFloatingOrb(
 }
 
 /**
- * 悬浮球内容组件 (包含文本显示)
+ * 悬浮球内容组件 (仅包含Lottie动画，状态文本显示在动画内部)
  */
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
-    textStateManager: FloatingTextStateManager,
     isAtEdge: Boolean = false,
     isDragging: Boolean = false,
     isLongPressing: Boolean = false,
@@ -378,65 +372,31 @@ private fun FloatingOrbContent(
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
     
-    // 文本状态
-    val userText by textStateManager.userText
-    val aiText by textStateManager.aiText
-    val isTextVisible by textStateManager.isVisible
-    
-    // 动画效果
+    // 简化的动画效果 - 只保留必要的拖拽反馈
     val scale by animateFloatAsState(
-        targetValue = when {
-            isDragging -> 1.1f
-            isLongPressing -> 1.05f
-            else -> 1.0f
-        },
+        targetValue = if (isDragging) 1.05f else 1.0f, // 只在拖拽时轻微放大
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessLow
         ),
         label = "scale"
     )
-    
-    val alpha by animateFloatAsState(
-        targetValue = when {
-            isDragging -> 0.9f
-            isLongPressing -> 0.95f
-            else -> 1.0f
-        },
-        animationSpec = tween(200),
-        label = "alpha"
-    )
-    
-    val shadowElevation by animateDpAsState(
-        targetValue = when {
-            isDragging -> 12.dp
-            isLongPressing -> 8.dp
-            else -> 4.dp
-        },
-        animationSpec = tween(200),
-        label = "shadow"
-    )
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 悬浮球
+        // 悬浮球 - 容器大小等于动画大小，去掉多余空间
         Box(
             modifier = Modifier
-                .size(if (isAtEdge) FloatingOrbConfig.edgeOrbSizeDp else FloatingOrbConfig.orbSizeDp) // 根据边缘状态使用不同尺寸
-                .scale(scale) // 动画缩放
-                .graphicsLayer(alpha = alpha) // 透明度动画
-                .shadow(
-                    elevation = shadowElevation,
-                    shape = CircleShape
-                ) // 阴影动画
+                .size(if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeDp else FloatingOrbConfig.animationSizeDp) // 使用动画尺寸作为容器尺寸
+                .scale(scale) // 只在拖拽时轻微缩放
                 .let { modifier ->
-                    // 拖拽状态时添加边框
-                    if (isDragging || isLongPressing) {
+                    // 只在拖拽时添加60%透明度的白色边框
+                    if (isDragging) {
                         modifier.border(
                             width = 2.dp,
-                            color = if (isDragging) Color(0xFF4CAF50) else Color(0xFF2196F3),
+                            color = Color.White.copy(alpha = 0.6f), // 60%透明度的白色
                             shape = CircleShape
                         )
                     } else {
@@ -453,14 +413,7 @@ private fun FloatingOrbContent(
             )
         }
         
-        // 文本显示区域 (边缘状态时隐藏)
-        if (!isAtEdge) {
-            FloatingTextDisplay(
-                userText = userText,
-                aiText = aiText,
-                isVisible = isTextVisible,
-                modifier = Modifier.wrapContentHeight()
-            )
-        }
+        // 文本显示区域已移除 - 状态完全由动画内部文本显示
+        // 不再显示悬浮球下方的绿色文本
     }
 }

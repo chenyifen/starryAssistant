@@ -23,6 +23,7 @@ import org.stypox.dicio.io.wake.oww.OpenWakeWordDevice
 import org.stypox.dicio.io.wake.oww.HiNudgeOpenWakeWordDevice
 import org.stypox.dicio.io.wake.sherpa.SherpaOnnxWakeDevice
 import org.stypox.dicio.settings.datastore.UserSettings
+import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.settings.datastore.WakeDevice.UNRECOGNIZED
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_OWW
@@ -91,8 +92,10 @@ class WakeDeviceWrapperImpl(
     }
 
     private fun changeWakeDeviceTo(setting: DataStoreWakeDevice) {
+        DebugLogger.logWakeWord("WakeDeviceWrapper", "🔄 Changing wake device to: $setting")
         currentSetting = setting
         val newWakeDevice = buildInputDevice(setting)
+        DebugLogger.logWakeWord("WakeDeviceWrapper", "🏗️ Built wake device: ${newWakeDevice?.javaClass?.simpleName}")
         lastFrameHadWrongSize = false
         currentDevice.update { prevWakeDevice ->
             prevWakeDevice?.destroy()
@@ -103,7 +106,7 @@ class WakeDeviceWrapperImpl(
     private fun buildInputDevice(setting: DataStoreWakeDevice): WakeDevice? {
         return when (setting) {
             UNRECOGNIZED,
-            WAKE_DEVICE_UNSET -> HiNudgeOpenWakeWordDevice(appContext) // 默认使用HiNudge韩语唤醒
+            WAKE_DEVICE_UNSET -> SherpaOnnxWakeDevice(appContext) // 默认使用SherpaOnnx KWS
             WAKE_DEVICE_OWW -> OpenWakeWordDevice(appContext, okHttpClient)
             WAKE_DEVICE_SHERPA_ONNX -> SherpaOnnxWakeDevice(appContext)
             WAKE_DEVICE_HI_NUDGE -> HiNudgeOpenWakeWordDevice(appContext)
