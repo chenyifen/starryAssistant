@@ -77,6 +77,9 @@ class DraggableFloatingOrb(
         try {
             val composeView = ComposeView(context)
             
+            // 设置透明背景
+            composeView.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            
             // 设置生命周期相关的TreeOwner
             composeView.setViewTreeLifecycleOwner(lifecycleOwner)
             composeView.setViewTreeViewModelStoreOwner(viewModelStoreOwner)
@@ -84,7 +87,12 @@ class DraggableFloatingOrb(
             
             composeView.setContent {
                 // 不使用AppTheme，因为Service不是Activity
-                MaterialTheme {
+                // 使用完全透明的背景
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Transparent)
+                ) {
                     FloatingOrbContent(
                         animationStateManager = animationStateManager,
                         onOrbClick = { handleOrbClick() },
@@ -152,10 +160,12 @@ class DraggableFloatingOrb(
             // 窗口标志 - 关键：FLAG_NOT_FOCUSABLE避免抢焦点
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
             
-            // 像素格式
-            format = PixelFormat.TRANSLUCENT
+            // 像素格式 - 使用RGBA_8888支持完全透明
+            format = PixelFormat.RGBA_8888
             
             // 窗口大小
             width = WindowManager.LayoutParams.WRAP_CONTENT

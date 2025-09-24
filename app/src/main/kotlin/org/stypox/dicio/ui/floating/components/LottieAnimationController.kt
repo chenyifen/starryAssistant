@@ -1,12 +1,15 @@
 package org.stypox.dicio.ui.floating.components
 
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.airbnb.lottie.compose.*
+import com.airbnb.lottie.LottieProperty
 import org.stypox.dicio.util.DebugLogger
 
 /**
@@ -60,14 +63,28 @@ fun LottieAnimationController(
     }
     
     Box(
-        modifier = modifier.size(size.dp),
+        modifier = modifier
+            .size(size.dp)
+            .background(Color.Transparent), // 确保Box背景透明
         contentAlignment = Alignment.Center
     ) {
         // Lottie动画
         LottieAnimation(
             composition = composition,
             progress = { animationProgress },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Transparent), // 确保Lottie动画背景透明
+            clipToCompositionBounds = false, // 不裁剪到组合边界
+            enableMergePaths = true, // 启用路径合并优化
+            dynamicProperties = rememberLottieDynamicProperties(
+                // 隐藏背景层 - Shape Layer 13 (ind: 17)
+                rememberLottieDynamicProperty(
+                    property = LottieProperty.OPACITY,
+                    value = 0,
+                    keyPath = arrayOf("Shape Layer 13", "**")
+                )
+            )
         )
         
         // 自定义文本覆盖（当需要显示不同文本时）

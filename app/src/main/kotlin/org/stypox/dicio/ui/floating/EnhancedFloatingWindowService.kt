@@ -63,6 +63,9 @@ class EnhancedFloatingWindowService : Service(),
         super.onCreate()
         DebugLogger.logUI(TAG, "🚀 EnhancedFloatingWindowService created")
         
+        // 运行配置测试
+        FloatingOrbConfigTest.runAllTests(applicationContext)
+        
         // 初始化生命周期
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
