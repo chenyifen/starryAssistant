@@ -142,17 +142,28 @@
             android:exported="false"
             android:label="Enhanced Floating Assistant" />
 
-        <activity
-            android:name=".ui.floating.FloatingAssistantTestActivity"
-            android:enabled="true"
-            android:exported="true"
-            android:label="Floating Assistant Test"
-            android:theme="@style/AppTheme">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+                <activity
+                    android:name=".ui.floating.FloatingAssistantTestActivity"
+                    android:enabled="true"
+                    android:exported="true"
+                    android:label="Floating Assistant Test"
+                    android:theme="@style/AppTheme">
+                    <intent-filter>
+                        <action android:name="android.intent.action.MAIN" />
+                        <category android:name="android.intent.category.LAUNCHER" />
+                    </intent-filter>
+                </activity>
+
+                <activity
+                    android:name=".ui.floating.HalfScreenAssistantActivity"
+                    android:enabled="true"
+                    android:exported="false"
+                    android:label="Half Screen Assistant"
+                    android:theme="@style/Theme.Dicio.Transparent"
+                    android:launchMode="singleTop"
+                    android:excludeFromRecents="true"
+                    android:taskAffinity=""
+                    android:finishOnTaskLaunch="true" />
 
     </application>
 </manifest>

@@ -1,7 +1,10 @@
 package org.stypox.dicio.ui.floating
 
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.IBinder
 import android.provider.Settings
 import androidx.lifecycle.*
@@ -59,6 +62,16 @@ class EnhancedFloatingWindowService : Service(),
     // UI控制器
     private var assistantUIController: AssistantUIController? = null
     
+    // 广播接收器
+    private val halfScreenDismissReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "org.stypox.dicio.HALF_SCREEN_DISMISSED") {
+                DebugLogger.logUI(TAG, "📡 Received half screen dismiss broadcast")
+                handleContractToOrb()
+            }
+        }
+    }
+    
     override fun onCreate() {
         super.onCreate()
         DebugLogger.logUI(TAG, "🚀 EnhancedFloatingWindowService created")
@@ -78,6 +91,9 @@ class EnhancedFloatingWindowService : Service(),
             return
         }
         
+        // 注册广播接收器
+        registerReceiver(halfScreenDismissReceiver, IntentFilter("org.stypox.dicio.HALF_SCREEN_DISMISSED"))
+        
         // 初始化组件
         initializeComponents()
         
@@ -92,6 +108,13 @@ class EnhancedFloatingWindowService : Service(),
     
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
+        
+        // 取消注册广播接收器
+        try {
+            unregisterReceiver(halfScreenDismissReceiver)
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "⚠️ Error unregistering receiver: ${e.message}")
+        }
         
         // 隐藏悬浮球
         hideFloatingOrb()
@@ -202,7 +225,11 @@ class EnhancedFloatingWindowService : Service(),
         // 设置激活状态
         floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.READY)
         
-        // TODO: 启动半屏Activity
+        // 启动半屏Activity
+        HalfScreenAssistantActivity.startFromClick(applicationContext)
+        
+        // 隐藏悬浮球（半屏显示时）
+        floatingOrb?.hide()
     }
     
     /**
@@ -210,6 +237,9 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun handleContractToOrb() {
         DebugLogger.logUI(TAG, "📉 Contracting to orb")
+        
+        // 重新显示悬浮球
+        floatingOrb?.show()
         
         // 设置待机状态
         floatingOrb?.getAnimationStateManager()?.setIdle()
