@@ -101,12 +101,8 @@ class EnhancedFloatingWindowService : Service(),
         // 启动WakeService（现在由悬浮球服务管理）
         startWakeService()
         
-        // 监听VoiceAssistantStateProvider的状态变化
-        serviceScope.launch {
-            voiceAssistantStateProvider.addListener { state ->
-                handleVoiceAssistantStateChange(state)
-            }
-        }
+        // 注意：不在Service层监听状态变化，让DraggableFloatingOrb自己处理
+        // 避免重复监听导致的状态更新循环
         
         // 初始化生命周期
         savedStateRegistryController.performRestore(null)
@@ -293,97 +289,9 @@ class EnhancedFloatingWindowService : Service(),
     // VoiceAssistantStateProvider 状态处理
     // ========================================
     
-    /**
-     * 处理VoiceAssistantStateProvider的状态变化
-     */
-    private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
-        DebugLogger.logUI(TAG, "🔄 Voice assistant state changed: ${state.uiState}, display: '${state.displayText}'")
-        
-        // 更新当前状态（映射到本地状态枚举）
-        currentVoiceState = when (state.uiState) {
-            VoiceAssistantUIState.IDLE -> VoiceAssistantState.IDLE
-            VoiceAssistantUIState.WAKE_DETECTED -> VoiceAssistantState.WAKE_DETECTED
-            VoiceAssistantUIState.LISTENING -> VoiceAssistantState.LISTENING
-            VoiceAssistantUIState.THINKING -> VoiceAssistantState.THINKING
-            VoiceAssistantUIState.SPEAKING -> VoiceAssistantState.SPEAKING
-            VoiceAssistantUIState.ERROR -> VoiceAssistantState.ERROR
-        }
-        
-        // 由于DraggableFloatingOrb已经直接订阅了VoiceAssistantStateProvider，
-        // 这里不需要再手动更新动画状态，避免重复处理
-        
-        // 记录状态变化用于调试
-        DebugLogger.logUI(TAG, "📊 Service state updated to: $currentVoiceState")
-        
-        // 如果有ASR实时文本，记录日志
-        if (state.asrText.isNotBlank()) {
-            DebugLogger.logUI(TAG, "📝 ASR text: ${state.asrText}")
-        }
-        
-        // 如果有TTS文本，记录日志
-        if (state.ttsText.isNotBlank()) {
-            DebugLogger.logUI(TAG, "🎵 TTS text: ${state.ttsText}")
-        }
-        
-        // 如果有技能结果，记录日志
-        state.result?.let { result ->
-            DebugLogger.logUI(TAG, "🎯 Skill result: ${result.title} - ${result.content}")
-        }
-    }
+    // 注意：状态处理现在完全由DraggableFloatingOrb处理，避免重复监听
     
-    /**
-     * 处理来自SkillEvaluator的InputEvent (已废弃，现在通过VoiceAssistantStateProvider处理)
-     */
-    @Deprecated("Use VoiceAssistantStateProvider instead")
-    private fun handleInputEvent(inputEvent: InputEvent) {
-        when (inputEvent) {
-            is InputEvent.Partial -> {
-                DebugLogger.logUI(TAG, "📝 Partial result: ${inputEvent.utterance}")
-                currentVoiceState = VoiceAssistantState.LISTENING
-                
-                // 动画内部显示LISTENING状态
-                floatingOrb?.getAnimationStateManager()?.setActive("LISTENING")
-                // 不再使用下方的文本显示
-            }
-            
-            is InputEvent.Final -> {
-                val bestResult = inputEvent.utterances.firstOrNull()?.first ?: ""
-                DebugLogger.logUI(TAG, "✅ Final result: $bestResult")
-                
-                if (bestResult.isNotBlank()) {
-                    currentVoiceState = VoiceAssistantState.THINKING
-                    
-                    // 动画内部显示THINKING状态
-                    floatingOrb?.getAnimationStateManager()?.setLoading()
-                    // 可以在加载动画中显示THINKING文本，但通常加载动画本身就表示思考状态
-                    
-                    // SkillEvaluator会自动处理后续的技能匹配和回复
-                } else {
-                    currentVoiceState = VoiceAssistantState.IDLE
-                    floatingOrb?.getAnimationStateManager()?.setIdle()
-                    // 待机状态不显示文本
-                }
-            }
-            
-            is InputEvent.Error -> {
-                DebugLogger.logUI(TAG, "❌ STT error: ${inputEvent.throwable.message}")
-                currentVoiceState = VoiceAssistantState.ERROR
-                
-                // 动画内部显示ERROR状态
-                floatingOrb?.getAnimationStateManager()?.setActive("ERROR")
-                // 不再使用下方的文本显示
-            }
-            
-            InputEvent.None -> {
-                DebugLogger.logUI(TAG, "🔇 No speech detected")
-                currentVoiceState = VoiceAssistantState.IDLE
-                
-                // 待机状态不显示文本
-                floatingOrb?.getAnimationStateManager()?.setIdle()
-                // 不再使用下方的文本显示
-            }
-        }
-    }
+    // 废弃的方法已移除，现在完全由DraggableFloatingOrb处理状态变化
     
     /**
      * 启动WakeService
@@ -405,69 +313,7 @@ class EnhancedFloatingWindowService : Service(),
         }
     }
     
-    /**
-     * 处理SkillEvaluator状态变化
-     */
-    private fun handleSkillEvaluatorState(interactionLog: InteractionLog) {
-        val pendingQuestion = interactionLog.pendingQuestion
-        val lastInteraction = interactionLog.interactions.lastOrNull()
-        val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
-        
-        when {
-            // 有待处理的问题且正在评估技能
-            pendingQuestion?.skillBeingEvaluated != null -> {
-                DebugLogger.logUI(TAG, "🔄 Skill being evaluated: ${pendingQuestion.skillBeingEvaluated.id}")
-                currentVoiceState = VoiceAssistantState.PROCESSING
-                
-                // 显示处理状态
-                floatingOrb?.getAnimationStateManager()?.setLoading()
-                // 加载动画本身就表示处理状态，不需要额外文本
-            }
-            
-            // 有新的回复生成
-            lastAnswer != null -> {
-                DebugLogger.logUI(TAG, "💬 New skill output generated")
-                currentVoiceState = VoiceAssistantState.SPEAKING
-                
-                // 获取回复文本
-                val speechOutput = try {
-                    lastAnswer.getSpeechOutput(skillEvaluator as SkillContext)
-                } catch (e: Exception) {
-                    DebugLogger.logUI(TAG, "❌ Error getting speech output: ${e.message}")
-                    "回复生成错误"
-                }
-                
-                if (speechOutput.isNotBlank()) {
-                    // 显示回复文本在动画内部
-                    floatingOrb?.getAnimationStateManager()?.setActive("SPEAKING")
-                    
-                    // 设置一个定时器，在TTS播放完成后回到待机状态
-                    serviceScope.launch {
-                        // 等待TTS播放完成（估算时间：每个字符100ms）
-                        val estimatedDuration = (speechOutput.length * 100).coerceAtLeast(2000)
-                        kotlinx.coroutines.delay(estimatedDuration.toLong())
-                        
-                        // 回到待机状态
-                        currentVoiceState = VoiceAssistantState.IDLE
-                        floatingOrb?.getAnimationStateManager()?.setIdle()
-                    }
-                } else {
-                    // 没有语音输出，直接回到待机状态
-                    currentVoiceState = VoiceAssistantState.IDLE
-                    floatingOrb?.getAnimationStateManager()?.setIdle()
-                }
-            }
-            
-            // 没有待处理问题，回到待机状态
-            pendingQuestion == null -> {
-                if (currentVoiceState != VoiceAssistantState.IDLE) {
-                    DebugLogger.logUI(TAG, "🏠 Returning to idle state")
-                    currentVoiceState = VoiceAssistantState.IDLE
-                    floatingOrb?.getAnimationStateManager()?.setIdle()
-                }
-            }
-        }
-    }
+    // handleSkillEvaluatorState 方法已移除，现在完全由VoiceAssistantStateProvider统一处理
     
     companion object {
         /**

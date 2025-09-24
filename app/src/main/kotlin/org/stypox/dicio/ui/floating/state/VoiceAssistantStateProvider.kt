@@ -129,42 +129,18 @@ class VoiceAssistantStateProvider @Inject constructor(
     }
     
     /**
-     * 判断是否为状态文本（非真实ASR结果）
-     */
-    private fun isStatusText(text: String): Boolean {
-        val statusTexts = listOf(
-            "正在监听...",
-            "正在监听",
-            "Listening...",
-            "Listening",
-            "正在处理...",
-            "正在处理",
-            "Processing...",
-            "Processing"
-        )
-        return statusTexts.any { it.equals(text, ignoreCase = true) }
-    }
-    
-    /**
      * 处理InputEvent - 主要用于ASR实时文本更新
      */
     private fun handleInputEvent(inputEvent: InputEvent) {
         when (inputEvent) {
             is InputEvent.Partial -> {
-                // 过滤掉状态文本，只显示真正的ASR转录结果
-                val utterance = inputEvent.utterance
-                if (isStatusText(utterance)) {
-                    DebugLogger.logUI(TAG, "📝 Filtering out status text: $utterance")
-                    return
-                }
-                
                 // 性能优化：ASR文本去重，相同文本不触发更新
-                if (utterance != lastAsrText) {
-                    lastAsrText = utterance
-                    DebugLogger.logUI(TAG, "📝 ASR partial result: $utterance")
-                    updateState(asrText = utterance)
+                if (inputEvent.utterance != lastAsrText) {
+                    lastAsrText = inputEvent.utterance
+                    DebugLogger.logUI(TAG, "📝 ASR partial result: ${inputEvent.utterance}")
+                    updateState(asrText = inputEvent.utterance)
                 } else {
-                    DebugLogger.logUI(TAG, "📝 ASR text unchanged, skipping update: $utterance")
+                    DebugLogger.logUI(TAG, "📝 ASR text unchanged, skipping update: ${inputEvent.utterance}")
                 }
             }
             
@@ -531,8 +507,8 @@ class VoiceAssistantStateProvider @Inject constructor(
             timestamp = System.currentTimeMillis()
         )
         
-        // 只有状态真正改变时才通知
-        if (_currentState != previousState) {
+        // 只有状态真正改变时才通知（忽略timestamp字段）
+        if (hasSignificantChange(previousState, _currentState)) {
             // 性能优化：分析变化类型，选择通知策略
             val changeType = analyzeStateChange(previousState, _currentState)
             DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}', changeType: $changeType")
@@ -547,7 +523,22 @@ class VoiceAssistantStateProvider @Inject constructor(
                     notifyListeners()
                 }
             }
+        } else {
+            DebugLogger.logUI(TAG, "⏭️ No significant state change, skipping notification")
         }
+    }
+    
+    /**
+     * 检查是否有重要的状态变化（忽略timestamp）
+     */
+    private fun hasSignificantChange(oldState: VoiceAssistantFullState, newState: VoiceAssistantFullState): Boolean {
+        return oldState.uiState != newState.uiState ||
+                oldState.displayText != newState.displayText ||
+                oldState.confidence != newState.confidence ||
+                oldState.asrText != newState.asrText ||
+                oldState.ttsText != newState.ttsText ||
+                oldState.result != newState.result ||
+                oldState.conversationHistory != newState.conversationHistory
     }
     
     /**

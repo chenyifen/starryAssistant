@@ -80,6 +80,10 @@ class DraggableFloatingOrb(
     // 边缘吸附状态
     private var isAtEdge = false
     
+    // 位置保存 - 用于hide/show时恢复位置
+    private var savedX = 100
+    private var savedY = 200
+    
     // 拖拽状态 - 使用MutableState以便Compose能检测变化
     private val isDragging = mutableStateOf(false)
     private val isLongPressing = mutableStateOf(false)
@@ -186,6 +190,14 @@ class DraggableFloatingOrb(
         DebugLogger.logUI(TAG, "🎈 Hiding floating orb")
         
         try {
+            // 保存当前位置
+            floatingView?.let { view ->
+                val layoutParams = view.layoutParams as WindowManager.LayoutParams
+                savedX = layoutParams.x
+                savedY = layoutParams.y
+                DebugLogger.logUI(TAG, "💾 Position saved: x=$savedX, y=$savedY")
+            }
+            
             // 清理状态监听
             cleanupStateProviderListener()
             
@@ -232,15 +244,28 @@ class DraggableFloatingOrb(
             // 像素格式 - 使用RGBA_8888支持完全透明
             format = PixelFormat.RGBA_8888
             
-            // 窗口大小 - 动态计算以容纳悬浮球和文本显示区域
-            width = WindowManager.LayoutParams.WRAP_CONTENT
+            // 窗口大小 - 固定宽度避免文本变化导致位置跳变，动态高度适应内容
+            width = calculateWindowWidth()
             height = calculateWindowHeight()
             
-            // 窗口位置
+            // 窗口位置 - 使用保存的位置
             gravity = Gravity.TOP or Gravity.START
-            x = 100 // 初始X位置
-            y = 200 // 初始Y位置
+            x = savedX // 使用保存的X位置
+            y = savedY // 使用保存的Y位置
         }
+    }
+    
+    /**
+     * 计算窗口宽度 - 固定宽度避免文本变化导致位置跳变
+     */
+    private fun calculateWindowWidth(): Int {
+        // 使用固定宽度，足够容纳最长的文本气泡（280dp + padding）
+        val maxTextWidth = 280 // TextBubble的最大宽度
+        val padding = 32 // 左右各16dp的padding
+        val orbWidth = if (isAtEdge) FloatingOrbConfig.edgeOrbSizePx else FloatingOrbConfig.orbSizePx
+        
+        // 取悬浮球宽度和文本区域宽度的最大值
+        return maxOf(orbWidth.toInt(), maxTextWidth + padding)
     }
     
     /**
@@ -334,6 +359,11 @@ class DraggableFloatingOrb(
             layoutParams.x = x
             layoutParams.y = y
             windowManager.updateViewLayout(view, layoutParams)
+            
+            // 同时更新保存的位置
+            savedX = x
+            savedY = y
+            DebugLogger.logUI(TAG, "📍 Position updated and saved: x=$x, y=$y")
         }
     }
     
@@ -469,6 +499,42 @@ class DraggableFloatingOrb(
         // Compose会自动检测状态变化并重组相关组件
         // 无需调用refreshUI()，大幅提升性能
         DebugLogger.logUI(TAG, "📝 Text updated in-place (ASR: '${currentAsrText.value}', TTS: '${currentTtsText.value}')")
+        
+        // 文本变化时需要更新窗口高度，但保持位置不变
+        updateWindowHeightOnly()
+    }
+    
+    /**
+     * 仅更新窗口高度，保持位置不变
+     */
+    private fun updateWindowHeightOnly() {
+        if (isShowing) {
+            val currentView = floatingView
+            if (currentView != null) {
+                val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
+                val oldHeight = layoutParams.height
+                val newHeight = calculateWindowHeight()
+                
+                // 只有高度真正变化时才更新
+                if (oldHeight != newHeight) {
+                    // 保存当前位置 - 重要：不改变X和Y坐标
+                    val currentX = layoutParams.x
+                    val currentY = layoutParams.y
+                    
+                    // 仅更新高度
+                    layoutParams.height = newHeight
+                    
+                    try {
+                        windowManager.updateViewLayout(currentView, layoutParams)
+                        DebugLogger.logUI(TAG, "📏 Window height updated: $oldHeight → $newHeight (position preserved: x=$currentX, y=$currentY)")
+                    } catch (e: Exception) {
+                        DebugLogger.logUI(TAG, "❌ Failed to update window height: ${e.message}")
+                        // 如果更新失败，不要回退到hide/show，这会导致位置跳变
+                        // 只记录错误，让Compose自己处理布局
+                    }
+                }
+            }
+        }
     }
     
     /**
@@ -543,6 +609,24 @@ private fun FloatingOrbContent(
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
     
+    // 性能优化：使用 remember 缓存计算结果
+    val shouldShowText = remember(currentAsrText, currentTtsText, isAtEdge) {
+        !isAtEdge && (currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty())
+    }
+    
+    // 性能优化：使用 derivedStateOf 优化动画尺寸计算
+    val animationSize by remember {
+        derivedStateOf {
+            if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeDp else FloatingOrbConfig.animationSizeDp
+        }
+    }
+    
+    val animationSizeInt by remember {
+        derivedStateOf {
+            if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeInt else FloatingOrbConfig.animationSizeInt
+        }
+    }
+    
     // 简化的动画效果 - 只保留必要的拖拽反馈
     val scale by animateFloatAsState(
         targetValue = if (isDragging) 1.05f else 1.0f, // 只在拖拽时轻微放大
@@ -560,7 +644,7 @@ private fun FloatingOrbContent(
         // 悬浮球 - 容器大小等于动画大小，去掉多余空间
         Box(
             modifier = Modifier
-                .size(if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeDp else FloatingOrbConfig.animationSizeDp) // 使用动画尺寸作为容器尺寸
+                .size(animationSize) // 使用缓存的动画尺寸
                 .scale(scale) // 只在拖拽时轻微缩放
                 .let { modifier ->
                     // 只在拖拽时添加60%透明度的白色边框
@@ -580,20 +664,22 @@ private fun FloatingOrbContent(
             LottieAnimationController(
                 animationState = animationState,
                 displayText = displayText,
-                size = if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeInt else FloatingOrbConfig.animationSizeInt // 根据边缘状态使用不同尺寸
+                size = animationSizeInt // 使用缓存的动画尺寸
             )
         }
         
-        // ASR/TTS文本显示区域 - 在边缘时隐藏
+        // ASR/TTS文本显示区域 - 在边缘时隐藏，使用缓存的shouldShowText
         if (!isAtEdge) {
-            val shouldShowText = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
             DebugLogger.logUI("FloatingOrbContent", "📱 Text display: ASR='$currentAsrText', TTS='$currentTtsText', shouldShow=$shouldShowText, isAtEdge=$isAtEdge")
             
-            FloatingTextDisplay(
-                userText = currentAsrText,
-                aiText = currentTtsText,
-                isVisible = shouldShowText
-            )
+            // 性能优化：只有在需要显示文本时才渲染FloatingTextDisplay
+            if (shouldShowText) {
+                FloatingTextDisplay(
+                    userText = currentAsrText,
+                    aiText = currentTtsText,
+                    isVisible = true
+                )
+            }
         } else {
             DebugLogger.logUI("FloatingOrbContent", "🚫 Text display hidden due to edge state")
         }
