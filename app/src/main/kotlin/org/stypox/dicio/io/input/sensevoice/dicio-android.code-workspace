@@ -5,6 +5,12 @@
 		},
 		{
 			"path": "../../../../../../../../../../../../code/sherpa-onnx/android"
+		},
+		{
+			"path": "../../../../../../../../../../../OpenwakewordforAndroid-main"
+		},
+		{
+			"path": "../../../../../../../../../../../dicio-android-master"
 		}
 	],
 	"settings": {}

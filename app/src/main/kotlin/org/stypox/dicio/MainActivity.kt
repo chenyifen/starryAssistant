@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.stypox.dicio.io.wake.WakeService
 import org.stypox.dicio.ui.floating.FloatingWindowService
+import org.stypox.dicio.ui.floating.EnhancedFloatingWindowService
 import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
 import org.stypox.dicio.util.BaseActivity
@@ -161,6 +162,9 @@ class MainActivity : BaseActivity() {
         } else {
             // 启动满屏悬浮窗（唤醒服务将由悬浮窗管理）
             startFullScreenFloatingWindow()
+            
+            // 默认启动悬浮球服务
+            startFloatingAssistant()
 
             // 简化的UI，只显示启动信息
             composeSetContent {
@@ -184,6 +188,34 @@ class MainActivity : BaseActivity() {
             }
         }
     }
+
+    /**
+     * 启动悬浮球助手
+     */
+    private fun startFloatingAssistant() {
+        if (Settings.canDrawOverlays(this)) {
+            Log.d(TAG, "Starting floating assistant service")
+            EnhancedFloatingWindowService.start(this)
+        } else {
+            Log.w(TAG, "Cannot start floating assistant - no overlay permission")
+            // 可以在这里引导用户申请权限
+            requestOverlayPermission()
+        }
+    }
+    
+    /**
+     * 请求悬浮窗权限
+     */
+    private fun requestOverlayPermission() {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
+        }
+    }
+    
 
     private fun startFullScreenFloatingWindow() {
         // 检查悬浮窗权限
@@ -248,18 +280,6 @@ class MainActivity : BaseActivity() {
         }
     }
     
-    /**
-     * 请求悬浮窗权限
-     */
-    private fun requestOverlayPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent(
-                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
-            )
-            startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
-        }
-    }
     
     override fun onRequestPermissionsResult(
         requestCode: Int,
@@ -300,6 +320,8 @@ class MainActivity : BaseActivity() {
                     if (Settings.canDrawOverlays(this)) {
                         Log.d(TAG, "悬浮窗权限已授予，启动悬浮窗服务")
                         FloatingWindowService.start(this)
+                        // 同时启动悬浮球助手
+                        startFloatingAssistant()
                     } else {
                         Log.w(TAG, "悬浮窗权限被拒绝")
                         showOverlayPermissionDeniedDialog()

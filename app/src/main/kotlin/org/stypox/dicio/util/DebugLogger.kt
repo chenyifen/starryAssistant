@@ -16,6 +16,7 @@ object DebugLogger {
     private const val DEBUG_AUDIO_PROCESSING = DEBUG_ENABLED && true 
     private const val DEBUG_MODEL_MANAGEMENT = DEBUG_ENABLED && true
     private const val DEBUG_STATE_MACHINE = DEBUG_ENABLED && true
+    private const val DEBUG_UI = DEBUG_ENABLED && true
     
     // 音频保存调试功能 - 可以一键关闭
     private const val DEBUG_SAVE_AUDIO = DEBUG_ENABLED && false
@@ -93,6 +94,13 @@ object DebugLogger {
     fun logDebug(tag: String?, message: String) {
         if (DEBUG_ENABLED && tag != null) {
             Log.d("🐛[$tag]", message)
+        }
+    }
+    
+    // UI相关日志
+    fun logUI(tag: String?, message: String) {
+        if (DEBUG_UI && tag != null) {
+            Log.d("🎨[$tag]", message)
         }
     }
     

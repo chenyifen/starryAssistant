@@ -135,5 +135,24 @@
             android:enabled="true"
             android:exported="false"
             android:label="@string/floating_window_service_label" />
+
+        <service
+            android:name=".ui.floating.EnhancedFloatingWindowService"
+            android:enabled="true"
+            android:exported="false"
+            android:label="Enhanced Floating Assistant" />
+
+        <activity
+            android:name=".ui.floating.FloatingAssistantTestActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:label="Floating Assistant Test"
+            android:theme="@style/AppTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
     </application>
 </manifest>

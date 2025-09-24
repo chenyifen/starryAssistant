@@ -47,6 +47,20 @@ android {
         }
     }
 
+    packaging {
+        jniLibs {
+            // 优先使用SherpaOnnx静态链接版本的libonnxruntime.so
+            pickFirsts += "**/libonnxruntime.so"
+            pickFirsts += "**/libonnxruntime4j_jni.so"
+        }
+        resources {
+            // 排除重复的资源文件
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE*"
+            excludes += "META-INF/NOTICE*"
+        }
+    }
+
     // 产品变体：控制是否包含模型文件
     flavorDimensions += "models"
     
@@ -190,6 +204,9 @@ dependencies {
     
     // LiteRT / Tensorflow Lite
     implementation(libs.litert)
+    
+    // ONNX Runtime for HiNudge wake word - use stable version
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.12.1")
 
     // OkHttp
     implementation(platform(libs.okhttp.bom))
@@ -224,6 +241,9 @@ dependencies {
 configurations.configureEach {
     resolutionStrategy {
         force(libs.test.core)
+        // 强制统一ONNX Runtime版本，避免版本冲突
+        force("com.microsoft.onnxruntime:onnxruntime-android:1.12.1")
+        force("ai.onnxruntime:onnxruntime:1.12.1")
     }
 }
 

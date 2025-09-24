@@ -37,7 +37,6 @@ import org.stypox.dicio.settings.datastore.InputDevice.UNRECOGNIZED
 import org.stypox.dicio.settings.datastore.SttPlaySound
 import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.util.distinctUntilChangedBlockingFirst
-import org.stypox.dicio.audio.AudioResourceCoordinator
 import javax.inject.Singleton
 
 
@@ -59,7 +58,6 @@ class SttInputDeviceWrapperImpl(
     private val localeManager: LocaleManager,
     private val okHttpClient: OkHttpClient,
     private val activityForResultManager: ActivityForResultManager,
-    private val audioCoordinator: AudioResourceCoordinator,
 ) : SttInputDeviceWrapper {
     
     companion object {
@@ -117,7 +115,6 @@ class SttInputDeviceWrapperImpl(
             INPUT_DEVICE_SENSEVOICE -> {
                 Log.d(TAG, "   🎙️ 获取SenseVoiceInputDevice单例 (默认)")
                 // 🔧 设置音频协调器
-                SenseVoiceInputDevice.setAudioCoordinator(audioCoordinator)
                 SenseVoiceInputDevice.getInstance(appContext, localeManager)
             }
             INPUT_DEVICE_VOSK -> {
@@ -217,10 +214,9 @@ class SttInputDeviceWrapperModule {
         localeManager: LocaleManager,
         okHttpClient: OkHttpClient,
         activityForResultManager: ActivityForResultManager,
-        audioCoordinator: AudioResourceCoordinator,
     ): SttInputDeviceWrapper {
         return SttInputDeviceWrapperImpl(
-            appContext, dataStore, localeManager, okHttpClient, activityForResultManager, audioCoordinator
+            appContext, dataStore, localeManager, okHttpClient, activityForResultManager
         )
     }
 }
