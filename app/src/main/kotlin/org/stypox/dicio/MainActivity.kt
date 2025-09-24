@@ -86,8 +86,8 @@ class MainActivity : BaseActivity() {
             // 自动启动悬浮助手（悬浮球）
             startFloatingAssistant()
             
-            // 自动启动WakeService
-            startWakeService()
+            // WakeService现在由EnhancedFloatingWindowService管理，不在MainActivity启动
+            // startWakeService() // 已屏蔽
             
             // 设置Compose内容
             composeSetContent {
@@ -110,9 +110,12 @@ class MainActivity : BaseActivity() {
     }
     
     /**
-     * 启动WakeService
+     * 启动WakeService - 已屏蔽，现在由EnhancedFloatingWindowService管理
      */
     private fun startWakeService() {
+        DebugLogger.logUI("MainActivity", "🚫 WakeService startup disabled - managed by EnhancedFloatingWindowService")
+        // WakeService现在由悬浮球服务管理，避免冲突
+        /*
         // 检查录音权限
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
             != PackageManager.PERMISSION_GRANTED) {
@@ -127,6 +130,7 @@ class MainActivity : BaseActivity() {
         } catch (e: Exception) {
             DebugLogger.logUI("MainActivity", "❌ Failed to start WakeService: ${e.message}")
         }
+        */
     }
     
     companion object {
@@ -149,13 +153,14 @@ class MainActivity : BaseActivity() {
     }
 
     /**
-     * 处理助手意图 - 简化版本，只启动悬浮窗
+     * 处理助手意图 - 已屏蔽，现在由悬浮球处理语音助手功能
      */
     private fun onAssistIntentReceived() {
         val now = Instant.now()
         if (nextAssistAllowed < now) {
             nextAssistAllowed = now.plusMillis(INTENT_BACKOFF_MILLIS)
-            Log.d(TAG, "Received assist intent, but floating window is disabled")
+            Log.d(TAG, "🚫 Assist intent disabled - voice assistant handled by floating orb")
+            // MainActivity不再处理语音助手功能，完全由悬浮球接管
             // 🚫 暂时停用满屏悬浮窗
             // startFullScreenFloatingWindow()
         } else {

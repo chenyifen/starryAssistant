@@ -33,11 +33,14 @@ import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
 import org.stypox.dicio.ui.floating.DragTouchHandler
 import org.stypox.dicio.ui.floating.FloatingOrbConfig
+import org.stypox.dicio.ui.floating.VoiceAssistantUIState
 import org.stypox.dicio.ui.floating.components.FloatingTextDisplay
 import org.stypox.dicio.ui.floating.components.FloatingTextStateManager
 import org.stypox.dicio.ui.floating.components.LottieAnimationController
 import org.stypox.dicio.ui.floating.components.LottieAnimationState
 import org.stypox.dicio.ui.floating.components.LottieAnimationStateManager
+import org.stypox.dicio.ui.floating.state.VoiceAssistantFullState
+import org.stypox.dicio.ui.floating.state.VoiceAssistantStateProvider
 import org.stypox.dicio.util.DebugLogger
 
 /**
@@ -80,6 +83,10 @@ class DraggableFloatingOrb(
     // 点击回调
     var onOrbClick: (() -> Unit)? = null
     var onOrbLongPress: (() -> Unit)? = null
+    
+    // VoiceAssistantStateProvider监听
+    private var stateProvider: VoiceAssistantStateProvider? = null
+    private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
     
     /**
      * 显示悬浮球
@@ -147,6 +154,11 @@ class DraggableFloatingOrb(
             // 默认设置为待机状态
             animationStateManager.setIdle()
             
+            // 设置VoiceAssistantStateProvider监听
+            setupStateProviderListener()
+            
+            DebugLogger.logUI(TAG, "✅ Floating orb shown successfully")
+            
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Error showing floating orb: ${e.message}")
         }
@@ -161,6 +173,9 @@ class DraggableFloatingOrb(
         DebugLogger.logUI(TAG, "🎈 Hiding floating orb")
         
         try {
+            // 清理状态监听
+            cleanupStateProviderListener()
+            
             floatingView?.let { view ->
                 windowManager.removeView(view)
                 floatingView = null
@@ -327,6 +342,87 @@ class DraggableFloatingOrb(
     fun isAtEdge(): Boolean = isAtEdge
     
     /**
+     * 设置VoiceAssistantStateProvider监听
+     */
+    private fun setupStateProviderListener() {
+        try {
+            stateProvider = VoiceAssistantStateProvider.getInstance()
+            stateListener = { state ->
+                handleVoiceAssistantStateChange(state)
+            }
+            stateListener?.let { listener ->
+                stateProvider?.addListener(listener)
+                DebugLogger.logUI(TAG, "📡 VoiceAssistantStateProvider listener registered")
+            }
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "❌ Failed to setup VoiceAssistantStateProvider listener: ${e.message}")
+        }
+    }
+
+    /**
+     * 清理VoiceAssistantStateProvider监听
+     */
+    private fun cleanupStateProviderListener() {
+        try {
+            stateListener?.let { listener ->
+                stateProvider?.removeListener(listener)
+                DebugLogger.logUI(TAG, "📡 VoiceAssistantStateProvider listener removed")
+            }
+            stateProvider = null
+            stateListener = null
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "❌ Failed to cleanup VoiceAssistantStateProvider listener: ${e.message}")
+        }
+    }
+
+    /**
+     * 处理语音助手状态变化
+     */
+    private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
+        DebugLogger.logUI(TAG, "🔄 Voice assistant state changed: ${state.uiState}, display: '${state.displayText}'")
+        
+        // 根据UI状态更新动画
+        when (state.uiState) {
+            VoiceAssistantUIState.IDLE -> {
+                animationStateManager.setIdle()
+            }
+            VoiceAssistantUIState.WAKE_DETECTED -> {
+                animationStateManager.triggerWakeWord(state.displayText.ifBlank { "LISTENING" })
+            }
+            VoiceAssistantUIState.LISTENING -> {
+                animationStateManager.setActive(state.displayText.ifBlank { "LISTENING" })
+            }
+            VoiceAssistantUIState.THINKING -> {
+                animationStateManager.setLoading()
+            }
+            VoiceAssistantUIState.SPEAKING -> {
+                animationStateManager.setActive(state.displayText.ifBlank { "SPEAKING" })
+            }
+            VoiceAssistantUIState.ERROR -> {
+                animationStateManager.setActive(state.displayText.ifBlank { "ERROR" })
+            }
+        }
+        
+        // 显示ASR实时文本（如果有）
+        if (state.asrText.isNotBlank()) {
+            DebugLogger.logUI(TAG, "📝 ASR text: ${state.asrText}")
+            // ASR文本可以通过动画内部文本显示，或者可以考虑其他显示方式
+        }
+        
+        // 显示TTS文本（如果有）
+        if (state.ttsText.isNotBlank()) {
+            DebugLogger.logUI(TAG, "🎵 TTS text: ${state.ttsText}")
+            // TTS文本可以通过动画内部文本显示
+        }
+        
+        // 显示技能结果（如果有）
+        state.result?.let { result ->
+            DebugLogger.logUI(TAG, "🎯 Skill result: ${result.title} - ${result.content}")
+            // 技能结果可以考虑在动画中显示，或者通过其他方式展示
+        }
+    }
+    
+    /**
      * 更新拖拽状态
      */
     private fun updateDragState(dragging: Boolean = isDragging, longPressing: Boolean = isLongPressing) {
@@ -417,3 +513,4 @@ private fun FloatingOrbContent(
         // 不再显示悬浮球下方的绿色文本
     }
 }
+
