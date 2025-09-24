@@ -6,6 +6,7 @@ import kotlinx.coroutines.launch
 import org.dicio.skill.skill.SkillOutput
 import org.stypox.dicio.di.SpeechOutputDeviceWrapper
 import org.stypox.dicio.di.SttInputDeviceWrapper
+import org.stypox.dicio.di.SkillContextInternal
 import org.stypox.dicio.eval.SkillEvaluator
 import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.wake.WakeWordCallback
@@ -31,7 +32,8 @@ class VoiceAssistantStateProvider @Inject constructor(
     private val stateCoordinator: VoiceAssistantStateCoordinator,
     private val sttInputDeviceWrapper: SttInputDeviceWrapper,
     private val skillEvaluator: SkillEvaluator,
-    private val speechOutputDeviceWrapper: SpeechOutputDeviceWrapper
+    private val speechOutputDeviceWrapper: SpeechOutputDeviceWrapper,
+    private val skillContext: SkillContextInternal
 ) : WakeWordCallback {
     
     companion object {
@@ -170,7 +172,7 @@ class VoiceAssistantStateProvider @Inject constructor(
             
             // 获取TTS文本并添加AI回复到会话历史
             try {
-                val speechOutput = lastAnswer.getSpeechOutput(skillEvaluator as org.dicio.skill.context.SkillContext)
+                val speechOutput = lastAnswer.getSpeechOutput(skillContext)
                 if (speechOutput.isNotBlank()) {
                     updateState(
                         uiState = VoiceAssistantUIState.SPEAKING,
@@ -195,7 +197,7 @@ class VoiceAssistantStateProvider @Inject constructor(
         return try {
             // 获取技能的基本信息
             val skillClassName = skillOutput::class.java.simpleName
-            val speechText = skillOutput.getSpeechOutput(skillEvaluator as org.dicio.skill.context.SkillContext)
+            val speechText = skillOutput.getSpeechOutput(skillContext)
             
             DebugLogger.logUI(TAG, "🔄 Converting skill output: $skillClassName")
             
@@ -322,19 +324,27 @@ class VoiceAssistantStateProvider @Inject constructor(
      * 添加状态监听器
      */
     fun addListener(listener: (VoiceAssistantFullState) -> Unit) {
-        listeners.add(listener)
-        DebugLogger.logUI(TAG, "📡 Added listener, total: ${listeners.size}")
+        synchronized(listeners) {
+            listeners.add(listener)
+            DebugLogger.logUI(TAG, "📡 Added listener, total: ${listeners.size}")
+        }
         
         // 立即通知当前状态
-        listener(_currentState)
+        try {
+            listener(_currentState)
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "❌ Error notifying new listener: ${e.message}")
+        }
     }
     
     /**
      * 移除状态监听器
      */
     fun removeListener(listener: (VoiceAssistantFullState) -> Unit) {
-        listeners.remove(listener)
-        DebugLogger.logUI(TAG, "📡 Removed listener, total: ${listeners.size}")
+        synchronized(listeners) {
+            listeners.remove(listener)
+            DebugLogger.logUI(TAG, "📡 Removed listener, total: ${listeners.size}")
+        }
     }
     
     /**
@@ -366,10 +376,28 @@ class VoiceAssistantStateProvider @Inject constructor(
     }
     
     /**
+     * 清空ASR文本
+     */
+    fun clearASRText() {
+        _currentState = _currentState.copy(asrText = "", timestamp = System.currentTimeMillis())
+        DebugLogger.logUI(TAG, "🧹 ASR text cleared")
+        notifyListeners()
+    }
+    
+    /**
      * 设置TTS文本
      */
     fun setTTSText(text: String) {
         updateState(ttsText = text)
+    }
+    
+    /**
+     * 清空TTS文本
+     */
+    fun clearTTSText() {
+        _currentState = _currentState.copy(ttsText = "", timestamp = System.currentTimeMillis())
+        DebugLogger.logUI(TAG, "🧹 TTS text cleared")
+        notifyListeners()
     }
     
     /**
@@ -486,9 +514,17 @@ class VoiceAssistantStateProvider @Inject constructor(
             timestamp = System.currentTimeMillis()
         )
         
-        // 只有状态真正改变时才通知
-        if (_currentState != previousState) {
-            DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}'")
+        // 只有状态真正改变时才通知（忽略timestamp差异）
+        val stateChanged = previousState.uiState != _currentState.uiState ||
+                          previousState.displayText != _currentState.displayText ||
+                          previousState.confidence != _currentState.confidence ||
+                          previousState.asrText != _currentState.asrText ||
+                          previousState.ttsText != _currentState.ttsText ||
+                          previousState.result != _currentState.result ||
+                          previousState.conversationHistory != _currentState.conversationHistory
+        
+        if (stateChanged) {
+            DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}', asr: '${_currentState.asrText}', tts: '${_currentState.ttsText}'")
             notifyListeners()
         }
     }
@@ -498,7 +534,12 @@ class VoiceAssistantStateProvider @Inject constructor(
      */
     private fun notifyListeners() {
         scope.launch {
-            listeners.forEach { listener ->
+            // 创建监听器的副本以避免并发修改异常
+            val listenersCopy = synchronized(listeners) {
+                listeners.toList()
+            }
+            
+            listenersCopy.forEach { listener ->
                 try {
                     listener(_currentState)
                 } catch (e: Exception) {
@@ -622,7 +663,9 @@ class VoiceAssistantStateProvider @Inject constructor(
         // 取消注册唤醒词回调
         WakeWordCallbackManager.unregisterCallback(this)
         
-        // 清空监听器
-        listeners.clear()
+        // 清空监听器 - 线程安全
+        synchronized(listeners) {
+            listeners.clear()
+        }
     }
 }

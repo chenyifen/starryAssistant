@@ -35,7 +35,6 @@ import org.stypox.dicio.ui.floating.DragTouchHandler
 import org.stypox.dicio.ui.floating.FloatingOrbConfig
 import org.stypox.dicio.ui.floating.VoiceAssistantUIState
 import org.stypox.dicio.ui.floating.components.FloatingTextDisplay
-import org.stypox.dicio.ui.floating.components.FloatingTextStateManager
 import org.stypox.dicio.ui.floating.components.LottieAnimationController
 import org.stypox.dicio.ui.floating.components.LottieAnimationState
 import org.stypox.dicio.ui.floating.components.LottieAnimationStateManager
@@ -67,8 +66,11 @@ class DraggableFloatingOrb(
     // 动画状态管理器
     private val animationStateManager = LottieAnimationStateManager()
     
-    // 文本显示状态管理器
-    private val textStateManager = FloatingTextStateManager(context)
+    // 移除了textStateManager，现在直接使用currentAsrText和currentTtsText
+    
+    // 当前文本状态
+    private var currentAsrText = ""
+    private var currentTtsText = ""
     
     // 拖拽处理器
     private var dragTouchHandler: DragTouchHandler? = null
@@ -120,6 +122,8 @@ class DraggableFloatingOrb(
                 ) {
                     FloatingOrbContent(
                         animationStateManager = animationStateManager,
+                        asrText = currentAsrText,
+                        ttsText = currentTtsText,
                         isAtEdge = isAtEdge,
                         isDragging = isDragging,
                         isLongPressing = isLongPressing,
@@ -192,9 +196,14 @@ class DraggableFloatingOrb(
     fun getAnimationStateManager(): LottieAnimationStateManager = animationStateManager
     
     /**
-     * 获取文本状态管理器
+     * 获取当前ASR文本
      */
-    fun getTextStateManager(): FloatingTextStateManager = textStateManager
+    fun getCurrentAsrText(): String = currentAsrText
+    
+    /**
+     * 获取当前TTS文本
+     */
+    fun getCurrentTtsText(): String = currentTtsText
     
     /**
      * 创建WindowManager布局参数
@@ -381,44 +390,86 @@ class DraggableFloatingOrb(
     private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
         DebugLogger.logUI(TAG, "🔄 Voice assistant state changed: ${state.uiState}, display: '${state.displayText}'")
         
-        // 根据UI状态更新动画
+        // 更新ASR和TTS文本状态
+        val asrTextChanged = currentAsrText != state.asrText
+        val ttsTextChanged = currentTtsText != state.ttsText
+        
+        if (asrTextChanged) {
+            currentAsrText = state.asrText
+            DebugLogger.logUI(TAG, "📝 ASR text updated: '${state.asrText}'")
+        }
+        
+        if (ttsTextChanged) {
+            currentTtsText = state.ttsText
+            DebugLogger.logUI(TAG, "🎵 TTS text updated: '${state.ttsText}'")
+        }
+        
+        // 根据UI状态更新动画 - 中央状态文本
         when (state.uiState) {
             VoiceAssistantUIState.IDLE -> {
                 animationStateManager.setIdle()
             }
             VoiceAssistantUIState.WAKE_DETECTED -> {
-                animationStateManager.triggerWakeWord(state.displayText.ifBlank { "LISTENING" })
+                val displayText = state.displayText.ifBlank { "LISTENING" }
+                animationStateManager.triggerWakeWord(displayText)
             }
             VoiceAssistantUIState.LISTENING -> {
-                animationStateManager.setActive(state.displayText.ifBlank { "LISTENING" })
+                // LISTENING状态显示"LISTENING"，ASR文本显示在下方
+                animationStateManager.setActive("LISTENING")
+                DebugLogger.logUI(TAG, "👂 LISTENING state activated")
             }
             VoiceAssistantUIState.THINKING -> {
+                // THINKING状态显示"THINKING"
                 animationStateManager.setLoading()
+                DebugLogger.logUI(TAG, "🤔 THINKING state activated")
             }
             VoiceAssistantUIState.SPEAKING -> {
-                animationStateManager.setActive(state.displayText.ifBlank { "SPEAKING" })
+                // SPEAKING状态显示"SPEAKING"，TTS文本显示在下方
+                animationStateManager.setActive("SPEAKING")
+                DebugLogger.logUI(TAG, "🎵 SPEAKING state activated")
             }
             VoiceAssistantUIState.ERROR -> {
-                animationStateManager.setActive(state.displayText.ifBlank { "ERROR" })
+                val displayText = state.displayText.ifBlank { "ERROR" }
+                animationStateManager.setActive(displayText)
             }
         }
         
-        // 显示ASR实时文本（如果有）
-        if (state.asrText.isNotBlank()) {
-            DebugLogger.logUI(TAG, "📝 ASR text: ${state.asrText}")
-            // ASR文本可以通过动画内部文本显示，或者可以考虑其他显示方式
+        // 如果文本发生变化，需要重新渲染UI
+        if (asrTextChanged || ttsTextChanged) {
+            refreshUI()
         }
         
-        // 显示TTS文本（如果有）
-        if (state.ttsText.isNotBlank()) {
-            DebugLogger.logUI(TAG, "🎵 TTS text: ${state.ttsText}")
-            // TTS文本可以通过动画内部文本显示
-        }
-        
-        // 显示技能结果（如果有）
+        // 记录技能结果
         state.result?.let { result ->
             DebugLogger.logUI(TAG, "🎯 Skill result: ${result.title} - ${result.content}")
-            // 技能结果可以考虑在动画中显示，或者通过其他方式展示
+        }
+    }
+    
+    /**
+     * 刷新UI - 只在文本变化时调用，避免不必要的重新渲染
+     */
+    private fun refreshUI() {
+        if (isShowing) {
+            val currentView = floatingView
+            if (currentView != null) {
+                // 保存当前位置和状态
+                val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
+                val currentX = layoutParams.x
+                val currentY = layoutParams.y
+                val currentDragging = isDragging
+                val currentLongPressing = isLongPressing
+                
+                // 隐藏并重新显示
+                hide()
+                show()
+                
+                // 恢复位置和状态
+                updatePosition(currentX, currentY)
+                isDragging = currentDragging
+                isLongPressing = currentLongPressing
+                
+                DebugLogger.logUI(TAG, "🔄 UI refreshed for text changes")
+            }
         }
     }
     
@@ -457,6 +508,8 @@ class DraggableFloatingOrb(
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
+    asrText: String = "",
+    ttsText: String = "",
     isAtEdge: Boolean = false,
     isDragging: Boolean = false,
     isLongPressing: Boolean = false,
@@ -480,7 +533,7 @@ private fun FloatingOrbContent(
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // 悬浮球 - 容器大小等于动画大小，去掉多余空间
         Box(
@@ -501,7 +554,7 @@ private fun FloatingOrbContent(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Lottie动画
+            // Lottie动画 - 中央状态文本由动画内部显示
             LottieAnimationController(
                 animationState = animationState,
                 displayText = displayText,
@@ -509,8 +562,14 @@ private fun FloatingOrbContent(
             )
         }
         
-        // 文本显示区域已移除 - 状态完全由动画内部文本显示
-        // 不再显示悬浮球下方的绿色文本
+        // 悬浮球下方的文本显示区域 - 只在非边缘状态时显示
+        if (!isAtEdge) {
+            FloatingTextDisplay(
+                asrText = asrText,
+                ttsText = ttsText,
+                isVisible = asrText.isNotBlank() || ttsText.isNotBlank()
+            )
+        }
     }
 }
 
