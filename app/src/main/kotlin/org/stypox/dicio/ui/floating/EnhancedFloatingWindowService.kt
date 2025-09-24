@@ -16,6 +16,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
@@ -79,8 +81,8 @@ class EnhancedFloatingWindowService : Service(),
     // UI控制器
     private var assistantUIController: AssistantUIController? = null
     
-    // 语音助手状态管理器
-    private var voiceAssistantState = VoiceAssistantState.IDLE
+    // 当前语音助手状态
+    private var currentVoiceState = VoiceAssistantState.IDLE
     
     override fun onCreate() {
         super.onCreate()
@@ -92,6 +94,13 @@ class EnhancedFloatingWindowService : Service(),
         // 注册唤醒词回调
         WakeWordCallbackManager.registerCallback(this)
         DebugLogger.logUI(TAG, "📞 Registered wake word callback")
+        
+        // 监听SkillEvaluator的inputEvents流
+        serviceScope.launch {
+            skillEvaluator.inputEvents.collect { inputEvent ->
+                handleInputEvent(inputEvent)
+            }
+        }
         
         // 初始化生命周期
         savedStateRegistryController.performRestore(null)
@@ -120,7 +129,7 @@ class EnhancedFloatingWindowService : Service(),
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
         
-        // 取消注册唤醒词回调
+        // 取消注册回调
         WakeWordCallbackManager.unregisterCallback(this)
         DebugLogger.logUI(TAG, "📞 Unregistered wake word callback")
         
@@ -285,14 +294,12 @@ class EnhancedFloatingWindowService : Service(),
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
         DebugLogger.logUI(TAG, "🎯 Wake word detected! confidence=$confidence, word='$wakeWord'")
         
-        // 更新语音助手状态
-        voiceAssistantState = VoiceAssistantState.WAKE_DETECTED
+        // 更新状态
+        currentVoiceState = VoiceAssistantState.WAKE_DETECTED
         
-        // 更新悬浮球动画状态
-        updateAnimationState(LottieAnimationState.WAKE_WORD, wakeWord)
-        
-        // 更新文本显示
-        floatingOrb?.getTextStateManager()?.setWakeDetected()
+        // 直接使用现有的状态管理器 - 动画内部显示状态文本
+        floatingOrb?.getAnimationStateManager()?.triggerWakeWord("LISTENING")
+        // 不再使用下方的文本显示
         
         // 进入文本显示模式（替代原来的半屏模式）
         handleTextDisplayMode()
@@ -301,40 +308,91 @@ class EnhancedFloatingWindowService : Service(),
     override fun onWakeWordListeningStarted() {
         DebugLogger.logUI(TAG, "👂 Wake word listening started")
         
-        // 更新语音助手状态
-        voiceAssistantState = VoiceAssistantState.LISTENING
+        // 更新状态
+        currentVoiceState = VoiceAssistantState.IDLE
         
-        // 更新悬浮球动画状态
-        updateAnimationState(LottieAnimationState.LOADING)
-        
-        // 更新文本显示
-        floatingOrb?.getTextStateManager()?.setReady()
+        // 直接使用现有的状态管理器 - 待机状态不显示文本
+        floatingOrb?.getAnimationStateManager()?.setIdle()
+        // 不再使用下方的文本显示
     }
     
     override fun onWakeWordListeningStopped() {
         DebugLogger.logUI(TAG, "🔇 Wake word listening stopped")
         
-        // 更新语音助手状态
-        voiceAssistantState = VoiceAssistantState.IDLE
+        // 更新状态
+        currentVoiceState = VoiceAssistantState.IDLE
         
-        // 更新悬浮球动画状态
-        updateAnimationState(LottieAnimationState.IDLE)
-        
-        // 清空文本显示
-        floatingOrb?.getTextStateManager()?.clearAllText()
+        // 直接使用现有的状态管理器 - 待机状态不显示文本
+        floatingOrb?.getAnimationStateManager()?.setIdle()
+        // 不再使用下方的文本显示
     }
     
     override fun onWakeWordError(error: Throwable) {
         DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
         
-        // 更新语音助手状态
-        voiceAssistantState = VoiceAssistantState.ERROR
+        // 更新状态
+        currentVoiceState = VoiceAssistantState.ERROR
         
-        // 更新悬浮球动画状态
-        updateAnimationState(LottieAnimationState.IDLE)
-        
-        // 显示错误信息
-        floatingOrb?.getTextStateManager()?.setError()
+        // 直接使用现有的状态管理器 - 动画内部显示错误信息
+        floatingOrb?.getAnimationStateManager()?.setActive("ERROR")
+        // 不再使用下方的文本显示
+    }
+    
+    // ========================================
+    // InputEvent 处理 (来自SkillEvaluator)
+    // ========================================
+    
+    /**
+     * 处理来自SkillEvaluator的InputEvent
+     */
+    private fun handleInputEvent(inputEvent: InputEvent) {
+        when (inputEvent) {
+            is InputEvent.Partial -> {
+                DebugLogger.logUI(TAG, "📝 Partial result: ${inputEvent.utterance}")
+                currentVoiceState = VoiceAssistantState.LISTENING
+                
+                // 动画内部显示LISTENING状态
+                floatingOrb?.getAnimationStateManager()?.setActive("LISTENING")
+                // 不再使用下方的文本显示
+            }
+            
+            is InputEvent.Final -> {
+                val bestResult = inputEvent.utterances.firstOrNull()?.first ?: ""
+                DebugLogger.logUI(TAG, "✅ Final result: $bestResult")
+                
+                if (bestResult.isNotBlank()) {
+                    currentVoiceState = VoiceAssistantState.THINKING
+                    
+                    // 动画内部显示THINKING状态
+                    floatingOrb?.getAnimationStateManager()?.setLoading()
+                    // 可以在加载动画中显示THINKING文本，但通常加载动画本身就表示思考状态
+                    
+                    // SkillEvaluator会自动处理后续的技能匹配和回复
+                } else {
+                    currentVoiceState = VoiceAssistantState.IDLE
+                    floatingOrb?.getAnimationStateManager()?.setIdle()
+                    // 待机状态不显示文本
+                }
+            }
+            
+            is InputEvent.Error -> {
+                DebugLogger.logUI(TAG, "❌ STT error: ${inputEvent.throwable.message}")
+                currentVoiceState = VoiceAssistantState.ERROR
+                
+                // 动画内部显示ERROR状态
+                floatingOrb?.getAnimationStateManager()?.setActive("ERROR")
+                // 不再使用下方的文本显示
+            }
+            
+            InputEvent.None -> {
+                DebugLogger.logUI(TAG, "🔇 No speech detected")
+                currentVoiceState = VoiceAssistantState.IDLE
+                
+                // 待机状态不显示文本
+                floatingOrb?.getAnimationStateManager()?.setIdle()
+                // 不再使用下方的文本显示
+            }
+        }
     }
     
     companion object {
