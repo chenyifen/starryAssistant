@@ -95,4 +95,19 @@
     <string name="skill_name_navigation">내비게이션</string>
     <string name="skill_sentence_example_navigation">서울역으로 안내해</string>
     <string name="open_with">다음으로 열기</string>
+    
+    <!-- 플로팅 어시스턴트 텍스트 표시 -->
+    <string name="floating_text_listening">듣는 중…</string>
+    <string name="floating_text_processing">처리 중…</string>
+    <string name="floating_text_thinking">생각하는 중…</string>
+    <string name="floating_text_speaking">말하는 중…</string>
+    <string name="floating_text_wake_detected">웨이크 워드 감지됨</string>
+    <string name="floating_text_error">오류 발생</string>
+    <string name="floating_text_ready">준비 완료</string>
+    <string name="floating_text_idle">도움이 필요하시면 말씀하세요!</string>
+    <string name="floating_text_no_input">입력이 감지되지 않음</string>
+    <string name="floating_text_timeout">시간 초과</string>
+    <string name="floating_text_initializing">초기화 중…</string>
+    <string name="floating_text_loading">로딩 중…</string>
+    
 </resources>

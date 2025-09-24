@@ -34,7 +34,9 @@ import org.stypox.dicio.ui.floating.FloatingWindowService
 import org.stypox.dicio.ui.floating.EnhancedFloatingWindowService
 import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
+import org.stypox.dicio.ui.theme.AppTheme
 import org.stypox.dicio.util.BaseActivity
+import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.PermissionHelper
 import java.time.Instant
 import javax.inject.Inject
@@ -47,6 +49,85 @@ class MainActivity : BaseActivity() {
     private var wakeServiceJob: Job? = null
 
     private var nextAssistAllowed = Instant.MIN
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        DebugLogger.logUI("MainActivity", "🚀 MainActivity created")
+        
+        // 处理唤醒词意图
+        handleWakeWordTurnOnScreen(intent)
+        
+        // 处理助手意图
+        if (isAssistIntent(intent)) {
+            onAssistIntentReceived()
+        }
+        
+        // 增加创建计数
+        isCreated += 1
+        
+        // 检查是否需要导航到特定页面
+        val navigateTo = intent.getStringExtra("navigate_to")
+        
+        if (navigateTo == "settings") {
+            // 如果是从悬浮窗点击设置按钮进入，显示完整的Navigation界面
+            composeSetContent {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Navigation()
+                }
+            }
+        } else {
+            // 🚫 暂时停用满屏悬浮窗
+            // startFullScreenFloatingWindow()
+            
+            // 自动启动悬浮助手（悬浮球）
+            startFloatingAssistant()
+            
+            // 自动启动WakeService
+            startWakeService()
+            
+            // 设置Compose内容
+            composeSetContent {
+                AppTheme {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .safeDrawingPadding()
+                        ) {
+                            Navigation()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 启动WakeService
+     */
+    private fun startWakeService() {
+        // 检查录音权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            != PackageManager.PERMISSION_GRANTED) {
+            DebugLogger.logUI("MainActivity", "❌ No RECORD_AUDIO permission, cannot start WakeService")
+            return
+        }
+        
+        try {
+            val intent = Intent(this, WakeService::class.java)
+            startService(intent)
+            DebugLogger.logUI("MainActivity", "✅ WakeService started successfully")
+        } catch (e: Exception) {
+            DebugLogger.logUI("MainActivity", "❌ Failed to start WakeService: ${e.message}")
+        }
+    }
     
     companion object {
         private const val INTENT_BACKOFF_MILLIS = 100L
@@ -74,8 +155,9 @@ class MainActivity : BaseActivity() {
         val now = Instant.now()
         if (nextAssistAllowed < now) {
             nextAssistAllowed = now.plusMillis(INTENT_BACKOFF_MILLIS)
-            Log.d(TAG, "Received assist intent, starting floating window")
-            startFullScreenFloatingWindow()
+            Log.d(TAG, "Received assist intent, but floating window is disabled")
+            // 🚫 暂时停用满屏悬浮窗
+            // startFullScreenFloatingWindow()
         } else {
             Log.w(TAG, "Ignoring duplicate assist intent")
         }
@@ -136,59 +218,6 @@ class MainActivity : BaseActivity() {
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        isCreated += 1
-
-        // 处理意图
-        handleWakeWordTurnOnScreen(intent)
-        if (isAssistIntent(intent)) {
-            onAssistIntentReceived()
-        }
-
-        // 检查是否需要导航到特定页面
-        val navigateTo = intent.getStringExtra("navigate_to")
-        
-        if (navigateTo == "settings") {
-            // 如果是从悬浮窗点击设置按钮进入，显示完整的Navigation界面
-            composeSetContent {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Navigation()
-                }
-            }
-        } else {
-            // 启动满屏悬浮窗（唤醒服务将由悬浮窗管理）
-            startFullScreenFloatingWindow()
-            
-            // 默认启动悬浮球服务
-            startFloatingAssistant()
-
-            // 简化的UI，只显示启动信息
-            composeSetContent {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .safeDrawingPadding(),
-                        contentAlignment = androidx.compose.ui.Alignment.Center
-                    ) {
-                        androidx.compose.material3.Text(
-                            text = "语音助手已启动\n请使用悬浮窗进行交互",
-                            style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-    }
-
     /**
      * 启动悬浮球助手
      */
@@ -218,6 +247,10 @@ class MainActivity : BaseActivity() {
     
 
     private fun startFullScreenFloatingWindow() {
+        // 🚫 满屏悬浮窗已停用
+        Log.d(TAG, "🚫 满屏悬浮窗功能已停用，只使用悬浮球")
+        return
+        
         // 检查悬浮窗权限
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (Settings.canDrawOverlays(this)) {
@@ -271,12 +304,14 @@ class MainActivity : BaseActivity() {
                 Log.d(TAG, "请求悬浮窗权限")
                 requestOverlayPermission()
             } else {
-                Log.d(TAG, "启动悬浮窗服务")
-                FloatingWindowService.start(this)
+                Log.d(TAG, "🚫 悬浮窗服务已停用")
+                // 🚫 暂时停用满屏悬浮窗
+                // FloatingWindowService.start(this)
             }
         } else {
             // Android 6.0以下直接启动
-            FloatingWindowService.start(this)
+            // 🚫 暂时停用满屏悬浮窗
+            // FloatingWindowService.start(this)
         }
     }
     
@@ -292,8 +327,8 @@ class MainActivity : BaseActivity() {
         
         if (result.allGranted) {
             Log.d(TAG, "所有权限已授予: ${result.grantedPermissions}")
-            // 权限授予后，启动悬浮窗
-            startFullScreenFloatingWindow()
+            // 🚫 暂时停用满屏悬浮窗
+            // startFullScreenFloatingWindow()
         } else {
             Log.w(TAG, "部分权限被拒绝: ${result.deniedPermissions}")
             // 可以显示权限说明对话框
@@ -308,8 +343,8 @@ class MainActivity : BaseActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if (Environment.isExternalStorageManager()) {
                         Log.d(TAG, "MANAGE_EXTERNAL_STORAGE权限已授予")
-                        // 权限授予后，启动悬浮窗
-                        startFullScreenFloatingWindow()
+                        // 🚫 暂时停用满屏悬浮窗
+                        // startFullScreenFloatingWindow()
                     } else {
                         Log.w(TAG, "MANAGE_EXTERNAL_STORAGE权限被拒绝")
                     }
@@ -318,8 +353,9 @@ class MainActivity : BaseActivity() {
             REQUEST_OVERLAY_PERMISSION -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (Settings.canDrawOverlays(this)) {
-                        Log.d(TAG, "悬浮窗权限已授予，启动悬浮窗服务")
-                        FloatingWindowService.start(this)
+                        Log.d(TAG, "悬浮窗权限已授予，但悬浮窗服务已停用")
+                        // 🚫 暂时停用满屏悬浮窗
+                        // FloatingWindowService.start(this)
                         // 同时启动悬浮球助手
                         startFloatingAssistant()
                     } else {
@@ -366,8 +402,8 @@ class MainActivity : BaseActivity() {
         sttPermissionJob?.cancel()
         wakeServiceJob?.cancel()
         
-        // 停止服务
-        FloatingWindowService.stop(this)
+        // 🚫 不停止FloatingWindowService，因为已经停用
+        // FloatingWindowService.stop(this)
         
         // 注意：不要在这里停止WakeService，因为它应该在后台持续运行
         // 只有在用户明确关闭应用或系统资源不足时才停止

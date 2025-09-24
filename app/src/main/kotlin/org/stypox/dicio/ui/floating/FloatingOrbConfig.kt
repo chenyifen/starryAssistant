@@ -19,6 +19,9 @@ object FloatingOrbConfig {
     // 缩放因子 - 可以根据需要调整
     private var scaleFactor: Float = 3.0f
     
+    // 边缘吸附时的缩放因子
+    private const val EDGE_SCALE_FACTOR = 0.6f
+    
     // 屏幕适配相关
     private var screenDensity: Float = 1.0f
     private var screenWidthPx: Int = 1080
@@ -94,6 +97,30 @@ object FloatingOrbConfig {
      */
     val animationSizeInt: Int
         get() = (BASE_ANIMATION_SIZE_DP * scaleFactor).toInt()
+    
+    /**
+     * 边缘吸附时的悬浮球尺寸 (Compose Dp)
+     */
+    val edgeOrbSizeDp: Dp
+        get() = (BASE_ORB_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR).dp
+    
+    /**
+     * 边缘吸附时的动画尺寸 (Compose Dp)
+     */
+    val edgeAnimationSizeDp: Dp
+        get() = (BASE_ANIMATION_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR).dp
+    
+    /**
+     * 边缘吸附时的悬浮球尺寸 (像素值)
+     */
+    val edgeOrbSizePx: Int
+        get() = (BASE_ORB_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR * screenDensity).toInt()
+    
+    /**
+     * 边缘吸附时的动画尺寸 (整数值)
+     */
+    val edgeAnimationSizeInt: Int
+        get() = (BASE_ANIMATION_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR).toInt()
     
     /**
      * 拖拽相关配置
