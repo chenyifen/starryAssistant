@@ -22,4 +22,5 @@ message UserSettings {
     WakeDevice wake_device = 8;
     SttPlaySound stt_play_sound = 9;
     TwoPassSettings two_pass_settings = 10;
+    bool performance_monitor_enabled = 11;
 }

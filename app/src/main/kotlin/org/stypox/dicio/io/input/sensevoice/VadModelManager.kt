@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.k2fsa.sherpa.onnx.*
 import org.stypox.dicio.util.PermissionHelper
+import org.stypox.dicio.util.ModelPathManager
 import java.io.File
 
 /**
@@ -15,9 +16,13 @@ object VadModelManager {
     private const val TAG = "VadModelManager"
     
     // VAD模型路径配置
-    private const val EXTERNAL_VAD_DIR = "/storage/emulated/0/Dicio/models/vad"  // main渠道
     private const val ASSETS_VAD_PATH = "models/vad"                            // withModels渠道
     private const val VAD_MODEL_FILE = "silero_vad.onnx"
+    
+    // 获取外部存储VAD路径（使用 ModelPathManager）
+    private fun getExternalVadDir(context: Context): String {
+        return ModelPathManager.getExternalVadModelsPath(context)
+    }
     
     /**
      * VAD模型路径信息
@@ -77,7 +82,8 @@ object VadModelManager {
             
             // main渠道或Assets失败：检查外部存储
             if (PermissionHelper.hasExternalStoragePermission(context)) {
-                val externalModelFile = File(EXTERNAL_VAD_DIR, VAD_MODEL_FILE)
+                val externalVadDir = getExternalVadDir(context)
+                val externalModelFile = File(externalVadDir, VAD_MODEL_FILE)
                 if (externalModelFile.exists()) {
                     Log.d(TAG, "✅ 使用外部存储VAD模型: ${externalModelFile.absolutePath}")
                     return VadModelPaths(

@@ -15,6 +15,7 @@ import org.stypox.dicio.util.AudioDebugSaver
 import org.stypox.dicio.util.measureTimeAndLog
 import org.stypox.dicio.util.ModelVariantDetector
 import org.stypox.dicio.util.PermissionHelper
+import org.stypox.dicio.util.ModelPathManager
 import com.k2fsa.sherpa.onnx.KeywordSpotter
 import com.k2fsa.sherpa.onnx.KeywordSpotterConfig
 import com.k2fsa.sherpa.onnx.OnlineModelConfig
@@ -48,38 +49,48 @@ class SherpaOnnxWakeDevice(
     private suspend fun initialize() {
         _state.value = WakeState.Loading
         try {
-            // 根据构建变体决定模型加载策略
-            val useAssetManager = ModelVariantDetector.shouldUseAssetManager(appContext)
+            // 优先检查 assets 中是否有模型文件
+            val hasAssetsModels = checkAssetsModelsAvailable()
+            val useAssetManager = hasAssetsModels || ModelVariantDetector.shouldUseAssetManager(appContext)
             val variantName = ModelVariantDetector.getVariantName(appContext)
-            val modelInfo = ModelVariantDetector.getSherpaKwsModelInfo(appContext)
             
             DebugLogger.logModelManagement(TAG, "🏷️ 当前构建变体: $variantName")
-            DebugLogger.logModelManagement(TAG, "📂 模型信息: ${modelInfo.message}")
+            DebugLogger.logModelManagement(TAG, "📦 Assets 中有模型: $hasAssetsModels")
             DebugLogger.logModelManagement(TAG, "📦 使用 AssetManager: $useAssetManager")
 
             val config = createKwsConfig(useAssetManager)
             keywordSpotter = measureTimeAndLog(TAG, "Load SherpaOnnx KWS model") {
                 if (useAssetManager) {
-                    // 使用 AssetManager 方式（withModels 变体）
+                    // 使用 AssetManager 方式（优先使用 assets 中的模型）
+                    DebugLogger.logModelManagement(TAG, "🎯 使用 Assets 中的 SherpaOnnx KWS 模型")
                     KeywordSpotter(
                         assetManager = appContext.assets,
                         config = config
                     )
                 } else {
-                    // 使用文件系统路径方式（noModels 变体）
-                    // 首先检查权限
-                    if (!PermissionHelper.hasExternalStoragePermission(appContext)) {
-                        _state.value = WakeState.NotDownloaded
-                        DebugLogger.logWakeWordError(TAG, "❌ 缺少外部存储权限，无法访问模型文件")
-                        DebugLogger.logWakeWordError(TAG, "💡 请在应用设置中授予存储权限")
-                        return
-                    }
+                    // 使用文件系统路径方式（回退方案）
+                    DebugLogger.logModelManagement(TAG, "🔄 回退到外部存储模型文件")
+                    
+                    // 显示路径状态信息
+                    val pathStatus = ModelPathManager.getAllPathsStatus(appContext)
+                    DebugLogger.logModelManagement(TAG, pathStatus)
+                    
+                    // 获取最佳外部存储路径
+                    val externalModelPath = ModelPathManager.getExternalKwsModelsPath(appContext)
+                    DebugLogger.logModelManagement(TAG, "🎯 选择的外部存储路径: $externalModelPath")
                     
                     // 检查模型文件是否可访问
-                    if (!PermissionHelper.checkSherpaModelFilesAccess()) {
+                    if (!checkSherpaModelFilesAccess(externalModelPath)) {
                         _state.value = WakeState.NotDownloaded
                         DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx KWS 模型文件不可访问")
-                        DebugLogger.logWakeWordError(TAG, "💡 请确保模型文件已正确推送到: /storage/emulated/0/Dicio/models/sherpa_onnx_kws/")
+                        DebugLogger.logWakeWordError(TAG, "💡 当前尝试路径: $externalModelPath")
+                        
+                        // 显示推荐的推送命令
+                        val pushCommands = ModelPathManager.getModelPushCommands(appContext)
+                        DebugLogger.logModelManagement(TAG, "📋 推荐的模型推送命令:")
+                        pushCommands.forEach { cmd ->
+                            DebugLogger.logModelManagement(TAG, cmd)
+                        }
                         return
                     }
                     
@@ -100,6 +111,44 @@ class SherpaOnnxWakeDevice(
         } catch (e: Exception) {
             _state.value = WakeState.ErrorLoading(e)
             DebugLogger.logWakeWordError(TAG, "❌ Error initializing SherpaOnnxWakeDevice: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 检查 assets 中是否有 SherpaOnnx KWS 模型文件
+     */
+    private fun checkAssetsModelsAvailable(): Boolean {
+        val requiredFiles = listOf(
+            "models/sherpa_onnx_kws/encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "models/sherpa_onnx_kws/decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "models/sherpa_onnx_kws/joiner-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "models/sherpa_onnx_kws/keywords.txt",
+            "models/sherpa_onnx_kws/tokens.txt"
+        )
+        
+        return try {
+            val allFilesExist = requiredFiles.all { fileName ->
+                try {
+                    appContext.assets.open(fileName).use { 
+                        DebugLogger.logModelManagement(TAG, "✅ Assets 文件存在: $fileName")
+                        true 
+                    }
+                } catch (e: Exception) {
+                    DebugLogger.logModelManagement(TAG, "❌ Assets 文件缺失: $fileName")
+                    false
+                }
+            }
+            
+            if (allFilesExist) {
+                DebugLogger.logModelManagement(TAG, "🎉 Assets 中所有 SherpaOnnx KWS 模型文件都可用")
+            } else {
+                DebugLogger.logModelManagement(TAG, "⚠️ Assets 中缺少部分 SherpaOnnx KWS 模型文件")
+            }
+            
+            allFilesExist
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ 检查 Assets 模型文件失败: ${e.message}")
+            false
         }
     }
 
@@ -130,7 +179,7 @@ class SherpaOnnxWakeDevice(
             )
         } else {
             // 使用文件系统路径方式（noModels 变体）
-            val externalModelPath = "/storage/emulated/0/Dicio/models/sherpa_onnx_kws"
+            val externalModelPath = ModelPathManager.getExternalKwsModelsPath(appContext)
             KeywordSpotterConfig(
                 featConfig = FeatureConfig(
                     sampleRate = 16000,
@@ -157,13 +206,16 @@ class SherpaOnnxWakeDevice(
     }
 
     override fun download() {
-        // SherpaOnnx 模型"下载"逻辑 - 实际上是从assets复制到外部存储
+        // SherpaOnnx 模型"下载"逻辑 - 优先使用 assets，回退到外部存储
         if (_state.value == WakeState.NotDownloaded || _state.value is WakeState.ErrorLoading) {
             scope.launch {
-                val useAssetManager = ModelVariantDetector.shouldUseAssetManager(appContext)
-                if (!useAssetManager) {
-                    // noModels变体：检查权限并提示用户
-                    DebugLogger.logModelManagement(TAG, "🔄 尝试为noModels变体设置SherpaOnnx模型...")
+                val hasAssetsModels = checkAssetsModelsAvailable()
+                
+                if (hasAssetsModels) {
+                    DebugLogger.logModelManagement(TAG, "🎯 检测到 Assets 中有模型文件，直接使用")
+                    initialize()
+                } else {
+                    DebugLogger.logModelManagement(TAG, "🔄 Assets 中无模型文件，尝试使用外部存储...")
                     
                     // 检查权限
                     if (!PermissionHelper.hasExternalStoragePermission(appContext)) {
@@ -174,8 +226,8 @@ class SherpaOnnxWakeDevice(
                     }
                     
                     copyModelsForNoModelsVariant()
+                    initialize()
                 }
-                initialize()
             }
         } else {
             DebugLogger.logModelManagement(TAG, "SherpaOnnx models already available or loading.")
@@ -184,7 +236,7 @@ class SherpaOnnxWakeDevice(
     
     private suspend fun copyModelsForNoModelsVariant() {
         try {
-            val externalModelPath = "/storage/emulated/0/Dicio/models/sherpa_onnx_kws"
+            val externalModelPath = ModelPathManager.getExternalKwsModelsPath(appContext)
             val externalDir = java.io.File(externalModelPath)
             
             // 创建外部目录
@@ -193,14 +245,43 @@ class SherpaOnnxWakeDevice(
                 DebugLogger.logModelManagement(TAG, "📁 创建外部模型目录: $externalModelPath")
             }
             
-            // 提示用户手动推送模型文件
+            // 显示推荐的推送命令
+            val pushCommands = ModelPathManager.getModelPushCommands(appContext)
             DebugLogger.logModelManagement(TAG, "⚠️ noModels变体需要手动推送模型文件")
-            DebugLogger.logModelManagement(TAG, "📋 请运行以下命令推送模型:")
-            DebugLogger.logModelManagement(TAG, "adb shell mkdir -p $externalModelPath")
-            DebugLogger.logModelManagement(TAG, "adb push app/src/withModels/assets/models/sherpa_onnx_kws/* $externalModelPath/")
+            pushCommands.forEach { cmd ->
+                DebugLogger.logModelManagement(TAG, cmd)
+            }
             
         } catch (e: Exception) {
             DebugLogger.logWakeWordError(TAG, "❌ 设置外部模型目录失败: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 检查SherpaOnnx模型文件是否可访问
+     */
+    private fun checkSherpaModelFilesAccess(modelBasePath: String): Boolean {
+        val requiredFiles = listOf(
+            "encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "decoder-epoch-12-avg-2-chunk-16-left-64.onnx", 
+            "joiner-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "keywords.txt",
+            "tokens.txt"
+        )
+        
+        return try {
+            requiredFiles.all { fileName ->
+                val file = File(modelBasePath, fileName)
+                val exists = file.exists()
+                val canRead = file.canRead()
+                
+                DebugLogger.logModelManagement(TAG, "📄 检查文件: $fileName - 存在:${if (exists) "✅" else "❌"} 可读:${if (canRead) "✅" else "❌"}")
+                
+                exists && canRead
+            }
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ 检查模型文件失败: ${e.message}")
+            false
         }
     }
 

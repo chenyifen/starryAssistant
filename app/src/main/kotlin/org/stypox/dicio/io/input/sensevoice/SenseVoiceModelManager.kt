@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.stypox.dicio.util.AssetModelManager
 import org.stypox.dicio.util.DebugLogger
+import org.stypox.dicio.util.ModelPathManager
 import java.io.File
 
 /**
@@ -22,7 +23,11 @@ object SenseVoiceModelManager {
     
     // 模型目录路径
     private const val ASSETS_MODEL_PATH = "models/asr/sensevoice"
-    private const val EXTERNAL_MODEL_PATH = "/storage/emulated/0/Dicio/models/asr/sensevoice"
+    
+    // 获取外部存储路径（使用 ModelPathManager）
+    private fun getExternalModelPath(context: Context): String {
+        return ModelPathManager.getExternalSenseVoiceModelsPath(context)
+    }
     
     data class SenseVoiceModelPaths(
         val modelPath: String,
@@ -54,7 +59,7 @@ object SenseVoiceModelManager {
         return withContext(Dispatchers.IO) {
             try {
                 // 1. 检查外部存储 (noModel渠道)
-                val externalPaths = checkExternalStorage()
+                val externalPaths = checkExternalStorage(context)
                 if (externalPaths != null) {
                     DebugLogger.logModelManagement(TAG, "✅ 使用外部存储SenseVoice模型: ${externalPaths.modelPath}")
                     return@withContext externalPaths
@@ -79,11 +84,12 @@ object SenseVoiceModelManager {
     /**
      * 检查外部存储中的模型
      */
-    private fun checkExternalStorage(): SenseVoiceModelPaths? {
+    private fun checkExternalStorage(context: Context): SenseVoiceModelPaths? {
         try {
-            val externalDir = File(EXTERNAL_MODEL_PATH)
+            val externalModelPath = getExternalModelPath(context)
+            val externalDir = File(externalModelPath)
             if (!externalDir.exists() || !externalDir.isDirectory) {
-                DebugLogger.logModelManagement(TAG, "外部存储目录不存在: $EXTERNAL_MODEL_PATH")
+                DebugLogger.logModelManagement(TAG, "外部存储目录不存在: $externalModelPath")
                 return null
             }
             

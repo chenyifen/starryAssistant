@@ -122,9 +122,10 @@ class SherpaOnnxTtsSpeechDevice(
                             
                             // 根据demo代码，当有dictDir时自动设置ruleFsts
                             if (modelConfig.ruleFsts.isEmpty()) {
-                                // 使用正确的Dicio路径而不是应用专用目录
-                                val dicioModelPath = "/storage/emulated/0/Dicio/models/tts/${modelConfig.modelDir.substringAfterLast("/")}"
-                                processedRuleFsts = "$dicioModelPath/phone.fst,$dicioModelPath/date.fst,$dicioModelPath/number.fst"
+                                // 使用 ModelPathManager 获取正确的 TTS 路径
+                                val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
+                                val modelDirName = modelConfig.modelDir.substringAfterLast("/")
+                                processedRuleFsts = "$ttsBasePath/$modelDirName/phone.fst,$ttsBasePath/$modelDirName/date.fst,$ttsBasePath/$modelDirName/number.fst"
                             }
                         } else {
                             Log.d(TAG, "  📚 字典目录不存在，开始复制: ${modelConfig.dictDir}")
@@ -134,9 +135,10 @@ class SherpaOnnxTtsSpeechDevice(
                             
                             // 根据demo代码，当有dictDir时自动设置ruleFsts
                             if (modelConfig.ruleFsts.isEmpty()) {
-                                // 使用正确的Dicio路径而不是应用专用目录
-                                val dicioModelPath = "/storage/emulated/0/Dicio/models/tts/${modelConfig.modelDir.substringAfterLast("/")}"
-                                processedRuleFsts = "$dicioModelPath/phone.fst,$dicioModelPath/date.fst,$dicioModelPath/number.fst"
+                                // 使用 ModelPathManager 获取正确的 TTS 路径
+                                val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
+                                val modelDirName = modelConfig.modelDir.substringAfterLast("/")
+                                processedRuleFsts = "$ttsBasePath/$modelDirName/phone.fst,$ttsBasePath/$modelDirName/date.fst,$ttsBasePath/$modelDirName/number.fst"
                             }
                             Log.d(TAG, "  📚 字典目录已复制: $processedDictDir")
                         }
@@ -149,8 +151,10 @@ class SherpaOnnxTtsSpeechDevice(
                 val processedModelDir = if (modelConfig.useAssets) {
                     modelConfig.modelDir // assets路径保持不变
                 } else {
-                    // 外部存储：使用正确的Dicio路径
-                    "/storage/emulated/0/Dicio/models/tts/${modelConfig.modelDir.substringAfterLast("/")}"
+                    // 外部存储：使用 ModelPathManager 获取正确的 TTS 路径
+                    val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
+                    val modelDirName = modelConfig.modelDir.substringAfterLast("/")
+                    "$ttsBasePath/$modelDirName"
                 }
                 val config = getOfflineTtsConfig(
                     modelDir = processedModelDir,

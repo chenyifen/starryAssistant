@@ -35,6 +35,10 @@ import org.stypox.dicio.ui.floating.components.LottieAnimationTexts
 import org.stypox.dicio.ui.floating.state.VoiceAssistantFullState
 import org.stypox.dicio.ui.floating.state.VoiceAssistantStateProvider
 import org.stypox.dicio.util.DebugLogger
+import org.stypox.dicio.settings.datastore.UserSettings
+import androidx.datastore.core.DataStore
+import kotlinx.coroutines.flow.collectLatest
+import org.stypox.dicio.BuildConfig
 import javax.inject.Inject
 
 /**
@@ -73,6 +77,7 @@ class EnhancedFloatingWindowService : Service(),
     @Inject lateinit var wakeDeviceWrapper: WakeDeviceWrapper
     @Inject lateinit var skillEvaluator: SkillEvaluator
     @Inject lateinit var voiceAssistantStateProvider: VoiceAssistantStateProvider
+    @Inject lateinit var dataStore: DataStore<UserSettings>
     
     // 生命周期管理
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -121,6 +126,9 @@ class EnhancedFloatingWindowService : Service(),
         
         // 显示悬浮球
         showFloatingOrb()
+        
+        // 监听设置变化
+        observeSettings()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -314,6 +322,22 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     // handleSkillEvaluatorState 方法已移除，现在完全由VoiceAssistantStateProvider统一处理
+    
+    /**
+     * 监听设置变化
+     */
+    private fun observeSettings() {
+        serviceScope.launch {
+            dataStore.data.collectLatest { settings ->
+                // 更新性能监控显示状态
+                // 在调试模式下自动开启，或者根据用户设置
+                val performanceMonitorEnabled = BuildConfig.DEBUG || settings.performanceMonitorEnabled
+                floatingOrb?.updatePerformanceMonitorState(performanceMonitorEnabled)
+                
+                DebugLogger.logUI(TAG, "⚙️ Settings updated: performanceMonitor=$performanceMonitorEnabled (debug=${BuildConfig.DEBUG}, userSetting=${settings.performanceMonitorEnabled})")
+            }
+        }
+    }
     
     companion object {
         /**
