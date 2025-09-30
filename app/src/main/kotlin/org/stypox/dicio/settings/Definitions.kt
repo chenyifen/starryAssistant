@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.PictureInPictureAlt
 import androidx.compose.material.icons.filled.SpeakerPhone
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
+import org.stypox.dicio.BuildConfig
 import org.stypox.dicio.R
 import org.stypox.dicio.settings.datastore.InputDevice
 import org.stypox.dicio.settings.datastore.Language
@@ -107,7 +108,7 @@ fun performanceMonitor() = BooleanSetting(
     title = "性能监控",
     icon = Icons.Default.Speed,
     descriptionOff = "关闭性能监控显示",
-    descriptionOn = "显示CPU、内存等性能指标",
+    descriptionOn = if (BuildConfig.DEBUG) "显示商用级性能指标和告警" else "显示CPU、内存等性能指标",
 )
 
 @Composable

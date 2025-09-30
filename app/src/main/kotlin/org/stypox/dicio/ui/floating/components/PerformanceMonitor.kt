@@ -73,7 +73,7 @@ class PerformanceMonitorManager(private val context: Context) {
     fun markStartupComplete() {
         if (startupEndTime == null) {
             startupEndTime = SystemClock.elapsedRealtime()
-            DebugLogger.logPerformance(TAG, "🚀 Startup completed in ${getStartupTime()}ms")
+            DebugLogger.logPerformance(TAG, "🚀 Startup completed", getStartupTime())
         }
     }
     
@@ -126,7 +126,7 @@ class PerformanceMonitorManager(private val context: Context) {
                 0f
             }
         } catch (e: Exception) {
-            DebugLogger.logError(TAG, "Failed to get CPU usage", e)
+            DebugLogger.logDebug(TAG, "Failed to get CPU usage: ${e.message}")
             0f
         }
     }
@@ -143,7 +143,7 @@ class PerformanceMonitorManager(private val context: Context) {
             val pssMemory = memoryInfo.totalPss
             pssMemory / 1024L // 转换为MB
         } catch (e: Exception) {
-            DebugLogger.logError(TAG, "Failed to get memory usage", e)
+            DebugLogger.logDebug(TAG, "Failed to get memory usage: ${e.message}")
             0L
         }
     }
@@ -157,7 +157,7 @@ class PerformanceMonitorManager(private val context: Context) {
             activityManager.getMemoryInfo(memoryInfo)
             memoryInfo.totalMem / (1024 * 1024) // 转换为MB
         } catch (e: Exception) {
-            DebugLogger.logError(TAG, "Failed to get total memory", e)
+            DebugLogger.logDebug(TAG, "Failed to get total memory: ${e.message}")
             0L
         }
     }
