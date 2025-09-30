@@ -121,6 +121,12 @@ private fun MainSettingsScreen(
             }
         }
         item {
+            performanceMonitor().Render(
+                settings.performanceMonitorEnabled,
+                viewModel::setPerformanceMonitorEnabled
+            )
+        }
+        item {
             SettingsItem(
                 title = stringResource(R.string.pref_skills_title),
                 icon = Icons.Default.Extension,

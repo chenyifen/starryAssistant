@@ -17,7 +17,14 @@ object ModelPathManager {
     
     // 基础路径配置
     private const val MODELS_BASE_DIR = "models"
-    private const val LEGACY_BASE_PATH = "/storage/emulated/0/Dicio/models"
+    
+    // 多个候选路径（按优先级排序）
+    private val CANDIDATE_BASE_PATHS = listOf(
+        "/sdcard/Dicio/models",                    // 1. 现有的 Dicio 目录（最高优先级）
+        "/sdcard/Android/data/org.stypox.dicio.master/files/models", // 2. 应用专用外部存储
+        "/storage/emulated/0/Dicio/models",        // 3. 传统路径（兼容性）
+        "/sdcard/models"                           // 4. 简化路径
+    )
     
     // 各类型模型的子目录
     private const val VOSK_SUBDIR = "vosk"
@@ -25,22 +32,136 @@ object ModelPathManager {
     private const val SENSEVOICE_SUBDIR = "asr/sensevoice"
     private const val KWS_SUBDIR = "sherpa_onnx_kws"
     private const val OPENWAKEWORD_SUBDIR = "openWakeWord"
+    private const val VAD_SUBDIR = "vad"
     
     /**
-     * 获取应用外部模型存储基础路径
-     * 优先使用应用外部文件目录（Android兼容），回退到传统路径
+     * 智能选择最佳的外部模型存储基础路径
+     * 统一处理所有候选路径，优先使用已有模型文件的路径
      */
     private fun getExternalModelsBasePath(context: Context): String {
-        // 优先使用应用外部文件目录（Android兼容，无需特殊权限）
+        // 构建完整的候选路径列表（包括应用专用外部存储）
+        val allCandidatePaths = mutableListOf<String>()
+        
+        // 添加静态候选路径
+        allCandidatePaths.addAll(CANDIDATE_BASE_PATHS)
+        
+        // 添加应用专用外部存储路径
         val appExternalDir = context.getExternalFilesDir(MODELS_BASE_DIR)
         if (appExternalDir != null) {
-            Log.d(TAG, "使用应用外部文件目录: ${appExternalDir.absolutePath}")
-            return appExternalDir.absolutePath
+            allCandidatePaths.add(appExternalDir.absolutePath)
         }
         
-        // 备用：传统路径（需要MANAGE_EXTERNAL_STORAGE权限）
-        Log.w(TAG, "回退到传统外部存储路径: $LEGACY_BASE_PATH")
-        return LEGACY_BASE_PATH
+        // 第一轮：优先选择已有模型文件的路径
+        for (candidatePath in allCandidatePaths) {
+            if (testPathAccessibility(candidatePath) && hasExistingModels(candidatePath)) {
+                Log.d(TAG, "✅ 选择已有模型路径: $candidatePath")
+                return candidatePath
+            }
+        }
+        
+        // 第二轮：选择第一个可用的路径（用于创建新模型目录）
+        for (candidatePath in allCandidatePaths) {
+            if (testPathAccessibility(candidatePath)) {
+                Log.d(TAG, "✅ 选择可用路径: $candidatePath")
+                return candidatePath
+            } else {
+                Log.d(TAG, "❌ 路径不可用: $candidatePath")
+            }
+        }
+        
+        // 如果所有路径都不可用，返回第一个候选路径（让应用尝试创建）
+        val fallbackPath = CANDIDATE_BASE_PATHS.first()
+        Log.w(TAG, "⚠️ 所有路径都不可用，回退到: $fallbackPath")
+        return fallbackPath
+    }
+    
+    /**
+     * 检查路径中是否已有模型文件
+     */
+    private fun hasExistingModels(basePath: String): Boolean {
+        return try {
+            val baseDir = java.io.File(basePath)
+            if (!baseDir.exists() || !baseDir.isDirectory) {
+                return false
+            }
+            
+            // 检查各种模型子目录是否存在且有文件
+            val modelSubdirs = listOf(
+                SENSEVOICE_SUBDIR,
+                KWS_SUBDIR,
+                TTS_SUBDIR,
+                VOSK_SUBDIR,
+                OPENWAKEWORD_SUBDIR,
+                VAD_SUBDIR
+            )
+            
+            for (subdir in modelSubdirs) {
+                val modelDir = java.io.File(baseDir, subdir)
+                if (modelDir.exists() && modelDir.isDirectory) {
+                    val files = modelDir.listFiles()
+                    if (files != null && files.isNotEmpty()) {
+                        // 过滤掉隐藏文件和系统文件
+                        val modelFiles = files.filter { file ->
+                            !file.name.startsWith(".") && 
+                            file.isFile && 
+                            file.length() > 0 &&
+                            (file.name.endsWith(".onnx") || 
+                             file.name.endsWith(".txt") || 
+                             file.name.endsWith(".json") ||
+                             file.name.endsWith(".bin"))
+                        }
+                        if (modelFiles.isNotEmpty()) {
+                            Log.d(TAG, "✅ 发现已有模型文件: $basePath/$subdir (${modelFiles.size}个文件)")
+                            return true
+                        }
+                    }
+                }
+            }
+            
+            Log.d(TAG, "❌ 路径中无模型文件: $basePath")
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "检查已有模型失败 $basePath: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * 测试路径的可访问性
+     */
+    private fun testPathAccessibility(path: String): Boolean {
+        return try {
+            val dir = java.io.File(path)
+            val exists = dir.exists()
+            val isDirectory = dir.isDirectory
+            
+            Log.d(TAG, "路径信息 $path: exists=$exists, isDirectory=$isDirectory")
+            
+            // 如果目录存在，就认为可用（简化权限检查）
+            if (exists && isDirectory) {
+                Log.d(TAG, "✅ 路径可用 $path: 目录存在")
+                return true
+            }
+            
+            // 如果目录不存在，尝试创建
+            if (!exists) {
+                val created = dir.mkdirs()
+                if (created) {
+                    Log.d(TAG, "✅ 路径可用 $path: 成功创建目录")
+                    return true
+                } else {
+                    Log.d(TAG, "❌ 路径不可用 $path: 无法创建目录")
+                    return false
+                }
+            }
+            
+            // 路径存在但不是目录
+            Log.d(TAG, "❌ 路径不可用 $path: 存在但不是目录")
+            false
+        } catch (e: Exception) {
+            Log.w(TAG, "测试路径 $path 失败: ${e.message}")
+            false
+        }
     }
     
     /**
@@ -79,6 +200,13 @@ object ModelPathManager {
     }
     
     /**
+     * 获取VAD模型外部存储路径
+     */
+    fun getExternalVadModelsPath(context: Context): String {
+        return "${getExternalModelsBasePath(context)}/$VAD_SUBDIR"
+    }
+    
+    /**
      * 获取所有模型类型的外部存储路径
      */
     fun getAllExternalModelsPaths(context: Context): Map<String, String> {
@@ -87,7 +215,8 @@ object ModelPathManager {
             "tts" to getExternalTtsModelsPath(context),
             "sensevoice" to getExternalSenseVoiceModelsPath(context),
             "kws" to getExternalKwsModelsPath(context),
-            "openwakeword" to getExternalOpenWakeWordModelsPath(context)
+            "openwakeword" to getExternalOpenWakeWordModelsPath(context),
+            "vad" to getExternalVadModelsPath(context)
         )
     }
     
@@ -143,39 +272,95 @@ object ModelPathManager {
     }
     
     /**
-     * 获取路径状态信息（用于调试）
+     * 获取所有候选路径的状态信息（用于调试和故障排除）
      */
-    fun getPathStatus(context: Context): String {
-        val basePath = getExternalModelsBasePath(context)
-        val isAvailable = isExternalStorageAvailable(context)
-        val paths = getAllExternalModelsPaths(context)
-        
+    fun getAllPathsStatus(context: Context): String {
         val status = StringBuilder()
-        status.append("ModelPathManager状态:\n")
-        status.append("  基础路径: $basePath\n")
-        status.append("  存储可用: $isAvailable\n")
-        status.append("  模型路径:\n")
+        status.append("📊 ModelPathManager 路径状态报告:\n")
+        status.append("=".repeat(50) + "\n")
         
+        // 应用外部文件目录
+        val appExternalDir = context.getExternalFilesDir(MODELS_BASE_DIR)
+        if (appExternalDir != null) {
+            val accessible = testPathAccessibility(appExternalDir.absolutePath)
+            status.append("🏠 应用外部文件目录: ${if (accessible) "✅" else "❌"}\n")
+            status.append("   路径: ${appExternalDir.absolutePath}\n")
+        } else {
+            status.append("🏠 应用外部文件目录: ❌ 不可用\n")
+        }
+        
+        // 候选路径
+        status.append("\n📁 候选外部存储路径:\n")
+        CANDIDATE_BASE_PATHS.forEachIndexed { index, path ->
+            val accessible = testPathAccessibility(path)
+            status.append("   ${index + 1}. ${if (accessible) "✅" else "❌"} $path\n")
+        }
+        
+        // 当前选择的路径
+        val selectedPath = getExternalModelsBasePath(context)
+        status.append("\n🎯 当前选择路径: $selectedPath\n")
+        
+        // 各模型类型的具体路径
+        status.append("\n🗂️ 模型类型路径:\n")
+        val paths = getAllExternalModelsPaths(context)
         for ((type, path) in paths) {
             val dir = java.io.File(path)
             val exists = dir.exists()
             val canRead = if (exists) dir.canRead() else false
             val canWrite = if (exists) dir.canWrite() else false
             
-            status.append("    $type: $path\n")
-            status.append("      存在: $exists, 可读: $canRead, 可写: $canWrite\n")
+            status.append("   $type: ${if (exists && canRead && canWrite) "✅" else "❌"}\n")
+            status.append("     路径: $path\n")
+            status.append("     状态: 存在=$exists, 可读=$canRead, 可写=$canWrite\n")
         }
         
         return status.toString()
     }
     
+    /**
+     * 获取当前路径状态信息（简化版）
+     */
+    fun getPathStatus(context: Context): String {
+        val basePath = getExternalModelsBasePath(context)
+        val isAvailable = isExternalStorageAvailable(context)
+        
+        return "当前模型路径: $basePath (可用: $isAvailable)"
+    }
+    
+    /**
+     * 强制重新选择最佳路径（用于路径配置更改后）
+     */
+    fun refreshBestPath(context: Context): String {
+        Log.i(TAG, "🔄 重新选择最佳存储路径...")
+        return getExternalModelsBasePath(context)
+    }
+    
+    /**
+     * 获取推荐的模型推送命令
+     */
+    fun getModelPushCommands(context: Context): List<String> {
+        val basePath = getExternalModelsBasePath(context)
+        val kwsPath = "$basePath/$KWS_SUBDIR"
+        
+        return listOf(
+            "# 📋 SherpaOnnx KWS 模型推送命令",
+            "adb shell mkdir -p \"$kwsPath\"",
+            "adb push app/src/main/assets/models/sherpa_onnx_kws/* \"$kwsPath/\"",
+            "",
+            "# 🔍 验证推送结果",
+            "adb shell ls -la \"$kwsPath/\"",
+            "",
+            "# 📍 当前推荐路径: $kwsPath"
+        )
+    }
+    
     // 向后兼容的传统路径方法（已废弃，建议使用上面的新方法）
     @Deprecated("使用 getExternalVoskModelsPath(context) 替代")
-    fun getLegacyVoskPath(): String = "$LEGACY_BASE_PATH/$VOSK_SUBDIR"
+    fun getLegacyVoskPath(): String = "${CANDIDATE_BASE_PATHS[2]}/$VOSK_SUBDIR"
     
     @Deprecated("使用 getExternalTtsModelsPath(context) 替代")
-    fun getLegacyTtsPath(): String = "$LEGACY_BASE_PATH/$TTS_SUBDIR"
+    fun getLegacyTtsPath(): String = "${CANDIDATE_BASE_PATHS[2]}/$TTS_SUBDIR"
     
     @Deprecated("使用 getExternalKwsModelsPath(context) 替代")  
-    fun getLegacyKwsPath(): String = "$LEGACY_BASE_PATH/$KWS_SUBDIR"
+    fun getLegacyKwsPath(): String = "${CANDIDATE_BASE_PATHS[2]}/$KWS_SUBDIR"
 }

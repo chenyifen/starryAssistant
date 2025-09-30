@@ -2,6 +2,7 @@ package org.stypox.dicio.io.speech
 
 import android.content.Context
 import android.util.Log
+import org.stypox.dicio.util.ModelPathManager
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -14,31 +15,9 @@ import java.util.Locale
 object TtsModelManager {
     private const val TAG = "TtsModelManager"
     
-    // 根据构建变体选择TTS模型路径
+    // 使用 ModelPathManager 获取 TTS 模型路径
     private fun getExternalTtsModelsPathInternal(context: Context): String {
-        // 优先使用传统Dicio路径（所有变体统一）
-        val dicioPath = "/storage/emulated/0/Dicio/models/tts"
-        Log.d(TAG, "✅ 使用统一Dicio路径: $dicioPath")
-        
-        // 检查Dicio路径是否存在
-        val dicioDir = File(dicioPath)
-        if (dicioDir.exists()) {
-            Log.d(TAG, "📁 Dicio路径存在，使用: $dicioPath")
-            return dicioPath
-        }
-        
-        // 如果Dicio路径不存在，withModels变体可以回退到应用专用目录
-        val buildVariant = context.packageName.contains("withModels")
-        if (buildVariant) {
-            val appExternalDir = context.getExternalFilesDir("models/tts")
-            if (appExternalDir != null) {
-                Log.d(TAG, "⚠️ Dicio路径不存在，withModels变体回退到应用专用目录: ${appExternalDir.absolutePath}")
-                return appExternalDir.absolutePath
-            }
-        }
-        
-        Log.d(TAG, "⚠️ 所有路径都不存在，返回默认Dicio路径: $dicioPath")
-        return dicioPath
+        return ModelPathManager.getExternalTtsModelsPath(context)
     }
     
     // Assets中的TTS模型路径

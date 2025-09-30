@@ -13,6 +13,7 @@ import org.stypox.dicio.io.wake.WakeDevice
 import org.stypox.dicio.io.wake.WakeState
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.measureTimeAndLog
+import org.stypox.dicio.util.ModelPathManager
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -66,7 +67,7 @@ class HiNudgeOpenWakeWordDevice(
     private val wakeFile = File(hiNudgeFolder, "hey_nugget_new.onnx")
     
     // 外部存储路径（优先级最高）
-    private val externalModelDir = File("/storage/emulated/0/Dicio/models/openWakeWord")
+    private val externalModelDir = File(ModelPathManager.getExternalOpenWakeWordModelsPath(appContext))
     
     // ONNX Runtime 组件
     private var modelRunner: ONNXModelRunner? = null

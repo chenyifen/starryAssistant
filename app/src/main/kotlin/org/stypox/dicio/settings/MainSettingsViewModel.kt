@@ -73,4 +73,6 @@ class MainSettingsViewModel @Inject constructor(
         updateData { it.setSttPlaySound(value) }
     fun setAutoFinishSttPopup(value: Boolean) =
         updateData { it.setAutoFinishSttPopup(value) }
+    fun setPerformanceMonitorEnabled(value: Boolean) =
+        updateData { it.setPerformanceMonitorEnabled(value) }
 }
