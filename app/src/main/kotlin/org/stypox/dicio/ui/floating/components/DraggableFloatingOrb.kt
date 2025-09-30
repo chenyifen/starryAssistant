@@ -42,6 +42,7 @@ import org.stypox.dicio.ui.floating.state.VoiceAssistantFullState
 import org.stypox.dicio.ui.floating.state.VoiceAssistantStateProvider
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.ui.floating.components.PerformanceMonitorDisplay
+import org.stypox.dicio.ui.floating.components.LightweightPerformanceMonitorDisplay
 
 /**
  * 可拖动的悬浮球组件
@@ -658,9 +659,9 @@ private fun FloatingOrbContent(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 性能监控显示 - 在悬浮球上方
+        // 性能监控显示 - 在悬浮球上方（使用轻量级监控避免ANR）
         if (showPerformanceMonitor && !isAtEdge) {
-            PerformanceMonitorDisplay(
+            LightweightPerformanceMonitorDisplay(
                 isVisible = true,
                 modifier = Modifier.padding(bottom = 4.dp)
             )
