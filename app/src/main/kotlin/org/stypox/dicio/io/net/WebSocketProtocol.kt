@@ -87,7 +87,7 @@ class WebSocketProtocol(
             Log.d(TAG, "正在连接到 WebSocket 服务器: $serverUrl")
 
             // 建立 WebSocket 连接
-            webSocket = okHttpClient.newWebSocket(request, WebSocketListener())
+            webSocket = okHttpClient.newWebSocket(request, InternalWebSocketListener())
 
             // 发送 hello 消息
             val helloMessage = JSONObject().apply {
@@ -178,7 +178,7 @@ class WebSocketProtocol(
     /**
      * WebSocket 监听器
      */
-    private inner class WebSocketListener : WebSocketListener() {
+    private inner class InternalWebSocketListener : okhttp3.WebSocketListener() {
         
         override fun onOpen(webSocket: WebSocket, response: Response) {
             Log.d(TAG, "WebSocket 连接已建立")
