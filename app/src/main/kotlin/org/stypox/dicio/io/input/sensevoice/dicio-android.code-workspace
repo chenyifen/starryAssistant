@@ -7,10 +7,10 @@
 			"path": "../../../../../../../../../../../../code/sherpa-onnx/android"
 		},
 		{
-			"path": "../../../../../../../../../../../OpenwakewordforAndroid-main"
+			"path": "../../../../../../../../../../../xiaozhi-esp32-main"
 		},
 		{
-			"path": "../../../../../../../../../../../dicio-android-master"
+			"path": "../../../../../../../../../../../xiaozhi-esp32-server-main"
 		}
 	],
 	"settings": {}

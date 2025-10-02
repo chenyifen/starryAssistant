@@ -30,7 +30,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.stypox.dicio.io.wake.WakeService
-import org.stypox.dicio.ui.floating.FloatingWindowService
 import org.stypox.dicio.ui.floating.EnhancedFloatingWindowService
 import org.stypox.dicio.ui.home.wakeWordPermissions
 import org.stypox.dicio.ui.nav.Navigation
@@ -80,14 +79,8 @@ class MainActivity : BaseActivity() {
                 }
             }
         } else {
-            // 🚫 暂时停用满屏悬浮窗
-            // startFullScreenFloatingWindow()
-            
             // 自动启动悬浮助手（悬浮球）
             startFloatingAssistant()
-            
-            // WakeService现在由EnhancedFloatingWindowService管理，不在MainActivity启动
-            // startWakeService() // 已屏蔽
             
             // 设置Compose内容
             composeSetContent {
@@ -109,29 +102,6 @@ class MainActivity : BaseActivity() {
         }
     }
     
-    /**
-     * 启动WakeService - 已屏蔽，现在由EnhancedFloatingWindowService管理
-     */
-    private fun startWakeService() {
-        DebugLogger.logUI("MainActivity", "🚫 WakeService startup disabled - managed by EnhancedFloatingWindowService")
-        // WakeService现在由悬浮球服务管理，避免冲突
-        /*
-        // 检查录音权限
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            DebugLogger.logUI("MainActivity", "❌ No RECORD_AUDIO permission, cannot start WakeService")
-            return
-        }
-        
-        try {
-            val intent = Intent(this, WakeService::class.java)
-            startService(intent)
-            DebugLogger.logUI("MainActivity", "✅ WakeService started successfully")
-        } catch (e: Exception) {
-            DebugLogger.logUI("MainActivity", "❌ Failed to start WakeService: ${e.message}")
-        }
-        */
-    }
     
     companion object {
         private const val INTENT_BACKOFF_MILLIS = 100L
@@ -153,16 +123,13 @@ class MainActivity : BaseActivity() {
     }
 
     /**
-     * 处理助手意图 - 已屏蔽，现在由悬浮球处理语音助手功能
+     * 处理助手意图 - 由悬浮球处理语音助手功能
      */
     private fun onAssistIntentReceived() {
         val now = Instant.now()
         if (nextAssistAllowed < now) {
             nextAssistAllowed = now.plusMillis(INTENT_BACKOFF_MILLIS)
-            Log.d(TAG, "🚫 Assist intent disabled - voice assistant handled by floating orb")
-            // MainActivity不再处理语音助手功能，完全由悬浮球接管
-            // 🚫 暂时停用满屏悬浮窗
-            // startFullScreenFloatingWindow()
+            Log.d(TAG, "Assist intent handled by floating orb")
         } else {
             Log.w(TAG, "Ignoring duplicate assist intent")
         }
@@ -249,28 +216,6 @@ class MainActivity : BaseActivity() {
             startActivityForResult(intent, REQUEST_OVERLAY_PERMISSION)
         }
     }
-    
-
-    private fun startFullScreenFloatingWindow() {
-        // 🚫 满屏悬浮窗已停用
-        Log.d(TAG, "🚫 满屏悬浮窗功能已停用，只使用悬浮球")
-        return
-        
-        // 检查悬浮窗权限
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (Settings.canDrawOverlays(this)) {
-                Log.d(TAG, "悬浮窗权限已授予，启动满屏悬浮窗")
-                FloatingWindowService.startFullScreen(this)
-            } else {
-                Log.d(TAG, "请求悬浮窗权限")
-                requestOverlayPermission()
-            }
-        } else {
-            // Android 6.0以下版本不需要悬浮窗权限
-            Log.d(TAG, "Android版本低于6.0，直接启动满屏悬浮窗")
-            FloatingWindowService.startFullScreen(this)
-        }
-    }
 
     /**
      * 检查并请求必要的权限
@@ -300,25 +245,6 @@ class MainActivity : BaseActivity() {
         Log.d(TAG, "模型访问权限状态: ${if (hasModelAccess) "已授予" else "缺失"}")
     }
     
-    /**
-     * 启动悬浮窗服务
-     */
-    private fun startFloatingWindowService() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Log.d(TAG, "请求悬浮窗权限")
-                requestOverlayPermission()
-            } else {
-                Log.d(TAG, "🚫 悬浮窗服务已停用")
-                // 🚫 暂时停用满屏悬浮窗
-                // FloatingWindowService.start(this)
-            }
-        } else {
-            // Android 6.0以下直接启动
-            // 🚫 暂时停用满屏悬浮窗
-            // FloatingWindowService.start(this)
-        }
-    }
     
     
     override fun onRequestPermissionsResult(
@@ -332,11 +258,8 @@ class MainActivity : BaseActivity() {
         
         if (result.allGranted) {
             Log.d(TAG, "所有权限已授予: ${result.grantedPermissions}")
-            // 🚫 暂时停用满屏悬浮窗
-            // startFullScreenFloatingWindow()
         } else {
             Log.w(TAG, "部分权限被拒绝: ${result.deniedPermissions}")
-            // 可以显示权限说明对话框
         }
     }
     
@@ -348,8 +271,6 @@ class MainActivity : BaseActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if (Environment.isExternalStorageManager()) {
                         Log.d(TAG, "MANAGE_EXTERNAL_STORAGE权限已授予")
-                        // 🚫 暂时停用满屏悬浮窗
-                        // startFullScreenFloatingWindow()
                     } else {
                         Log.w(TAG, "MANAGE_EXTERNAL_STORAGE权限被拒绝")
                     }
@@ -358,57 +279,25 @@ class MainActivity : BaseActivity() {
             REQUEST_OVERLAY_PERMISSION -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (Settings.canDrawOverlays(this)) {
-                        Log.d(TAG, "悬浮窗权限已授予，但悬浮窗服务已停用")
-                        // 🚫 暂时停用满屏悬浮窗
-                        // FloatingWindowService.start(this)
-                        // 同时启动悬浮球助手
+                        Log.d(TAG, "悬浮窗权限已授予")
                         startFloatingAssistant()
                     } else {
                         Log.w(TAG, "悬浮窗权限被拒绝")
-                        showOverlayPermissionDeniedDialog()
+                        android.widget.Toast.makeText(
+                            this,
+                            "悬浮窗权限被拒绝，请到设置中手动开启以使用悬浮助手功能",
+                            android.widget.Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             }
         }
     }
 
-    /**
-     * 显示悬浮窗权限被拒绝的对话框
-     */
-    private fun showOverlayPermissionDeniedDialog() {
-        // 这里可以显示一个对话框引导用户手动开启权限
-        // 由于这是Compose项目，可以考虑使用Compose Dialog
-        // 或者使用传统的AlertDialog
-        Log.i(TAG, "悬浮窗权限被拒绝，建议用户手动到设置中开启")
-        
-        // 可以显示一个Toast提示用户
-        android.widget.Toast.makeText(
-            this,
-            "悬浮窗权限被拒绝，请到设置中手动开启以使用悬浮助手功能",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-    }
-    
-    /**
-     * 检查悬浮窗服务是否正在运行
-     */
-    private fun isFloatingWindowServiceRunning(): Boolean {
-        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
-        for (service in activityManager.getRunningServices(Integer.MAX_VALUE)) {
-            if (FloatingWindowService::class.java.name == service.service.className) {
-                return true
-            }
-        }
-        return false
-    }
-
     override fun onDestroy() {
         // 取消协程作业
         sttPermissionJob?.cancel()
         wakeServiceJob?.cancel()
-        
-        // 🚫 不停止FloatingWindowService，因为已经停用
-        // FloatingWindowService.stop(this)
         
         // 注意：不要在这里停止WakeService，因为它应该在后台持续运行
         // 只有在用户明确关闭应用或系统资源不足时才停止
