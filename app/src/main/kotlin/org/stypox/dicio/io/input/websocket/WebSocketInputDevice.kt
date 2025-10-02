@@ -300,12 +300,10 @@ class WebSocketInputDevice(
         }
     }
 
-    override fun destroy() {
+    override suspend fun destroy() {
         Log.d(TAG, "🧹 销毁 WebSocketInputDevice")
-        scope.launch {
-            stopAudioRecording()
-            protocol?.disconnect()
-        }
+        stopAudioRecording()
+        protocol?.disconnect()
         scope.cancel()
     }
 }
