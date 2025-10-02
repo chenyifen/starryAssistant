@@ -221,7 +221,7 @@ object ModelPathManager {
     }
     
     /**
-     * 检查外部存储路径是否可用
+     * 检查外部存储路径是否可用（只检查存在性）
      */
     fun isExternalStorageAvailable(context: Context): Boolean {
         return try {
@@ -233,8 +233,8 @@ object ModelPathManager {
                 baseDir.mkdirs()
             }
             
-            // 检查是否可写
-            baseDir.canWrite()
+            // 只检查目录是否存在（移除可写检查，简化权限处理）
+            baseDir.exists() && baseDir.isDirectory
         } catch (e: Exception) {
             Log.e(TAG, "检查外部存储可用性失败", e)
             false
@@ -306,12 +306,12 @@ object ModelPathManager {
         for ((type, path) in paths) {
             val dir = java.io.File(path)
             val exists = dir.exists()
-            val canRead = if (exists) dir.canRead() else false
-            val canWrite = if (exists) dir.canWrite() else false
+            val isDirectory = if (exists) dir.isDirectory else false
             
-            status.append("   $type: ${if (exists && canRead && canWrite) "✅" else "❌"}\n")
+            // 只检查存在性，不检查可读可写（简化权限处理）
+            status.append("   $type: ${if (exists && isDirectory) "✅" else "❌"}\n")
             status.append("     路径: $path\n")
-            status.append("     状态: 存在=$exists, 可读=$canRead, 可写=$canWrite\n")
+            status.append("     状态: 存在=$exists, 目录=$isDirectory\n")
         }
         
         return status.toString()
