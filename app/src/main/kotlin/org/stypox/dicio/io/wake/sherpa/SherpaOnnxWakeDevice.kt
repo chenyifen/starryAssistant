@@ -58,44 +58,79 @@ class SherpaOnnxWakeDevice(
             DebugLogger.logModelManagement(TAG, "📦 Assets 中有模型: $hasAssetsModels")
             DebugLogger.logModelManagement(TAG, "📦 使用 AssetManager: $useAssetManager")
 
-            val config = createKwsConfig(useAssetManager)
-            keywordSpotter = measureTimeAndLog(TAG, "Load SherpaOnnx KWS model") {
-                if (useAssetManager) {
-                    // 使用 AssetManager 方式（优先使用 assets 中的模型）
-                    DebugLogger.logModelManagement(TAG, "🎯 使用 Assets 中的 SherpaOnnx KWS 模型")
+            val config: KeywordSpotterConfig
+            
+            if (useAssetManager) {
+                // 使用 AssetManager 方式（优先使用 assets 中的模型）
+                DebugLogger.logModelManagement(TAG, "🎯 使用 Assets 中的 SherpaOnnx KWS 模型")
+                config = createKwsConfig(useAssetManager)
+                keywordSpotter = measureTimeAndLog(TAG, "Load SherpaOnnx KWS model from assets") {
                     KeywordSpotter(
                         assetManager = appContext.assets,
                         config = config
                     )
-                } else {
-                    // 使用文件系统路径方式（回退方案）
-                    DebugLogger.logModelManagement(TAG, "🔄 回退到外部存储模型文件")
+                }
+            } else {
+                // 使用文件系统路径方式（回退方案）
+                DebugLogger.logModelManagement(TAG, "🔄 回退到外部存储模型文件")
+                
+                // 显示路径状态信息
+                val pathStatus = ModelPathManager.getAllPathsStatus(appContext)
+                DebugLogger.logModelManagement(TAG, pathStatus)
+                
+                // 获取外部存储路径
+                val externalModelPath = ModelPathManager.getExternalKwsModelsPath(appContext)
+                DebugLogger.logModelManagement(TAG, "📂 外部存储路径: $externalModelPath")
+                
+                // ⚠️ 关键修复：Native 库在 Android 11+ 上可能无法访问 /sdcard/ 路径
+                // 需要将模型文件复制到应用内部存储
+                val internalModelPath = File(appContext.filesDir, "sherpa_onnx_kws")
+                DebugLogger.logModelManagement(TAG, "📂 内部存储路径: ${internalModelPath.absolutePath}")
+                
+                // 检查外部存储的模型文件是否存在
+                if (!checkSherpaModelFilesAccess(externalModelPath)) {
+                    // 设置为 ErrorLoading 而非 NotDownloaded，避免无限重试
+                    _state.value = WakeState.ErrorLoading(IOException("SherpaOnnx KWS 模型文件不可访问: $externalModelPath"))
+                    DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx KWS 模型文件不可访问")
+                    DebugLogger.logWakeWordError(TAG, "💡 当前尝试路径: $externalModelPath")
                     
-                    // 显示路径状态信息
-                    val pathStatus = ModelPathManager.getAllPathsStatus(appContext)
-                    DebugLogger.logModelManagement(TAG, pathStatus)
-                    
-                    // 获取最佳外部存储路径
-                    val externalModelPath = ModelPathManager.getExternalKwsModelsPath(appContext)
-                    DebugLogger.logModelManagement(TAG, "🎯 选择的外部存储路径: $externalModelPath")
-                    
-                    // 检查模型文件是否可访问
-                    if (!checkSherpaModelFilesAccess(externalModelPath)) {
-                        // 设置为 ErrorLoading 而非 NotDownloaded，避免无限重试
-                        _state.value = WakeState.ErrorLoading(IOException("SherpaOnnx KWS 模型文件不可访问: $externalModelPath"))
-                        DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx KWS 模型文件不可访问")
-                        DebugLogger.logWakeWordError(TAG, "💡 当前尝试路径: $externalModelPath")
-                        
-                        // 显示推荐的推送命令
-                        val pushCommands = ModelPathManager.getModelPushCommands(appContext)
-                        DebugLogger.logModelManagement(TAG, "📋 推荐的模型推送命令:")
-                        pushCommands.forEach { cmd ->
-                            DebugLogger.logModelManagement(TAG, cmd)
-                        }
-                        return
+                    // 显示推荐的推送命令
+                    val pushCommands = ModelPathManager.getModelPushCommands(appContext)
+                    DebugLogger.logModelManagement(TAG, "📋 推荐的模型推送命令:")
+                    pushCommands.forEach { cmd ->
+                        DebugLogger.logModelManagement(TAG, cmd)
                     }
-                    
-                    KeywordSpotter(config = config)
+                    return
+                }
+                
+                DebugLogger.logModelManagement(TAG, "✅ 外部存储模型文件检查通过")
+                
+                // 将模型文件复制到内部存储（Native 库可以访问）
+                try {
+                    copyModelsToInternalStorage(externalModelPath, internalModelPath.absolutePath)
+                } catch (e: Exception) {
+                    _state.value = WakeState.ErrorLoading(e)
+                    DebugLogger.logWakeWordError(TAG, "❌ 复制模型文件到内部存储失败: ${e.message}", e)
+                    return
+                }
+                
+                // 使用内部存储路径创建配置
+                config = createKwsConfigWithPath(internalModelPath.absolutePath)
+                
+                // 尝试加载 KeywordSpotter，捕获可能的 native 异常
+                try {
+                    keywordSpotter = measureTimeAndLog(TAG, "Load SherpaOnnx KWS model from internal storage") {
+                        KeywordSpotter(config = config)
+                    }
+                } catch (e: Throwable) {
+                    // sherpa-onnx native 库可能会抛出 UnsatisfiedLinkError 或其他 native 异常
+                    _state.value = WakeState.ErrorLoading(e)
+                    DebugLogger.logWakeWordError(TAG, "❌ KeywordSpotter 初始化失败 (可能是权限或文件访问问题): ${e.message}", e)
+                    DebugLogger.logWakeWordError(TAG, "💡 这可能是 Android 存储权限问题，请尝试：")
+                    DebugLogger.logWakeWordError(TAG, "   1. 检查应用是否有存储权限")
+                    DebugLogger.logWakeWordError(TAG, "   2. 尝试使用 withModels 变体")
+                    DebugLogger.logWakeWordError(TAG, "   3. 检查 SELinux 权限设置")
+                    return
                 }
             }
             
@@ -431,6 +466,81 @@ class SherpaOnnxWakeDevice(
         // SherpaOnnx can support multiple keywords. For simplicity, we'll consider it
         // not "Hey Dicio" if it's enabled, as it's a custom KWS.
         return false
+    }
+
+    /**
+     * 将模型文件从外部存储复制到内部存储
+     * 这是为了解决 Android 11+ 上 Native 库无法访问 /sdcard/ 路径的问题
+     */
+    private fun copyModelsToInternalStorage(sourcePath: String, destPath: String) {
+        val sourceDir = File(sourcePath)
+        val destDir = File(destPath)
+        
+        // 创建目标目录
+        if (!destDir.exists()) {
+            destDir.mkdirs()
+            DebugLogger.logModelManagement(TAG, "📁 创建内部存储目录: $destPath")
+        }
+        
+        val requiredFiles = listOf(
+            "encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "joiner-epoch-12-avg-2-chunk-16-left-64.onnx",
+            "keywords.txt",
+            "tokens.txt"
+        )
+        
+        requiredFiles.forEach { fileName ->
+            val sourceFile = File(sourceDir, fileName)
+            val destFile = File(destDir, fileName)
+            
+            // 只有当目标文件不存在或大小不同时才复制
+            if (!destFile.exists() || destFile.length() != sourceFile.length()) {
+                try {
+                    sourceFile.inputStream().use { input ->
+                        destFile.outputStream().use { output ->
+                            input.copyTo(output)
+                        }
+                    }
+                    DebugLogger.logModelManagement(TAG, "📄 复制模型文件: $fileName (${sourceFile.length()} bytes)")
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "❌ 复制文件 $fileName 失败: ${e.message}", e)
+                    throw IOException("复制模型文件失败: $fileName", e)
+                }
+            } else {
+                DebugLogger.logModelManagement(TAG, "✅ 模型文件已存在: $fileName")
+            }
+        }
+        
+        DebugLogger.logModelManagement(TAG, "🎉 所有模型文件已复制到内部存储")
+    }
+
+    /**
+     * 创建使用指定路径的 KeywordSpotterConfig
+     */
+    private fun createKwsConfigWithPath(modelBasePath: String): KeywordSpotterConfig {
+        return KeywordSpotterConfig(
+            featConfig = FeatureConfig(
+                sampleRate = 16000,
+                featureDim = 80
+            ),
+            modelConfig = OnlineModelConfig(
+                transducer = OnlineTransducerModelConfig(
+                    encoder = "$modelBasePath/encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+                    decoder = "$modelBasePath/decoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+                    joiner = "$modelBasePath/joiner-epoch-12-avg-2-chunk-16-left-64.onnx"
+                ),
+                tokens = "$modelBasePath/tokens.txt",
+                modelType = "zipformer2",
+                numThreads = 1,
+                provider = "cpu"
+            ),
+            maxActivePaths = 4,
+            keywordsFile = "$modelBasePath/keywords.txt",
+            keywordsScore = 1.5f,
+            keywordsThreshold = 0.25f,
+            numTrailingBlanks = 2
+        )
     }
 
     companion object {
