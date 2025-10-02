@@ -15,13 +15,17 @@ import org.stypox.dicio.io.speech.NothingSpeechDevice
 import org.stypox.dicio.io.speech.SherpaOnnxTtsSpeechDevice
 import org.stypox.dicio.io.speech.SnackbarSpeechDevice
 import org.stypox.dicio.io.speech.ToastSpeechDevice
+import org.stypox.dicio.io.speech.WebSocketTtsSpeechDevice
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_ANDROID_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SNACKBAR
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_TOAST
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_UNSET
+import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_WEBSOCKET
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.UNRECOGNIZED
+import org.stypox.dicio.io.net.WebSocketProtocol
+import org.stypox.dicio.util.WebSocketConfig
 import org.stypox.dicio.settings.datastore.UserSettings
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -39,6 +43,7 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     // instantiate SpeechOutputDevices on the main thread
     private val scope = CoroutineScope(Dispatchers.Main)
     private var wrappedSpeechDevice: SpeechOutputDevice = NothingSpeechDevice()
+    private var webSocketProtocol: WebSocketProtocol? = null
 
     init {
         scope.launch {
@@ -55,7 +60,20 @@ class SpeechOutputDeviceWrapper @Inject constructor(
                     wrappedSpeechDevice = when (setting) {
                         null,
                         UNRECOGNIZED,
-                        SPEECH_OUTPUT_DEVICE_UNSET,
+                        SPEECH_OUTPUT_DEVICE_UNSET -> {
+                            // 默认使用 WebSocket（如果可用）
+                            if (WebSocketConfig.isWebSocketAvailable(context)) {
+                                Log.d(TAG, "🌐 使用 WebSocketTtsSpeechDevice (默认)")
+                                createWebSocketTtsDevice()
+                            } else {
+                                Log.d(TAG, "🔊 回退到 SherpaOnnxTtsSpeechDevice")
+                                SherpaOnnxTtsSpeechDevice(context, locale)
+                            }
+                        }
+                        SPEECH_OUTPUT_DEVICE_WEBSOCKET -> {
+                            Log.d(TAG, "🌐 使用 WebSocketTtsSpeechDevice")
+                            createWebSocketTtsDevice()
+                        }
                         SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS -> SherpaOnnxTtsSpeechDevice(context, locale)
                         SPEECH_OUTPUT_DEVICE_ANDROID_TTS -> AndroidTtsSpeechDevice(context, locale)
                         SPEECH_OUTPUT_DEVICE_NOTHING -> NothingSpeechDevice()
@@ -65,6 +83,20 @@ class SpeechOutputDeviceWrapper @Inject constructor(
                     prevDevice.cleanup()
                 }
         }
+    }
+
+    private suspend fun createWebSocketTtsDevice(): SpeechOutputDevice {
+        // 创建或重用 WebSocket 协议实例
+        if (webSocketProtocol == null) {
+            webSocketProtocol = WebSocketProtocol(
+                serverUrl = WebSocketConfig.getWebSocketUrl(context),
+                accessToken = WebSocketConfig.getAccessToken(context),
+                deviceId = WebSocketConfig.getDeviceId(context),
+                clientId = WebSocketConfig.getClientId(context)
+            )
+            webSocketProtocol?.connect()
+        }
+        return WebSocketTtsSpeechDevice(context, webSocketProtocol!!)
     }
 
 

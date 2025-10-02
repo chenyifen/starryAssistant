@@ -27,7 +27,8 @@ class WebSocketInputDevice(
     private val serverUrl: String,
     private val accessToken: String,
     private val deviceId: String,
-    private val clientId: String
+    private val clientId: String,
+    private val sharedProtocol: WebSocketProtocol? = null
 ) : SttInputDevice {
 
     companion object {
@@ -64,7 +65,8 @@ class WebSocketInputDevice(
      * 初始化 WebSocket 协议
      */
     private fun initializeProtocol() {
-        protocol = WebSocketProtocol(
+        // 使用共享的协议实例或创建新的
+        protocol = sharedProtocol ?: WebSocketProtocol(
             serverUrl = serverUrl,
             accessToken = accessToken,
             deviceId = deviceId,
