@@ -6,7 +6,7 @@
 /build
 /captures
 .externalNativeBuild
-/models
+# /models  # 现在使用 LFS 管理大文件，不再忽略
 /aars/build
 /checkouts
 .kotlin
