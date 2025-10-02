@@ -1,0 +1,11 @@
+{
+  "SYSTEM_OPTIONS": {
+    "CLIENT_ID": "f4df18b0-3f12-4b79-9658-ba6445b8be92",
+    "DEVICE_ID": "10:9f:41:e5:fe:25",
+    "NETWORK": {
+      "WEBSOCKET_URL": "ws://192.168.0.102:8000/xiaozhi/v1/",
+      "WEBSOCKET_ACCESS_TOKEN": "test-token"
+    }
+  }
+}
+

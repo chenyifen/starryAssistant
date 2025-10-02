@@ -26,6 +26,7 @@ import org.stypox.dicio.io.input.external_popup.ExternalPopupInputDevice
 import org.stypox.dicio.io.input.vosk.VoskInputDevice
 import org.stypox.dicio.io.input.TwoPassInputDevice
 import org.stypox.dicio.io.input.sensevoice.SenseVoiceInputDevice
+import org.stypox.dicio.io.input.websocket.WebSocketInputDevice
 import org.stypox.dicio.settings.datastore.InputDevice
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_EXTERNAL_POPUP
@@ -33,7 +34,9 @@ import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_UNSET
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_VOSK
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_TWO_PASS
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_SENSEVOICE
+import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_WEBSOCKET
 import org.stypox.dicio.settings.datastore.InputDevice.UNRECOGNIZED
+import org.stypox.dicio.util.WebSocketConfig
 import org.stypox.dicio.settings.datastore.SttPlaySound
 import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.util.distinctUntilChangedBlockingFirst
@@ -111,10 +114,34 @@ class SttInputDeviceWrapperImpl(
         Log.d(TAG, "🏗️ 构建STT输入设备: $setting")
         return when (setting) {
             UNRECOGNIZED,
-            INPUT_DEVICE_UNSET,
+            INPUT_DEVICE_UNSET -> {
+                // 默认使用 WebSocket（如果可用）
+                if (WebSocketConfig.isWebSocketAvailable(appContext)) {
+                    Log.d(TAG, "   🌐 创建 WebSocketInputDevice (默认)")
+                    WebSocketInputDevice(
+                        appContext = appContext,
+                        serverUrl = WebSocketConfig.getWebSocketUrl(appContext),
+                        accessToken = WebSocketConfig.getAccessToken(appContext),
+                        deviceId = WebSocketConfig.getDeviceId(appContext),
+                        clientId = WebSocketConfig.getClientId(appContext)
+                    )
+                } else {
+                    Log.d(TAG, "   🎙️ 回退到 SenseVoiceInputDevice")
+                    SenseVoiceInputDevice.getInstance(appContext, localeManager)
+                }
+            }
+            INPUT_DEVICE_WEBSOCKET -> {
+                Log.d(TAG, "   🌐 创建 WebSocketInputDevice")
+                WebSocketInputDevice(
+                    appContext = appContext,
+                    serverUrl = WebSocketConfig.getWebSocketUrl(appContext),
+                    accessToken = WebSocketConfig.getAccessToken(appContext),
+                    deviceId = WebSocketConfig.getDeviceId(appContext),
+                    clientId = WebSocketConfig.getClientId(appContext)
+                )
+            }
             INPUT_DEVICE_SENSEVOICE -> {
-                Log.d(TAG, "   🎙️ 获取SenseVoiceInputDevice单例 (默认)")
-                // 🔧 设置音频协调器
+                Log.d(TAG, "   🎙️ 获取SenseVoiceInputDevice单例")
                 SenseVoiceInputDevice.getInstance(appContext, localeManager)
             }
             INPUT_DEVICE_VOSK -> {
