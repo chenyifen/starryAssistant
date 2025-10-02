@@ -82,7 +82,7 @@ class WebSocketInputDevice(
         protocol?.onNetworkError { error ->
             Log.e(TAG, "❌ 网络错误: $error")
             scope.launch {
-                _uiState.emit(SttState.Error(Exception(error)))
+                _uiState.emit(SttState.ErrorLoading(Exception(error)))
             }
         }
         
@@ -91,63 +91,12 @@ class WebSocketInputDevice(
             Log.d(TAG, "连接状态变化: connected=$connected, message=$message")
             scope.launch {
                 if (connected) {
-                    _uiState.emit(SttState.Available)
+                    _uiState.emit(SttState.AvailableNotListening)
                 } else {
                     _uiState.emit(SttState.NotAvailable)
                 }
             }
         }
-    }
-
-    override fun tryLoad(thenStartListeningEventListener: ((InputEvent) -> Unit)?) {
-        Log.d(TAG, "📥 tryLoad 被调用")
-        scope.launch {
-            _uiState.emit(SttState.Loading(null))
-            
-            // 连接到服务器
-            val connected = protocol?.connect() ?: false
-            
-            if (connected) {
-                _uiState.emit(SttState.Available)
-                thenStartListeningEventListener?.let {
-                    startListening(it)
-                }
-            } else {
-                _uiState.emit(SttState.Error(Exception("无法连接到服务器")))
-            }
-        }
-    }
-
-    override fun startListening(eventListener: (InputEvent) -> Unit) {
-        Log.d(TAG, "🎙️ 开始监听")
-        this.eventListener = eventListener
-        
-        scope.launch {
-            _uiState.emit(SttState.Listening)
-            startAudioRecording()
-        }
-    }
-
-    override fun stopListening() {
-        Log.d(TAG, "⏹️ 停止监听")
-        scope.launch {
-            stopAudioRecording()
-            _uiState.emit(SttState.Available)
-        }
-    }
-
-    override fun onClick(eventListener: (InputEvent) -> Unit) {
-        if (uiState.value == SttState.Listening) {
-            stopListening()
-        } else if (uiState.value == SttState.Available) {
-            startListening(eventListener)
-        }
-    }
-
-    override fun reinitializeToReleaseResources() {
-        Log.d(TAG, "🔄 重新初始化以释放资源")
-        destroy()
-        initializeProtocol()
     }
 
     /**
@@ -176,7 +125,7 @@ class WebSocketInputDevice(
 
             if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
                 Log.e(TAG, "❌ AudioRecord 初始化失败")
-                _uiState.emit(SttState.Error(Exception("AudioRecord 初始化失败")))
+                _uiState.emit(SttState.ErrorLoading(Exception("AudioRecord 初始化失败")))
                 return@withContext
             }
 
@@ -212,7 +161,7 @@ class WebSocketInputDevice(
 
         } catch (e: Exception) {
             Log.e(TAG, "❌ 音频录制失败: ${e.message}", e)
-            _uiState.emit(SttState.Error(e))
+            _uiState.emit(SttState.ErrorLoading(e))
         }
     }
 
