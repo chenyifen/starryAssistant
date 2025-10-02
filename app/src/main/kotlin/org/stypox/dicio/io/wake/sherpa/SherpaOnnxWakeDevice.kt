@@ -81,7 +81,8 @@ class SherpaOnnxWakeDevice(
                     
                     // 检查模型文件是否可访问
                     if (!checkSherpaModelFilesAccess(externalModelPath)) {
-                        _state.value = WakeState.NotDownloaded
+                        // 设置为 ErrorLoading 而非 NotDownloaded，避免无限重试
+                        _state.value = WakeState.ErrorLoading(IOException("SherpaOnnx KWS 模型文件不可访问: $externalModelPath"))
                         DebugLogger.logWakeWordError(TAG, "❌ SherpaOnnx KWS 模型文件不可访问")
                         DebugLogger.logWakeWordError(TAG, "💡 当前尝试路径: $externalModelPath")
                         
@@ -208,6 +209,9 @@ class SherpaOnnxWakeDevice(
     override fun download() {
         // SherpaOnnx 模型"下载"逻辑 - 优先使用 assets，回退到外部存储
         if (_state.value == WakeState.NotDownloaded || _state.value is WakeState.ErrorLoading) {
+            // 防止重复初始化：先设置为 Loading
+            _state.value = WakeState.Loading
+            
             scope.launch {
                 val hasAssetsModels = checkAssetsModelsAvailable()
                 
@@ -221,7 +225,7 @@ class SherpaOnnxWakeDevice(
                     if (!PermissionHelper.hasExternalStoragePermission(appContext)) {
                         DebugLogger.logWakeWordError(TAG, "❌ 缺少外部存储权限")
                         DebugLogger.logWakeWordError(TAG, "💡 请在应用设置中授予存储权限后重试")
-                        _state.value = WakeState.NotDownloaded
+                        _state.value = WakeState.ErrorLoading(SecurityException("缺少外部存储权限"))
                         return@launch
                     }
                     
@@ -230,7 +234,7 @@ class SherpaOnnxWakeDevice(
                 }
             }
         } else {
-            DebugLogger.logModelManagement(TAG, "SherpaOnnx models already available or loading.")
+            DebugLogger.logModelManagement(TAG, "SherpaOnnx models already available or loading, skipping duplicate download call.")
         }
     }
     
@@ -273,11 +277,11 @@ class SherpaOnnxWakeDevice(
             requiredFiles.all { fileName ->
                 val file = File(modelBasePath, fileName)
                 val exists = file.exists()
-                val canRead = file.canRead()
+                // 移除 canRead 检查，只检查文件是否存在（简化权限处理）
                 
-                DebugLogger.logModelManagement(TAG, "📄 检查文件: $fileName - 存在:${if (exists) "✅" else "❌"} 可读:${if (canRead) "✅" else "❌"}")
+                DebugLogger.logModelManagement(TAG, "📄 检查文件: $fileName - ${if (exists) "✅" else "❌"}")
                 
-                exists && canRead
+                exists  // 只检查存在性
             }
         } catch (e: Exception) {
             DebugLogger.logWakeWordError(TAG, "❌ 检查模型文件失败: ${e.message}")
