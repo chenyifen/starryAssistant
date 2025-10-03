@@ -23,6 +23,9 @@ class App : Application() {
         // ⚠️ 注意: 这是一个可选的模块,如果不需要可以删除整个 activation package
         ActivationManager.initialize(this)
         
+        // 打印配置信息（用于调试）
+        WebSocketConfig.printConfigInfo(this)
+        
         // 检查设备授权状态
         checkDeviceAuthorization()
         

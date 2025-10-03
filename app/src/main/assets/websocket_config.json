@@ -3,7 +3,12 @@
     "CLIENT_ID": "f4df18b0-3f12-4b79-9658-ba6445b8be92",
     "DEVICE_ID": "10:9f:41:e5:fe:25",
     "NETWORK": {
-      "WEBSOCKET_URL": "ws://192.168.0.108:8000/xiaozhi/v1/",
+      "SERVER_HOST": "121.199.174.70",
+      "WEBSOCKET_PORT": 8000,
+      "HTTP_PORT": 8003,
+      "WEBSOCKET_URL": "ws://121.199.174.70:8000/xiaozhi/v1/",
+      "HTTP_URL": "http://121.199.174.70:8003",
+      "ACTIVATION_URL": "http://121.199.174.70:8003/api/v1/activation",
       "WEBSOCKET_ACCESS_TOKEN": "test-token"
     }
   }
