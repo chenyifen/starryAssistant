@@ -148,10 +148,23 @@ class WakeService : Service() {
         
         scope.launch {
             try {
+                var consecutiveErrors = 0
+                val maxConsecutiveErrors = 3 // 连续失败3次后停止重试
+                
                 // 持续监听循环，只有明确停止才退出
                 while (listening.get()) {
                     try {
+                        // 检查模型状态，如果加载失败则停止重试
+                        if (wakeDevice.state.value is WakeState.ErrorLoading) {
+                            DebugLogger.logWakeWordError(TAG, "❌ 模型加载失败，唤醒词服务设置为不可用状态")
+                            listening.set(false)
+                            break
+                        }
+                        
                         listenForWakeWord()
+                        
+                        // 如果成功执行了一轮，重置错误计数
+                        consecutiveErrors = 0
                         
                         // 如果listenForWakeWord正常退出，等待一下再重启
                         if (listening.get()) {
@@ -159,7 +172,15 @@ class WakeService : Service() {
                             delay(1000)
                         }
                     } catch (e: Exception) {
-                        DebugLogger.logWakeWordError(TAG, "❌ Error in wake word listening, retrying in 3s...", e)
+                        consecutiveErrors++
+                        DebugLogger.logWakeWordError(TAG, "❌ Error in wake word listening ($consecutiveErrors/$maxConsecutiveErrors), retrying in 3s...", e)
+                        
+                        if (consecutiveErrors >= maxConsecutiveErrors) {
+                            DebugLogger.logWakeWordError(TAG, "❌ 连续失败 $maxConsecutiveErrors 次，停止唤醒词监听")
+                            listening.set(false)
+                            break
+                        }
+                        
                         delay(3000) // 错误时等待更长时间
                     }
                 }

@@ -1,12 +1,18 @@
 package org.stypox.dicio.ui.floating
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
@@ -39,6 +45,8 @@ import org.stypox.dicio.settings.datastore.UserSettings
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.collectLatest
 import org.stypox.dicio.BuildConfig
+import org.stypox.dicio.MainActivity
+import org.stypox.dicio.R
 import javax.inject.Inject
 
 /**
@@ -99,6 +107,9 @@ class EnhancedFloatingWindowService : Service(),
     override fun onCreate() {
         super.onCreate()
         DebugLogger.logUI(TAG, "🚀 EnhancedFloatingWindowService created")
+        
+        // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
+        createForegroundNotification()
         
         // 运行配置测试
         FloatingOrbConfigTest.runAllTests(applicationContext)
@@ -248,7 +259,41 @@ class EnhancedFloatingWindowService : Service(),
         // 设置激活状态但不隐藏悬浮球
         floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.READY)
         
-        // TODO: 启动语音识别和文本显示
+        // 启动语音识别
+        startVoiceRecognition()
+    }
+    
+    /**
+     * 启动语音识别
+     */
+    private fun startVoiceRecognition() {
+        DebugLogger.logUI(TAG, "🎤 Starting voice recognition...")
+        DebugLogger.logUI(TAG, "📡 Current STT device: ${sttInputDeviceWrapper.javaClass.simpleName}")
+        
+        // 检查麦克风权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            != PackageManager.PERMISSION_GRANTED) {
+            DebugLogger.logUI(TAG, "❌ Microphone permission not granted")
+            floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
+            return
+        }
+        
+        // 启动 STT 输入设备
+        try {
+            DebugLogger.logUI(TAG, "🔌 Attempting to start STT input device...")
+            val sttStarted = sttInputDeviceWrapper.tryLoad(skillEvaluator::processInputEvent)
+            
+            if (sttStarted) {
+                DebugLogger.logUI(TAG, "✅ STT input device started successfully")
+                floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.LISTENING)
+            } else {
+                DebugLogger.logUI(TAG, "❌ STT input device failed to start")
+                floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
+            }
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "❌ Error starting STT: ${e.message}")
+            floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
+        }
     }
     
     /**
@@ -256,6 +301,10 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun handleContractToOrb() {
         DebugLogger.logUI(TAG, "📉 Contracting to orb")
+        
+        // 停止 STT 录音
+        sttInputDeviceWrapper.stopListening()
+        DebugLogger.logUI(TAG, "⏹️ STT recording stopped")
         
         // 重新显示悬浮球
         floatingOrb?.show()
@@ -344,13 +393,64 @@ class EnhancedFloatingWindowService : Service(),
         }
     }
     
+    /**
+     * 创建前台服务通知
+     * Android 8.0+ 要求使用 startForegroundService() 启动的服务必须在 5 秒内调用 startForeground()
+     */
+    private fun createForegroundNotification() {
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        
+        // 创建通知渠道 (Android 8.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                NOTIFICATION_CHANNEL_ID,
+                getString(R.string.floating_window_service_label),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "语音助手悬浮球服务"
+                setShowBadge(false)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
+        
+        // 创建点击通知打开主界面的 Intent
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            Intent(this, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        // 构建通知
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_hearing_white)
+            .setContentTitle("语音助手运行中")
+            .setContentText("点击悬浮球开始对话")
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setContentIntent(pendingIntent)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .build()
+        
+        // 启动前台服务
+        startForeground(NOTIFICATION_ID, notification)
+        DebugLogger.logUI(TAG, "✅ Foreground service notification created")
+    }
+    
     companion object {
+        private const val NOTIFICATION_CHANNEL_ID = "floating_assistant_channel"
+        private const val NOTIFICATION_ID = 1001
         /**
          * 启动服务
          */
         fun start(context: android.content.Context) {
             val intent = Intent(context, EnhancedFloatingWindowService::class.java)
-            context.startService(intent)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
         }
         
         /**

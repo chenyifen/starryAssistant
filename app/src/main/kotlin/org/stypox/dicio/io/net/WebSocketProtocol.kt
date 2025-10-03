@@ -24,11 +24,14 @@ class WebSocketProtocol(
 ) : Protocol {
 
     companion object {
-        private const val TAG = "WebSocketProtocol"
-        private const val PING_INTERVAL = 30L // 心跳间隔（秒）
+        private const val PING_INTERVAL = 20L // 心跳间隔（秒），匹配服务器配置
         private const val CONNECT_TIMEOUT = 10L // 连接超时（秒）
         private const val HELLO_TIMEOUT = 10L // 等待 hello 响应超时（秒）
+        
+        private var instanceCounter = 0
     }
+    
+    private val TAG = "WebSocketProtocol#${++instanceCounter}"
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
@@ -89,21 +92,21 @@ class WebSocketProtocol(
             // 建立 WebSocket 连接
             webSocket = okHttpClient.newWebSocket(request, InternalWebSocketListener())
 
-            // 发送 hello 消息
-            val helloMessage = JSONObject().apply {
-                put("type", MessageType.HELLO)
-                put("version", 1)
-                put("features", JSONObject().apply {
-                    put("mcp", true)
-                })
-                put("transport", "websocket")
-                put("audio_params", JSONObject().apply {
-                    put("format", "opus")
-                    put("sample_rate", 16000)
-                    put("channels", 1)
-                    put("frame_duration", 20)
-                })
-            }
+                // 发送 hello 消息
+                val helloMessage = JSONObject().apply {
+                    put("type", MessageType.HELLO)
+                    put("version", 1)
+                    put("features", JSONObject().apply {
+                        put("mcp", true)
+                    })
+                    put("transport", "websocket")
+                    put("audio_params", JSONObject().apply {
+                        put("format", "pcm")  // 使用 "pcm" 匹配服务器端的格式检查
+                        put("sample_rate", 16000)
+                        put("channels", 1)
+                        put("frame_duration", 20)
+                    })
+                }
             sendText(helloMessage.toString())
 
             // 等待 hello 响应
@@ -140,13 +143,17 @@ class WebSocketProtocol(
     }
 
     override suspend fun sendText(message: String) {
-        webSocket?.send(message) ?: run {
+        webSocket?.send(message)?.also {
+            Log.d(TAG, "📤 发送文本消息: ${message.take(200)}${if (message.length > 200) "..." else ""}")
+        } ?: run {
             Log.w(TAG, "WebSocket 未连接，无法发送文本消息")
         }
     }
 
     override suspend fun sendAudio(audioData: ByteArray) {
-        webSocket?.send(ByteString.of(*audioData)) ?: run {
+        webSocket?.send(ByteString.of(*audioData))?.also {
+            Log.v(TAG, "📤 发送音频数据: ${audioData.size} 字节")
+        } ?: run {
             Log.w(TAG, "WebSocket 未连接，无法发送音频数据")
         }
     }
@@ -185,12 +192,14 @@ class WebSocketProtocol(
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
+            Log.d(TAG, "📥 收到文本消息: ${text.take(200)}${if (text.length > 200) "..." else ""}")
             scope.launch {
                 handleTextMessage(text)
             }
         }
 
         override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+            Log.d(TAG, "📥 收到音频数据: ${bytes.size} 字节")
             scope.launch {
                 handleAudioMessage(bytes.toByteArray())
             }
@@ -229,7 +238,23 @@ class WebSocketProtocol(
                     Log.d(TAG, "收到服务器 hello 响应")
                     helloReceived.complete(true)
                 }
+                MessageType.STT -> {
+                    val text = json.optString("text", "")
+                    val isFinal = json.optBoolean("is_final", false)
+                    Log.d(TAG, "📝 STT 识别: \"$text\" (${if (isFinal) "最终" else "部分"})")
+                    onTextMessageCallback?.invoke(message)
+                }
+                MessageType.TTS -> {
+                    Log.d(TAG, "🔊 TTS 消息")
+                    onTextMessageCallback?.invoke(message)
+                }
+                MessageType.LLM -> {
+                    val content = json.optString("content", "")
+                    Log.d(TAG, "🤖 LLM 响应: ${content.take(50)}${if (content.length > 50) "..." else ""}")
+                    onTextMessageCallback?.invoke(message)
+                }
                 else -> {
+                    Log.d(TAG, "📨 其他消息类型: $type")
                     // 转发给应用层处理
                     onTextMessageCallback?.invoke(message)
                 }
