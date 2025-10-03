@@ -197,6 +197,12 @@ fun speechOutputDevice() = ListSetting(
             icon = Icons.Default.SpeakerPhone,
         ),
         ListSetting.Value(
+            value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_CLOUD_TTS,
+            name = stringResource(R.string.pref_speech_output_method_cloud_tts),
+            description = stringResource(R.string.pref_speech_output_method_cloud_tts_summary),
+            icon = Icons.Default.Cloud,
+        ),
+        ListSetting.Value(
             value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_TOAST,
             name = stringResource(R.string.pref_speech_output_method_toast),
             icon = Icons.Default.BreakfastDining,

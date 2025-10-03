@@ -91,6 +91,8 @@
     <string name="pref_speech_output_method_summary">Choose the service Dicio should use to talk to you</string>
     <string name="pref_speech_output_method_sherpa_onnx">SherpaOnnx TTS (Offline multilingual)</string>
     <string name="pref_speech_output_method_android">Android text to speech engine</string>
+    <string name="pref_speech_output_method_cloud_tts">Cloud TTS (Online synthesis)</string>
+    <string name="pref_speech_output_method_cloud_tts_summary">High-quality online text-to-speech synthesis via server</string>
     <string name="pref_speech_output_method_toast">Toast (popup message)</string>
     <string name="pref_speech_output_method_snackbar">Snackbar (message at the bottom)</string>
     <string name="pref_speech_output_method_nothing">Nothing</string>

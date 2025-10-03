@@ -11,12 +11,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.dicio.skill.context.SpeechOutputDevice
 import org.stypox.dicio.io.speech.AndroidTtsSpeechDevice
+import org.stypox.dicio.io.speech.CloudTtsSpeechDevice
 import org.stypox.dicio.io.speech.NothingSpeechDevice
 import org.stypox.dicio.io.speech.SherpaOnnxTtsSpeechDevice
 import org.stypox.dicio.io.speech.SnackbarSpeechDevice
 import org.stypox.dicio.io.speech.ToastSpeechDevice
 import org.stypox.dicio.io.speech.WebSocketTtsSpeechDevice
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_ANDROID_TTS
+import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_CLOUD_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SNACKBAR
@@ -73,6 +75,10 @@ class SpeechOutputDeviceWrapper @Inject constructor(
                         SPEECH_OUTPUT_DEVICE_WEBSOCKET -> {
                             Log.d(TAG, "🌐 使用 WebSocketTtsSpeechDevice")
                             createWebSocketTtsDevice()
+                        }
+                        SPEECH_OUTPUT_DEVICE_CLOUD_TTS -> {
+                            Log.d(TAG, "☁️ 使用 CloudTtsSpeechDevice")
+                            CloudTtsSpeechDevice(context)
                         }
                         SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS -> SherpaOnnxTtsSpeechDevice(context, locale)
                         SPEECH_OUTPUT_DEVICE_ANDROID_TTS -> AndroidTtsSpeechDevice(context, locale)

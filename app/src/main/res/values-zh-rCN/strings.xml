@@ -56,6 +56,8 @@
     <string name="pref_input_method_vosk">Vosk离线语音识别</string>
     <string name="pref_speech_output_method">语音输出方式</string>
     <string name="pref_speech_output_method_android">安装文本播报引擎</string>
+    <string name="pref_speech_output_method_cloud_tts">云端 TTS（在线合成）</string>
+    <string name="pref_speech_output_method_cloud_tts_summary">通过服务器进行高质量在线语音合成</string>
     <string name="pref_speech_output_method_toast">提示（弹出消息）</string>
     <string name="pref_speech_output_method_snackbar">小贴士（底部消息）</string>
     <string name="pref_speech_output_method_nothing">无</string>
