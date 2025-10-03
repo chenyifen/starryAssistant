@@ -89,6 +89,7 @@ class SpeechOutputDeviceWrapper @Inject constructor(
         // 创建或重用 WebSocket 协议实例
         if (webSocketProtocol == null) {
             webSocketProtocol = WebSocketProtocol(
+                context = context,
                 serverUrl = WebSocketConfig.getWebSocketUrl(context),
                 accessToken = WebSocketConfig.getAccessToken(context),
                 deviceId = WebSocketConfig.getDeviceId(context),

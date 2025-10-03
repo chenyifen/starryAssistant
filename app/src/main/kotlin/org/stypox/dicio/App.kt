@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationManagerCompat
 import dagger.hilt.android.HiltAndroidApp
+import org.stypox.dicio.activation.ActivationManager
 import org.stypox.dicio.util.checkPermissions
 
 // IMPORTANT NOTE: beware of this nasty bug related to allowBackup=true
@@ -14,6 +15,11 @@ import org.stypox.dicio.util.checkPermissions
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        
+        // 初始化激活模块 (独立的功能模块)
+        // ⚠️ 注意: 这是一个可选的模块,如果不需要可以删除整个 activation package
+        ActivationManager.initialize(this)
+        
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkPermissions(this, Manifest.permission.POST_NOTIFICATIONS)
         ) {

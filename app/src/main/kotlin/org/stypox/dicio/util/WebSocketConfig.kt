@@ -55,10 +55,10 @@ object WebSocketConfig {
             config?.getJSONObject("SYSTEM_OPTIONS")
                 ?.getJSONObject("NETWORK")
                 ?.getString("WEBSOCKET_URL")
-                ?: "ws://192.168.0.102:8000/xiaozhi/v1/"
+                ?: "ws://192.168.0.108:8000/xiaozhi/v1/"
         } catch (e: Exception) {
             Log.e(TAG, "获取 WebSocket URL 失败: ${e.message}")
-            "ws://192.168.0.102:8000/xiaozhi/v1/"
+            "ws://192.168.0.108:8000/xiaozhi/v1/"
         }
     }
     
