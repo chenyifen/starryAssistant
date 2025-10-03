@@ -67,6 +67,7 @@ class WebSocketInputDevice(
     private fun initializeProtocol() {
         // 使用共享的协议实例或创建新的
         protocol = sharedProtocol ?: WebSocketProtocol(
+            context = appContext,
             serverUrl = serverUrl,
             accessToken = accessToken,
             deviceId = deviceId,

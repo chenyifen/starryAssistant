@@ -1,5 +1,6 @@
 package org.stypox.dicio.io.net
 
+import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,6 +10,7 @@ import okhttp3.*
 import okhttp3.WebSocket
 import okio.ByteString
 import org.json.JSONObject
+import org.stypox.dicio.activation.ActivationManager
 import java.util.concurrent.TimeUnit
 
 /**
@@ -17,6 +19,7 @@ import java.util.concurrent.TimeUnit
  * 支持与服务端进行 ASR、TTS、MCP 等通信
  */
 class WebSocketProtocol(
+    private val context: Context,
     private val serverUrl: String,
     private val accessToken: String,
     private val deviceId: String,
@@ -236,6 +239,13 @@ class WebSocketProtocol(
             when (type) {
                 MessageType.HELLO -> {
                     Log.d(TAG, "收到服务器 hello 响应")
+                    
+                    // 检查是否需要激活
+                    if (json.has("activation")) {
+                        val activationData = json.getJSONObject("activation")
+                        handleActivationRequired(activationData)
+                    }
+                    
                     helloReceived.complete(true)
                 }
                 MessageType.STT -> {
@@ -253,6 +263,10 @@ class WebSocketProtocol(
                     Log.d(TAG, "🤖 LLM 响应: ${content.take(50)}${if (content.length > 50) "..." else ""}")
                     onTextMessageCallback?.invoke(message)
                 }
+                "activation" -> {
+                    // 处理激活相关消息
+                    handleActivationMessage(json)
+                }
                 else -> {
                     Log.d(TAG, "📨 其他消息类型: $type")
                     // 转发给应用层处理
@@ -269,6 +283,75 @@ class WebSocketProtocol(
      */
     private fun handleAudioMessage(audioData: ByteArray) {
         onAudioMessageCallback?.invoke(audioData)
+    }
+    
+    /**
+     * 处理激活需求
+     * 
+     * 当服务器返回激活数据时调用
+     */
+    private fun handleActivationRequired(activationData: JSONObject) {
+        try {
+            val code = activationData.optString("code", "")
+            val challenge = activationData.optString("challenge", "")
+            val message = activationData.optString("message", "请在控制面板输入验证码")
+            
+            if (code.isEmpty() || challenge.isEmpty()) {
+                Log.w(TAG, "⚠️ 激活数据不完整")
+                return
+            }
+            
+            Log.i(TAG, "")
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════")
+            Log.i(TAG, "🔐 服务器要求设备激活")
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════")
+            
+            // 使用激活管理器处理激活响应
+            ActivationManager.handleActivationResponse(context, code, challenge, message)
+            
+            // 构建并打印激活请求 payload
+            val payload = ActivationManager.buildActivationRequest(context, challenge)
+            if (payload != null) {
+                Log.i(TAG, "")
+                Log.i(TAG, "📋 激活请求 Payload (可用于手动激活):")
+                Log.i(TAG, payload)
+                Log.i(TAG, "")
+            }
+            
+            Log.i(TAG, "═══════════════════════════════════════════════════════════════")
+            Log.i(TAG, "")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 处理激活需求失败: ${e.message}", e)
+        }
+    }
+    
+    /**
+     * 处理激活相关消息
+     */
+    private fun handleActivationMessage(json: JSONObject) {
+        try {
+            val status = json.optString("status", "")
+            
+            when (status) {
+                "success" -> {
+                    Log.i(TAG, "🎉 设备激活成功!")
+                    ActivationManager.markAsActivated(context)
+                }
+                "pending" -> {
+                    Log.i(TAG, "⏳ 等待用户输入验证码...")
+                }
+                "failed" -> {
+                    val error = json.optString("error", "未知错误")
+                    Log.e(TAG, "❌ 设备激活失败: $error")
+                }
+                else -> {
+                    Log.d(TAG, "收到激活消息: $status")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 处理激活消息失败: ${e.message}", e)
+        }
     }
 
     /**
