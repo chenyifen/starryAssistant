@@ -91,12 +91,46 @@ class WebSocketInputDevice(
             Log.d(TAG, "连接状态变化: connected=$connected, message=$message")
             scope.launch {
                 if (connected) {
-                    _uiState.emit(SttState.AvailableNotListening)
+                    _uiState.emit(SttState.Loaded)
                 } else {
                     _uiState.emit(SttState.NotAvailable)
                 }
             }
         }
+    }
+
+    override fun tryLoad(thenStartListeningEventListener: ((InputEvent) -> Unit)?): Boolean {
+        Log.d(TAG, "📥 ==================== tryLoad 被调用 ====================")
+        Log.d(TAG, "📥 thenStartListeningEventListener: ${if (thenStartListeningEventListener != null) "有回调" else "null"}")
+        Log.d(TAG, "📥 Protocol 实例: ${if (protocol != null) "已初始化" else "null"}")
+        
+        scope.launch {
+            _uiState.emit(SttState.Loading(thenStartListeningEventListener != null))
+            Log.d(TAG, "📥 状态已更新为: Loading")
+            
+            // 连接到服务器
+            Log.d(TAG, "🔌 准备连接到 WebSocket 服务器...")
+            val connected = protocol?.connect() ?: false
+            Log.d(TAG, "🔌 连接结果: $connected")
+            
+            if (connected) {
+                Log.d(TAG, "✅ WebSocket 连接成功!")
+                _uiState.emit(SttState.Loaded)
+                
+                thenStartListeningEventListener?.let {
+                    Log.d(TAG, "🎤 设置事件监听器并开始录音...")
+                    this@WebSocketInputDevice.eventListener = it
+                    _uiState.emit(SttState.Listening)
+                    startAudioRecording()
+                }
+            } else {
+                Log.e(TAG, "❌ WebSocket 连接失败!")
+                _uiState.emit(SttState.ErrorLoading(Exception("无法连接到服务器")))
+            }
+            
+            Log.d(TAG, "📥 ==================== tryLoad 完成 ====================")
+        }
+        return true
     }
 
     /**
@@ -140,21 +174,31 @@ class WebSocketInputDevice(
             // 启动音频数据发送任务
             recordingJob = scope.launch {
                 val buffer = ShortArray(FRAME_SIZE)
+                val byteBuffer = java.nio.ByteBuffer.allocate(FRAME_SIZE * 2)
+                byteBuffer.order(java.nio.ByteOrder.LITTLE_ENDIAN)
                 
+                var frameCount = 0
                 while (isRecording.get() && isActive) {
                     val readSize = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                     
                     if (readSize > 0) {
-                        // 转换为字节数组
-                        val byteBuffer = ByteArray(readSize * 2)
+                        // 转换为字节数组 (Little-Endian PCM16)
+                        byteBuffer.clear()
                         for (i in 0 until readSize) {
-                            val value = buffer[i].toInt()
-                            byteBuffer[i * 2] = (value and 0xFF).toByte()
-                            byteBuffer[i * 2 + 1] = ((value shr 8) and 0xFF).toByte()
+                            byteBuffer.putShort(buffer[i])
                         }
                         
+                        val audioData = byteBuffer.array().copyOf(readSize * 2)
+                        
+                        // 每100帧打印一次详细信息用于调试
+                        if (frameCount % 100 == 0) {
+                            val first8Bytes = audioData.take(8).joinToString(" ") { "%02X".format(it) }
+                            Log.d(TAG, "🎵 Frame $frameCount: size=${audioData.size}, first 8 bytes: $first8Bytes")
+                        }
+                        frameCount++
+                        
                         // 发送音频数据到服务器
-                        protocol?.sendAudio(byteBuffer)
+                        protocol?.sendAudio(audioData)
                     }
                 }
             }
@@ -196,9 +240,9 @@ class WebSocketInputDevice(
      */
     private suspend fun sendStartListening() {
         val message = JSONObject().apply {
-            put("type", "command")
-            put("action", "start_listening")
-            put("mode", "auto_stop")
+            put("type", "listen")
+            put("state", "start")
+            put("mode", "auto")
         }
         protocol?.sendText(message.toString())
     }
@@ -208,8 +252,8 @@ class WebSocketInputDevice(
      */
     private suspend fun sendStopListening() {
         val message = JSONObject().apply {
-            put("type", "command")
-            put("action", "stop_listening")
+            put("type", "listen")
+            put("state", "stop")
         }
         protocol?.sendText(message.toString())
     }
@@ -246,6 +290,27 @@ class WebSocketInputDevice(
             }
         } catch (e: Exception) {
             Log.e(TAG, "❌ 处理服务器消息失败: ${e.message}", e)
+        }
+    }
+
+    override fun stopListening() {
+        Log.d(TAG, "⏹️ 停止监听")
+        scope.launch {
+            stopAudioRecording()
+            _uiState.emit(SttState.Loaded)
+        }
+    }
+
+    override fun onClick(eventListener: (InputEvent) -> Unit) {
+        val currentState = uiState.value
+        if (currentState == SttState.Listening) {
+            stopListening()
+        } else if (currentState == SttState.Loaded) {
+            this.eventListener = eventListener
+            scope.launch {
+                _uiState.emit(SttState.Listening)
+                startAudioRecording()
+            }
         }
     }
 

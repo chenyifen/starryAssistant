@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- 开发环境: 允许所有明文流量 (包括局域网IP) -->
+    <!-- 注意: 生产环境应该只允许特定域名,并使用 HTTPS -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
