@@ -115,6 +115,39 @@ object WebSocketConfig {
     }
     
     /**
+     * 获取激活 URL
+     */
+    fun getActivationUrl(context: Context): String {
+        initialize(context)
+        return try {
+            config?.getJSONObject("SYSTEM_OPTIONS")
+                ?.getJSONObject("NETWORK")
+                ?.getString("ACTIVATION_URL")
+                ?: getDefaultActivationUrl(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "获取激活 URL 失败: ${e.message}")
+            getDefaultActivationUrl(context)
+        }
+    }
+    
+    /**
+     * 生成默认激活 URL
+     */
+    private fun getDefaultActivationUrl(context: Context): String {
+        val webSocketUrl = getWebSocketUrl(context)
+        return if (webSocketUrl.isNotEmpty()) {
+            // 将 WebSocket URL 转换为 HTTP URL
+            val httpUrl = webSocketUrl
+                .replace("ws://", "http://")
+                .replace("wss://", "https://")
+                .replace("/xiaozhi/v1/", "/api/v1/activation")
+            httpUrl
+        } else {
+            "http://192.168.0.108:8000/api/v1/activation"
+        }
+    }
+    
+    /**
      * 检查 WebSocket 是否可用
      */
     fun isWebSocketAvailable(context: Context): Boolean {
