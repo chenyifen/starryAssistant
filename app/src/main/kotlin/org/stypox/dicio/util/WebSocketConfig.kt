@@ -23,7 +23,7 @@ object WebSocketConfig {
     private const val CONFIG_FILE = "websocket_config.json"
     
     // 默认配置常量
-    private const val DEFAULT_SERVER_HOST = "121.199.174.70"
+    private const val DEFAULT_SERVER_HOST = "192.168.0.107"
     private const val DEFAULT_WEBSOCKET_PORT = 8000
     private const val DEFAULT_HTTP_PORT = 8003
     private const val DEFAULT_WEBSOCKET_PATH = "/xiaozhi/v1/"
