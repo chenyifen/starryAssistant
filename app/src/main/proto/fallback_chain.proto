@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option java_package = "org.stypox.dicio.settings.datastore";
+option java_multiple_files = true;
+
+// TTS降级链配置
+message TtsFallbackChain {
+    repeated TtsFallbackDevice devices = 1;
+}
+
+enum TtsFallbackDevice {
+    TTS_FALLBACK_DEVICE_UNSET = 0;
+    TTS_FALLBACK_DEVICE_WEBSOCKET = 1;
+    TTS_FALLBACK_DEVICE_SHERPA_ONNX = 2;
+    TTS_FALLBACK_DEVICE_ANDROID_TTS = 3;
+    TTS_FALLBACK_DEVICE_CLOUD_TTS = 4;
+    TTS_FALLBACK_DEVICE_TOAST = 5;
+    TTS_FALLBACK_DEVICE_SNACKBAR = 6;
+    TTS_FALLBACK_DEVICE_NOTHING = 7;
+}
+
+// ASR降级链配置
+message AsrFallbackChain {
+    repeated AsrFallbackDevice devices = 1;
+}
+
+enum AsrFallbackDevice {
+    ASR_FALLBACK_DEVICE_UNSET = 0;
+    ASR_FALLBACK_DEVICE_WEBSOCKET = 1;
+    ASR_FALLBACK_DEVICE_SENSE_VOICE = 2;
+    ASR_FALLBACK_DEVICE_VOSK = 3;
+    ASR_FALLBACK_DEVICE_GOOGLE = 4;
+}
+

@@ -24,6 +24,7 @@ import androidx.compose.foundation.border
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -79,8 +80,15 @@ class DraggableFloatingOrb(
     // 拖拽处理器
     private var dragTouchHandler: DragTouchHandler? = null
     
+    // 双击检测
+    private var lastClickTime = 0L
+    private val doubleClickThreshold = 500L // 500ms内的两次点击算双击
+    
     // 边缘吸附状态
     private var isAtEdge = false
+    
+    // 收起状态 - 区分边缘吸附和完全收起
+    private val isCollapsed = mutableStateOf(false)
     
     // 位置保存 - 用于hide/show时恢复位置
     private var savedX = 100
@@ -90,7 +98,7 @@ class DraggableFloatingOrb(
     private val isDragging = mutableStateOf(false)
     private val isLongPressing = mutableStateOf(false)
     
-    // 性能监控状态
+    // 性能监控状态 - 完全关闭用于调试文本显示问题
     private val showPerformanceMonitor = mutableStateOf(false)
     
     // 点击回调
@@ -133,6 +141,7 @@ class DraggableFloatingOrb(
                 val dragging by isDragging
                 val longPressing by isLongPressing
                 val performanceMonitorEnabled by showPerformanceMonitor
+                val collapsed by isCollapsed
                 
                 Box(
                     modifier = Modifier
@@ -144,13 +153,15 @@ class DraggableFloatingOrb(
                         currentAsrText = asrText,
                         currentTtsText = ttsText,
                         isAtEdge = isAtEdge,
+                        isCollapsed = collapsed,
                         isDragging = dragging,
                         isLongPressing = longPressing,
                         showPerformanceMonitor = performanceMonitorEnabled,
                         onOrbClick = { handleOrbClick() },
                         onOrbLongPress = { handleOrbLongPress() },
                         onDragStart = { handleDragStart() },
-                        onDragEnd = { handleDragEnd() }
+                        onDragEnd = { handleDragEnd() },
+                        onToggleCollapse = { toggleCollapse() }
                     )
                 }
             }
@@ -276,22 +287,56 @@ class DraggableFloatingOrb(
     }
     
     /**
-     * 计算窗口高度
+     * 计算窗口高度 - 动态适配内容
      */
     private fun calculateWindowHeight(): Int {
         val orbHeight = if (isAtEdge) FloatingOrbConfig.edgeOrbSizePx else FloatingOrbConfig.orbSizePx
-        val textAreaHeight = if (isAtEdge) 0 else 150 // 边缘状态时不显示文本，不需要额外高度
-        val spacing = 24 // 8dp spacing * 3 (density factor)
         
-        return (orbHeight + textAreaHeight + spacing).toInt()
+        // 收起状态时只显示小图标
+        if (isCollapsed.value || isAtEdge) {
+            return (orbHeight * 0.6f).toInt()
+        }
+        
+        var totalHeight = orbHeight.toInt()
+        val spacing = 8 // dp转px的间距
+        
+        // 性能监控高度（如果启用）
+        if (showPerformanceMonitor.value) {
+            val performanceMonitorHeight = 80
+            totalHeight += performanceMonitorHeight + spacing
+        }
+        
+        // ASR/TTS文本区域高度（如果有文本）
+        val hasText = currentAsrText.value.isNotEmpty() || currentTtsText.value.isNotEmpty()
+        if (hasText) {
+            val textAreaHeight = 150
+            totalHeight += textAreaHeight + spacing
+        }
+        
+        // 添加底部边距，确保内容不会被截断
+        totalHeight += 20
+        
+        return totalHeight
     }
     
     /**
      * 处理悬浮球点击
      */
     private fun handleOrbClick() {
-        DebugLogger.logUI(TAG, "👆 Orb clicked")
-        onOrbClick?.invoke()
+        val currentTime = System.currentTimeMillis()
+        val timeDiff = currentTime - lastClickTime
+        
+        if (timeDiff < doubleClickThreshold) {
+            // 双击 - 切换收起状态
+            DebugLogger.logUI(TAG, "👆👆 Double click detected - toggling collapse")
+            toggleCollapse()
+        } else {
+            // 单击 - 正常点击处理
+            DebugLogger.logUI(TAG, "👆 Single click")
+            onOrbClick?.invoke()
+        }
+        
+        lastClickTime = currentTime
     }
     
     /**
@@ -308,6 +353,22 @@ class DraggableFloatingOrb(
         updateDragState(longPressing = true)
         
         onOrbLongPress?.invoke()
+    }
+    
+    /**
+     * 切换收起/展开状态
+     */
+    private fun toggleCollapse() {
+        val newCollapsedState = !isCollapsed.value
+        isCollapsed.value = newCollapsedState
+        
+        DebugLogger.logUI(TAG, "🔄 Toggle collapse state: $newCollapsedState")
+        
+        // 添加震动反馈
+        addHapticFeedback()
+        
+        // 更新窗口尺寸以适应新状态
+        updateWindowHeightOnly()
     }
     
     /**
@@ -338,6 +399,84 @@ class DraggableFloatingOrb(
         
         // 更新UI状态
         updateDragState(dragging = false, longPressing = false)
+        
+        // 检查是否应该自动收起（靠近屏幕边缘）
+        checkAutoCollapseOnEdge()
+    }
+    
+    /**
+     * 检查是否应该在边缘自动收起
+     */
+    private fun checkAutoCollapseOnEdge() {
+        if (isShowing) {
+            val currentView = floatingView
+            if (currentView != null) {
+                val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
+                val screenWidth = context.resources.displayMetrics.widthPixels
+                val screenHeight = context.resources.displayMetrics.heightPixels
+                
+                val edgeThreshold = 50 // 距离边缘50px内自动收起
+                val isNearLeftEdge = layoutParams.x < edgeThreshold
+                val isNearRightEdge = layoutParams.x > screenWidth - edgeThreshold - calculateWindowWidth()
+                val isNearTopEdge = layoutParams.y < edgeThreshold
+                val isNearBottomEdge = layoutParams.y > screenHeight - edgeThreshold - calculateWindowHeight()
+                
+                val shouldAutoCollapse = isNearLeftEdge || isNearRightEdge || isNearTopEdge || isNearBottomEdge
+                
+                if (shouldAutoCollapse && !isCollapsed.value) {
+                    DebugLogger.logUI(TAG, "🧲 Auto-collapse triggered at edge (x=${layoutParams.x}, y=${layoutParams.y})")
+                    isCollapsed.value = true
+                    updateWindowHeightOnly()
+                    
+                    // 吸附到最近的边缘
+                    snapToNearestEdge(layoutParams, screenWidth, screenHeight)
+                }
+            }
+        }
+    }
+    
+    /**
+     * 吸附到最近的边缘
+     */
+    private fun snapToNearestEdge(layoutParams: WindowManager.LayoutParams, screenWidth: Int, screenHeight: Int) {
+        val centerX = layoutParams.x + calculateWindowWidth() / 2
+        val centerY = layoutParams.y + calculateWindowHeight() / 2
+        
+        val distanceToLeft = centerX
+        val distanceToRight = screenWidth - centerX
+        val distanceToTop = centerY
+        val distanceToBottom = screenHeight - centerY
+        
+        val minDistance = minOf(distanceToLeft, distanceToRight, distanceToTop, distanceToBottom)
+        
+        when (minDistance) {
+            distanceToLeft -> {
+                // 吸附到左边缘
+                layoutParams.x = 0
+                DebugLogger.logUI(TAG, "🧲 Snapped to left edge")
+            }
+            distanceToRight -> {
+                // 吸附到右边缘
+                layoutParams.x = screenWidth - calculateWindowWidth()
+                DebugLogger.logUI(TAG, "🧲 Snapped to right edge")
+            }
+            distanceToTop -> {
+                // 吸附到顶部边缘
+                layoutParams.y = 0
+                DebugLogger.logUI(TAG, "🧲 Snapped to top edge")
+            }
+            distanceToBottom -> {
+                // 吸附到底部边缘
+                layoutParams.y = screenHeight - calculateWindowHeight()
+                DebugLogger.logUI(TAG, "🧲 Snapped to bottom edge")
+            }
+        }
+        
+        try {
+            windowManager.updateViewLayout(floatingView, layoutParams)
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "❌ Failed to snap to edge: ${e.message}")
+        }
     }
     
     /**
@@ -533,11 +672,8 @@ class DraggableFloatingOrb(
                     
                     try {
                         windowManager.updateViewLayout(currentView, layoutParams)
-                        DebugLogger.logUI(TAG, "📏 Window height updated: $oldHeight → $newHeight (position preserved: x=$currentX, y=$currentY)")
                     } catch (e: Exception) {
                         DebugLogger.logUI(TAG, "❌ Failed to update window height: ${e.message}")
-                        // 如果更新失败，不要回退到hide/show，这会导致位置跳变
-                        // 只记录错误，让Compose自己处理布局
                     }
                 }
             }
@@ -616,32 +752,42 @@ private fun FloatingOrbContent(
     currentAsrText: String,
     currentTtsText: String,
     isAtEdge: Boolean = false,
+    isCollapsed: Boolean = false,
     isDragging: Boolean = false,
     isLongPressing: Boolean = false,
     showPerformanceMonitor: Boolean = false,
     onOrbClick: () -> Unit,
     onOrbLongPress: () -> Unit,
     onDragStart: () -> Unit,
-    onDragEnd: () -> Unit
+    onDragEnd: () -> Unit,
+    onToggleCollapse: () -> Unit
 ) {
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
     
     // 性能优化：使用 remember 缓存计算结果
-    val shouldShowText = remember(currentAsrText, currentTtsText, isAtEdge) {
-        !isAtEdge && (currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty())
+    val shouldShowText = remember(currentAsrText, currentTtsText, isAtEdge, isCollapsed) {
+        !isAtEdge && !isCollapsed && (currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty())
     }
     
     // 性能优化：使用 derivedStateOf 优化动画尺寸计算
     val animationSize by remember {
         derivedStateOf {
-            if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeDp else FloatingOrbConfig.animationSizeDp
+            when {
+                isCollapsed -> FloatingOrbConfig.edgeAnimationSizeDp * 0.6f
+                isAtEdge -> FloatingOrbConfig.edgeAnimationSizeDp
+                else -> FloatingOrbConfig.animationSizeDp
+            }
         }
     }
     
     val animationSizeInt by remember {
         derivedStateOf {
-            if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeInt else FloatingOrbConfig.animationSizeInt
+            when {
+                isCollapsed -> (FloatingOrbConfig.edgeAnimationSizeInt * 0.6f).toInt()
+                isAtEdge -> FloatingOrbConfig.edgeAnimationSizeInt
+                else -> FloatingOrbConfig.animationSizeInt
+            }
         }
     }
     
@@ -655,23 +801,57 @@ private fun FloatingOrbContent(
         label = "scale"
     )
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // 性能监控显示 - 在悬浮球上方（使用轻量级监控避免ANR）
-        if (showPerformanceMonitor && !isAtEdge) {
-            LightweightPerformanceMonitorDisplay(
-                isVisible = true,
-                modifier = Modifier.padding(bottom = 4.dp)
+    // 收起状态显示小图标 - 添加动画过渡
+    if (isCollapsed) {
+        val iconScale by animateFloatAsState(
+            targetValue = 1f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMedium
+            ),
+            label = "iconScale"
+        )
+        
+        val iconAlpha by animateFloatAsState(
+            targetValue = 0.9f,
+            animationSpec = tween(300),
+            label = "iconAlpha"
+        )
+        
+        Box(
+            modifier = Modifier
+                .size(animationSize)
+                .scale(iconScale)
+                .graphicsLayer(alpha = iconAlpha)
+                .clickable { onToggleCollapse() } // 点击小图标展开
+                .background(
+                    Color.Blue.copy(alpha = 0.8f),
+                    CircleShape
+                )
+                .shadow(4.dp, CircleShape), // 添加阴影效果
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "🎤",
+                color = Color.White,
+                fontSize = 16.sp
             )
         }
-        
-        // 悬浮球 - 容器大小等于动画大小，去掉多余空间
+        return
+    }
+
+    // 正常状态的布局 - 修复文本显示问题
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.wrapContentHeight() // 关键修复：使用wrapContentHeight而不是fillMaxSize
+    ) {
+        // 悬浮球 - 精确点击区域
         Box(
             modifier = Modifier
                 .size(animationSize) // 使用缓存的动画尺寸
                 .scale(scale) // 只在拖拽时轻微缩放
+                .clickable { onOrbClick() } // 只有这个区域可以点击
                 .let { modifier ->
                     // 只在拖拽时添加60%透明度的白色边框
                     if (isDragging) {
@@ -694,20 +874,24 @@ private fun FloatingOrbContent(
             )
         }
         
-        // ASR/TTS文本显示区域 - 在边缘时隐藏，使用缓存的shouldShowText
-        if (!isAtEdge) {
-            DebugLogger.logUI("FloatingOrbContent", "📱 Text display: ASR='$currentAsrText', TTS='$currentTtsText', shouldShow=$shouldShowText, isAtEdge=$isAtEdge")
-            
-            // 性能优化：只有在需要显示文本时才渲染FloatingTextDisplay
-            if (shouldShowText) {
-                FloatingTextDisplay(
-                    userText = currentAsrText,
-                    aiText = currentTtsText,
-                    isVisible = true
-                )
-            }
-        } else {
-            DebugLogger.logUI("FloatingOrbContent", "🚫 Text display hidden due to edge state")
+        // ASR/TTS文本显示区域 - 在悬浮球下方
+        if (!isAtEdge && shouldShowText) {
+            FloatingTextDisplay(
+                userText = currentAsrText,
+                aiText = currentTtsText,
+                isVisible = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            )
+        }
+        
+        // 性能监控显示 - 移到文本下方（使用轻量级监控避免ANR）
+        if (showPerformanceMonitor && !isAtEdge) {
+            LightweightPerformanceMonitorDisplay(
+                isVisible = true,
+                modifier = Modifier.padding(top = 4.dp)
+            )
         }
     }
 }

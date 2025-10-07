@@ -61,7 +61,10 @@ fun FloatingTextDisplay(
     }
     
     // 只有当有文本内容时才显示
-    if (userText.isNotEmpty() || aiText.isNotEmpty()) {
+    val hasContent = userText.isNotEmpty() || aiText.isNotEmpty()
+    
+    if (hasContent) {
+        
         Column(
             modifier = modifier
                 .fillMaxWidth()
@@ -122,6 +125,7 @@ private fun TextBubble(
     isUser: Boolean,
     modifier: Modifier = Modifier
 ) {
+    
     val backgroundColor = if (isUser) {
         Color(0xFF2196F3).copy(alpha = 0.9f) // 用户文本：蓝色
     } else {

@@ -29,6 +29,8 @@ import org.stypox.dicio.settings.datastore.SpeechOutputDevice.UNRECOGNIZED
 import org.stypox.dicio.io.net.WebSocketProtocol
 import org.stypox.dicio.util.WebSocketConfig
 import org.stypox.dicio.settings.datastore.UserSettings
+import org.stypox.dicio.settings.datastore.TtsFallbackDevice
+import org.stypox.dicio.settings.datastore.TtsFallbackChain
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,69 +48,176 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     private val scope = CoroutineScope(Dispatchers.Main)
     private var wrappedSpeechDevice: SpeechOutputDevice = NothingSpeechDevice()
     private var webSocketProtocol: WebSocketProtocol? = null
+    
+    // 降级链配置：默认降级顺序
+    private val defaultTtsFallbackChain = listOf(
+        TtsFallbackDevice.TTS_FALLBACK_DEVICE_WEBSOCKET,
+        TtsFallbackDevice.TTS_FALLBACK_DEVICE_SHERPA_ONNX,
+        TtsFallbackDevice.TTS_FALLBACK_DEVICE_ANDROID_TTS,
+        TtsFallbackDevice.TTS_FALLBACK_DEVICE_TOAST,
+        TtsFallbackDevice.TTS_FALLBACK_DEVICE_SNACKBAR
+    )
+    
+    private var currentFallbackChain: List<TtsFallbackDevice> = defaultTtsFallbackChain
+    private var currentFallbackIndex = 0
 
     init {
         scope.launch {
             dataStore.data
                 .combine(localeManager.locale) { userSettings, locale ->
-                    Pair(userSettings.speechOutputDevice, locale)
+                    Triple(userSettings.ttsFallbackChain, userSettings.speechOutputDevice, locale)
                 }
                 .distinctUntilChanged()
-                .collect { (setting, locale) ->
-                    // TODO avoid using locale here, but delegate listening to locale changes to
-                    //  AndroidTtsSpeechDevice, or in alternative make it so that
-                    //  SttInputDeviceWrapper works the same way
-                    val prevDevice = wrappedSpeechDevice
-                    wrappedSpeechDevice = when (setting) {
-                        null,
-                        UNRECOGNIZED,
-                        SPEECH_OUTPUT_DEVICE_UNSET -> {
-                            // 默认使用 WebSocket（如果可用）
-                            if (WebSocketConfig.isWebSocketAvailable(context)) {
-                                Log.d(TAG, "🌐 使用 WebSocketTtsSpeechDevice (默认)")
-                                createWebSocketTtsDevice()
-                            } else {
-                                Log.d(TAG, "🔊 回退到 SherpaOnnxTtsSpeechDevice")
-                                SherpaOnnxTtsSpeechDevice(context, locale)
-                            }
-                        }
-                        SPEECH_OUTPUT_DEVICE_WEBSOCKET -> {
-                            Log.d(TAG, "🌐 使用 WebSocketTtsSpeechDevice")
-                            createWebSocketTtsDevice()
-                        }
-                        SPEECH_OUTPUT_DEVICE_CLOUD_TTS -> {
-                            Log.d(TAG, "☁️ 使用 CloudTtsSpeechDevice")
-                            CloudTtsSpeechDevice(context)
-                        }
-                        SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS -> SherpaOnnxTtsSpeechDevice(context, locale)
-                        SPEECH_OUTPUT_DEVICE_ANDROID_TTS -> AndroidTtsSpeechDevice(context, locale)
-                        SPEECH_OUTPUT_DEVICE_NOTHING -> NothingSpeechDevice()
-                        SPEECH_OUTPUT_DEVICE_TOAST -> ToastSpeechDevice(context)
-                        SPEECH_OUTPUT_DEVICE_SNACKBAR -> snackbarSpeechDevice
+                .collect { (fallbackChain, setting, locale) ->
+                    // 更新降级链配置
+                    currentFallbackChain = if (fallbackChain != null && fallbackChain.devicesList.isNotEmpty()) {
+                        Log.d(TAG, "📋 使用自定义TTS降级链: ${fallbackChain.devicesList}")
+                        fallbackChain.devicesList
+                    } else {
+                        Log.d(TAG, "📋 使用默认TTS降级链: $defaultTtsFallbackChain")
+                        defaultTtsFallbackChain
                     }
+                    
+                    // 重置降级索引
+                    currentFallbackIndex = 0
+                    
+                    // 初始化TTS设备（使用降级链）
+                    val prevDevice = wrappedSpeechDevice
+                    wrappedSpeechDevice = tryCreateTtsDeviceWithFallback(locale)
                     prevDevice.cleanup()
                 }
         }
     }
 
-    private suspend fun createWebSocketTtsDevice(): SpeechOutputDevice {
-        // 创建或重用 WebSocket 协议实例
-        if (webSocketProtocol == null) {
-            webSocketProtocol = WebSocketProtocol(
-                context = context,
-                serverUrl = WebSocketConfig.getWebSocketUrl(context),
-                accessToken = WebSocketConfig.getAccessToken(context),
-                deviceId = WebSocketConfig.getDeviceId(context),
-                clientId = WebSocketConfig.getClientId(context)
-            )
-            webSocketProtocol?.connect()
+    /**
+     * 尝试使用降级链创建TTS设备
+     */
+    private suspend fun tryCreateTtsDeviceWithFallback(locale: java.util.Locale): SpeechOutputDevice {
+        for (i in currentFallbackIndex until currentFallbackChain.size) {
+            val deviceType = currentFallbackChain[i]
+            try {
+                val device = createTtsDevice(deviceType, locale)
+                if (device != null) {
+                    currentFallbackIndex = i
+                    Log.i(TAG, "✅ TTS降级链: 使用 ${deviceType.name} (索引: $i)")
+                    return device
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ TTS降级链: ${deviceType.name} 创建失败: ${e.message}, 尝试下一个")
+            }
         }
-        return WebSocketTtsSpeechDevice(context, webSocketProtocol!!)
+        
+        // 所有设备都失败，返回NothingSpeechDevice作为最后的保底
+        Log.e(TAG, "❌ TTS降级链: 所有设备创建失败，使用 NothingSpeechDevice")
+        return NothingSpeechDevice()
+    }
+    
+    /**
+     * 根据类型创建TTS设备
+     */
+    private suspend fun createTtsDevice(deviceType: TtsFallbackDevice, locale: java.util.Locale): SpeechOutputDevice? {
+        return when (deviceType) {
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_WEBSOCKET -> {
+                if (!WebSocketConfig.isWebSocketAvailable(context)) {
+                    Log.w(TAG, "⚠️ WebSocket配置不可用")
+                    return null
+                }
+                
+                // 创建或重用 WebSocket 协议实例
+                if (webSocketProtocol == null) {
+                    webSocketProtocol = WebSocketProtocol(
+                        context = context,
+                        serverUrl = WebSocketConfig.getWebSocketUrl(context),
+                        accessToken = WebSocketConfig.getAccessToken(context),
+                        deviceId = WebSocketConfig.getDeviceId(context),
+                        clientId = WebSocketConfig.getClientId(context)
+                    )
+                    
+                    // 尝试连接
+                    val connected = webSocketProtocol?.connect() ?: false
+                    if (!connected) {
+                        Log.w(TAG, "⚠️ WebSocket连接失败")
+                        webSocketProtocol = null
+                        return null
+                    }
+                }
+                
+                WebSocketTtsSpeechDevice(context, webSocketProtocol!!)
+            }
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_SHERPA_ONNX -> {
+                try {
+                    SherpaOnnxTtsSpeechDevice(context, locale)
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ SherpaOnnxTtsSpeechDevice创建失败: ${e.message}")
+                    null
+                }
+            }
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_ANDROID_TTS -> {
+                try {
+                    AndroidTtsSpeechDevice(context, locale)
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ AndroidTtsSpeechDevice创建失败: ${e.message}")
+                    null
+                }
+            }
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_CLOUD_TTS -> {
+                try {
+                    CloudTtsSpeechDevice(context)
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ CloudTtsSpeechDevice创建失败: ${e.message}")
+                    null
+                }
+            }
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_TOAST -> {
+                ToastSpeechDevice(context)
+            }
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_SNACKBAR -> {
+                snackbarSpeechDevice
+            }
+            TtsFallbackDevice.TTS_FALLBACK_DEVICE_NOTHING -> {
+                NothingSpeechDevice()
+            }
+            else -> {
+                Log.w(TAG, "⚠️ 未知的TTS设备类型: $deviceType")
+                null
+            }
+        }
     }
 
-
     override fun speak(speechOutput: String) {
-        wrappedSpeechDevice.speak(speechOutput)
+        // 在每次speak调用前检查当前设备是否可用
+        scope.launch {
+            if (!isCurrentDeviceAvailable()) {
+                Log.w(TAG, "⚠️ 当前TTS设备不可用，尝试降级")
+                // 尝试降级到下一个设备
+                currentFallbackIndex++
+                val newDevice = tryCreateTtsDeviceWithFallback(localeManager.locale.value)
+                wrappedSpeechDevice.cleanup()
+                wrappedSpeechDevice = newDevice
+            }
+            
+            wrappedSpeechDevice.speak(speechOutput)
+        }
+    }
+    
+    /**
+     * 检查当前设备是否可用
+     */
+    private fun isCurrentDeviceAvailable(): Boolean {
+        return when (wrappedSpeechDevice) {
+            is WebSocketTtsSpeechDevice -> {
+                val connectionState = webSocketProtocol?.connectionState?.value
+                connectionState is org.stypox.dicio.io.net.ConnectionState.Connected
+            }
+            is NothingSpeechDevice -> {
+                // NothingSpeechDevice表示降级链已耗尽，返回false触发重新尝试
+                false
+            }
+            else -> {
+                // 其他设备默认认为可用
+                true
+            }
+        }
     }
 
     override fun stopSpeaking() {

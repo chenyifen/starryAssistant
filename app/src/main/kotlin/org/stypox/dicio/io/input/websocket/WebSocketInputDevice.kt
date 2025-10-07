@@ -175,31 +175,46 @@ class WebSocketInputDevice(
             // 启动音频数据发送任务
             recordingJob = scope.launch {
                 val buffer = ShortArray(FRAME_SIZE)
-                val byteBuffer = java.nio.ByteBuffer.allocate(FRAME_SIZE * 2)
-                byteBuffer.order(java.nio.ByteOrder.LITTLE_ENDIAN)
                 
                 var frameCount = 0
                 while (isRecording.get() && isActive) {
                     val readSize = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                     
                     if (readSize > 0) {
-                        // 转换为字节数组 (Little-Endian PCM16)
-                        byteBuffer.clear()
-                        for (i in 0 until readSize) {
-                            byteBuffer.putShort(buffer[i])
+                        // 使用音频处理器编码音频数据
+                        val audioProcessor = protocol?.getAudioProcessor()
+                        val encodedAudio = if (audioProcessor != null) {
+                            // 使用自适应音频处理器编码
+                            audioProcessor.encodeAudio(buffer.copyOf(readSize))
+                        } else {
+                            // 降级到PCM字节数组
+                            val byteBuffer = java.nio.ByteBuffer.allocate(readSize * 2)
+                            byteBuffer.order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                            for (i in 0 until readSize) {
+                                byteBuffer.putShort(buffer[i])
+                            }
+                            byteBuffer.array()
                         }
                         
-                        val audioData = byteBuffer.array().copyOf(readSize * 2)
-                        
-                        // 每100帧打印一次详细信息用于调试
-                        if (frameCount % 100 == 0) {
-                            val first8Bytes = audioData.take(8).joinToString(" ") { "%02X".format(it) }
-                            Log.d(TAG, "🎵 Frame $frameCount: size=${audioData.size}, first 8 bytes: $first8Bytes")
+                        if (encodedAudio != null) {
+                            // 每100帧打印一次详细信息用于调试
+                            if (frameCount % 100 == 0) {
+                                val codecInfo = audioProcessor?.getCodecInfo() ?: "PCM fallback"
+                                val compressionInfo = audioProcessor?.getCompressionInfo() ?: "无压缩"
+                                Log.d(TAG, "🎵 Frame $frameCount: ${readSize * 2} -> ${encodedAudio.size} bytes ($codecInfo, $compressionInfo)")
+                            }
+                            frameCount++
+                            
+                            // 发送编码后的音频数据到服务器
+                            val currentProtocol = protocol
+                            if (currentProtocol is WebSocketProtocol) {
+                                currentProtocol.sendEncodedAudio(encodedAudio)
+                            } else {
+                                currentProtocol?.sendAudio(encodedAudio)
+                            }
+                        } else {
+                            Log.w(TAG, "⚠️ 音频编码失败，跳过当前帧")
                         }
-                        frameCount++
-                        
-                        // 发送音频数据到服务器
-                        protocol?.sendAudio(audioData)
                     }
                 }
             }

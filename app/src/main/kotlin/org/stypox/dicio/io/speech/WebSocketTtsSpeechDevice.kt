@@ -194,13 +194,43 @@ class WebSocketTtsSpeechDevice(
     /**
      * 处理接收到的音频数据
      */
-    private fun handleIncomingAudio(audioData: ByteArray) {
+    private suspend fun handleIncomingAudio(audioData: ByteArray) {
         if (!isSpeaking) {
             return
         }
-
-        synchronized(audioBufferLock) {
-            audioBuffer.add(audioData)
+        
+        try {
+            // 使用音频处理器解码音频数据
+            val audioProcessor = protocol.getAudioProcessor()
+            val decodedAudio = if (audioProcessor != null) {
+                // 使用自适应音频处理器解码
+                val pcmShorts = audioProcessor.decodeAudio(audioData)
+                if (pcmShorts != null) {
+                    // 转换为字节数组用于播放
+                    val byteBuffer = java.nio.ByteBuffer.allocate(pcmShorts.size * 2)
+                    byteBuffer.order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    for (sample in pcmShorts) {
+                        byteBuffer.putShort(sample)
+                    }
+                    byteBuffer.array()
+                } else {
+                    Log.w(TAG, "⚠️ 音频解码失败，跳过当前数据")
+                    return
+                }
+            } else {
+                // 降级：假设接收到的是PCM数据
+                audioData
+            }
+            
+            Log.v(TAG, "📥 接收音频数据: ${audioData.size} -> ${decodedAudio.size} bytes")
+            
+            // 添加到音频缓冲区
+            synchronized(audioBufferLock) {
+                audioBuffer.add(decodedAudio)
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 处理音频数据失败: ${e.message}", e)
         }
     }
 

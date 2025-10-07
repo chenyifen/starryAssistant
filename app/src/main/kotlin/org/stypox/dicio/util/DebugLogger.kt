@@ -21,6 +21,9 @@ object DebugLogger {
     // 音频保存调试功能 - 可以一键关闭
     private const val DEBUG_SAVE_AUDIO = DEBUG_ENABLED && false
     
+    // ASR文本显示专用调试开关 - 临时增强调试
+    private const val DEBUG_ASR_TEXT_FLOW = DEBUG_ENABLED && true
+    
     // 唤醒词相关日志
     fun logWakeWord(tag: String?, message: String) {
         if (DEBUG_WAKE_WORD && tag != null) {
@@ -73,6 +76,13 @@ object DebugLogger {
     fun logRecognition(tag: String?, message: String) {
         if (DEBUG_VOICE_RECOGNITION && tag != null) {
             Log.d("🎤[$tag]", message)
+        }
+    }
+    
+    // ASR文本流调试 - 专门用于调试ASR文本显示问题
+    fun logAsrTextFlow(tag: String?, message: String) {
+        if (DEBUG_ASR_TEXT_FLOW && tag != null) {
+            Log.i("🔍ASR_FLOW[$tag]", message)
         }
     }
     

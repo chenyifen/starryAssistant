@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.InvertColors
 import androidx.compose.material.icons.filled.KeyboardAlt
 import androidx.compose.material.icons.filled.Language
@@ -25,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import org.stypox.dicio.BuildConfig
 import org.stypox.dicio.R
+import org.stypox.dicio.settings.datastore.AudioQuality
 import org.stypox.dicio.settings.datastore.InputDevice
 import org.stypox.dicio.settings.datastore.Language
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice
@@ -251,6 +253,30 @@ fun sttPlaySound() = ListSetting(
         ListSetting.Value(
             value = SttPlaySound.STT_PLAY_SOUND_NONE,
             name = stringResource(R.string.pref_stt_play_sound_none),
+        ),
+    ),
+)
+
+@Composable
+fun audioQuality() = ListSetting(
+    title = stringResource(R.string.pref_audio_quality),
+    icon = Icons.Default.HighQuality,
+    description = stringResource(R.string.pref_audio_quality_summary),
+    possibleValues = listOf(
+        ListSetting.Value(
+            value = AudioQuality.AUDIO_QUALITY_HIGH_QUALITY,
+            name = stringResource(R.string.pref_audio_quality_high_quality),
+            description = stringResource(R.string.pref_audio_quality_high_quality_summary),
+        ),
+        ListSetting.Value(
+            value = AudioQuality.AUDIO_QUALITY_BALANCED,
+            name = stringResource(R.string.pref_audio_quality_balanced),
+            description = stringResource(R.string.pref_audio_quality_balanced_summary),
+        ),
+        ListSetting.Value(
+            value = AudioQuality.AUDIO_QUALITY_LOW_BANDWIDTH,
+            name = stringResource(R.string.pref_audio_quality_low_bandwidth),
+            description = stringResource(R.string.pref_audio_quality_low_bandwidth_summary),
         ),
     ),
 )

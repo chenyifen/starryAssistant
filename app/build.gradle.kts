@@ -45,6 +45,13 @@ android {
         ndk {
             abiFilters += arrayOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
         }
+        
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++11"
+                abiFilters += arrayOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            }
+        }
     }
 
     packaging {
@@ -110,6 +117,12 @@ android {
         viewBinding = true
         buildConfig = true
         compose = true
+    }
+    
+    externalNativeBuild {
+        cmake {
+            path("src/main/cpp/CMakeLists.txt")
+        }
     }
 }
 

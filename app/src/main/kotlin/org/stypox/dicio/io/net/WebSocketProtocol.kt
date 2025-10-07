@@ -11,12 +11,15 @@ import okhttp3.WebSocket
 import okio.ByteString
 import org.json.JSONObject
 import org.stypox.dicio.activation.ActivationManager
+import org.stypox.dicio.io.audio.AdaptiveAudioProcessor
+import org.stypox.dicio.io.audio.AudioCodecType
 import java.util.concurrent.TimeUnit
 
 /**
  * WebSocket 协议实现
  * 参考 py-xiaozhi 的 WebsocketProtocol 实现
  * 支持与服务端进行 ASR、TTS、MCP 等通信
+ * 支持 PCM 和 Opus 音频编解码器自适应选择
  */
 class WebSocketProtocol(
     private val context: Context,
@@ -37,6 +40,12 @@ class WebSocketProtocol(
     private val TAG = "WebSocketProtocol#${++instanceCounter}"
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    // 音频处理器
+    private val audioProcessor = AdaptiveAudioProcessor(context)
+    
+    // 协商后的音频配置
+    private var negotiatedAudioConfig: AudioConfig = AudioConfig()
     
     // 连接状态
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
@@ -81,6 +90,11 @@ class WebSocketProtocol(
             _connectionState.value = ConnectionState.Connecting
             helloReceived = CompletableDeferred()
 
+            // 初始化音频处理器
+            if (!audioProcessor.initialize()) {
+                Log.w(TAG, "⚠️ 音频处理器初始化失败，使用PCM模式")
+            }
+
             // 构建请求
             val request = Request.Builder()
                 .url(serverUrl)
@@ -95,21 +109,31 @@ class WebSocketProtocol(
             // 建立 WebSocket 连接
             webSocket = okHttpClient.newWebSocket(request, InternalWebSocketListener())
 
-                // 发送 hello 消息
-                val helloMessage = JSONObject().apply {
-                    put("type", MessageType.HELLO)
-                    put("version", 1)
-                    put("features", JSONObject().apply {
-                        put("mcp", true)
-                    })
-                    put("transport", "websocket")
-                    put("audio_params", JSONObject().apply {
-                        put("format", "pcm")  // 使用 "pcm" 匹配服务器端的格式检查
-                        put("sample_rate", 16000)
-                        put("channels", 1)
-                        put("frame_duration", 20)
-                    })
-                }
+            // 发送 hello 消息，包含音频配置协商
+            val currentCodec = audioProcessor.getCurrentCodec()
+            val audioFormat = when (currentCodec) {
+                AudioCodecType.PCM -> AudioCodec.PCM
+                AudioCodecType.OPUS -> AudioCodec.OPUS
+            }
+            
+            val helloMessage = JSONObject().apply {
+                put("type", MessageType.HELLO)
+                put("version", 1)
+                put("features", JSONObject().apply {
+                    put("mcp", true)
+                    put("opus", true) // 声明支持Opus编解码
+                })
+                put("transport", "websocket")
+                put("audio_params", JSONObject().apply {
+                    put("format", audioFormat)
+                    put("sample_rate", 16000)
+                    put("channels", 1)
+                    put("frame_duration", 60) // Opus 60ms帧
+                    if (audioFormat == AudioCodec.OPUS) {
+                        put("bitrate", 32000) // Opus比特率
+                    }
+                })
+            }
             sendText(helloMessage.toString())
 
             // 等待 hello 响应
@@ -119,7 +143,7 @@ class WebSocketProtocol(
 
             isConnected = true
             _connectionState.value = ConnectionState.Connected
-            Log.i(TAG, "✅ 已连接到 WebSocket 服务器")
+            Log.i(TAG, "✅ 已连接到 WebSocket 服务器，音频格式: $audioFormat")
             onConnectionStateChangedCallback?.invoke(true, "连接成功")
             
             return@withContext true
@@ -154,8 +178,32 @@ class WebSocketProtocol(
     }
 
     override suspend fun sendAudio(audioData: ByteArray) {
-        webSocket?.send(ByteString.of(*audioData))?.also {
-            Log.v(TAG, "📤 发送音频数据: ${audioData.size} 字节")
+        // 如果是PCM数据，需要先转换为ShortArray然后编码
+        val pcmShorts = audioProcessor.decodeAudio(audioData) ?: run {
+            Log.e(TAG, "❌ 无法解析PCM数据")
+            return
+        }
+        
+        // 使用音频处理器编码音频数据
+        val encodedAudio = audioProcessor.encodeAudio(pcmShorts) ?: run {
+            Log.e(TAG, "❌ 音频编码失败")
+            return
+        }
+        
+        webSocket?.send(ByteString.of(*encodedAudio))?.also {
+            val codecInfo = audioProcessor.getCodecInfo()
+            Log.v(TAG, "📤 发送音频数据: ${audioData.size} -> ${encodedAudio.size} 字节 ($codecInfo)")
+        } ?: run {
+            Log.w(TAG, "WebSocket 未连接，无法发送音频数据")
+        }
+    }
+    
+    /**
+     * 直接发送已编码的音频数据（用于WebSocketInputDevice）
+     */
+    suspend fun sendEncodedAudio(encodedAudio: ByteArray) {
+        webSocket?.send(ByteString.of(*encodedAudio))?.also {
+            Log.v(TAG, "📤 发送已编码音频数据: ${encodedAudio.size} 字节")
         } ?: run {
             Log.w(TAG, "WebSocket 未连接，无法发送音频数据")
         }
@@ -182,6 +230,7 @@ class WebSocketProtocol(
         webSocket = null
         isConnected = false
         isClosing = false
+        audioProcessor.cleanup()
         _connectionState.value = ConnectionState.Disconnected
     }
 
@@ -240,6 +289,13 @@ class WebSocketProtocol(
                 MessageType.HELLO -> {
                     Log.d(TAG, "收到服务器 hello 响应")
                     
+                    // 处理音频配置协商
+                    if (json.has("audio_params")) {
+                        scope.launch {
+                            handleAudioConfigNegotiation(json.getJSONObject("audio_params"))
+                        }
+                    }
+                    
                     // 检查是否需要激活
                     if (json.has("activation")) {
                         val activationData = json.getJSONObject("activation")
@@ -247,6 +303,14 @@ class WebSocketProtocol(
                     }
                     
                     helloReceived.complete(true)
+                }
+                MessageType.AUDIO_CONFIG -> {
+                    Log.d(TAG, "收到音频配置更新")
+                    if (json.has("audio_params")) {
+                        scope.launch {
+                            handleAudioConfigNegotiation(json.getJSONObject("audio_params"))
+                        }
+                    }
                 }
                 MessageType.STT -> {
                     val text = json.optString("text", "")
@@ -284,6 +348,65 @@ class WebSocketProtocol(
     private fun handleAudioMessage(audioData: ByteArray) {
         onAudioMessageCallback?.invoke(audioData)
     }
+
+    /**
+     * 处理音频配置协商
+     */
+    private suspend fun handleAudioConfigNegotiation(audioParams: JSONObject) = withContext(Dispatchers.IO) {
+        try {
+            val serverFormat = audioParams.optString("format", AudioCodec.PCM)
+            val serverSampleRate = audioParams.optInt("sample_rate", 16000)
+            val serverChannels = audioParams.optInt("channels", 1)
+            val serverBitrate = audioParams.optInt("bitrate", 32000)
+            val serverFrameSize = audioParams.optInt("frame_size", 960)
+            
+            Log.d(TAG, "🎵 服务器音频配置: format=$serverFormat, rate=${serverSampleRate}Hz, " +
+                      "channels=$serverChannels, bitrate=${serverBitrate}bps, frameSize=$serverFrameSize")
+            
+            // 更新协商后的音频配置
+            negotiatedAudioConfig = AudioConfig(
+                codec = serverFormat,
+                sampleRate = serverSampleRate,
+                channels = serverChannels,
+                bitRate = serverBitrate,
+                frameSize = serverFrameSize
+            )
+            
+            // 根据服务器配置调整本地音频处理器
+            val preferredCodec = when (serverFormat) {
+                AudioCodec.OPUS -> {
+                    Log.d(TAG, "✅ 服务器支持Opus，切换到Opus模式")
+                    org.stypox.dicio.io.audio.AudioQuality.LOW_BANDWIDTH
+                }
+                AudioCodec.PCM -> {
+                    Log.d(TAG, "📡 服务器使用PCM，保持PCM模式")
+                    org.stypox.dicio.io.audio.AudioQuality.HIGH_QUALITY
+                }
+                else -> {
+                    Log.w(TAG, "⚠️ 未知音频格式: $serverFormat，使用默认配置")
+                    org.stypox.dicio.io.audio.AudioQuality.BALANCED
+                }
+            }
+            
+            // 更新音频处理器配置
+            audioProcessor.setAudioQuality(preferredCodec)
+            
+            Log.i(TAG, "🔧 音频配置协商完成: ${audioProcessor.getCodecInfo()}")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 处理音频配置协商失败: ${e.message}", e)
+        }
+    }
+
+    /**
+     * 获取当前协商的音频配置
+     */
+    fun getNegotiatedAudioConfig(): AudioConfig = negotiatedAudioConfig
+
+    /**
+     * 获取音频处理器
+     */
+    fun getAudioProcessor(): AdaptiveAudioProcessor = audioProcessor
     
     /**
      * 处理激活需求
