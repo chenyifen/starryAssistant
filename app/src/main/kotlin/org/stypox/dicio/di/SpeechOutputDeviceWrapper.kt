@@ -185,18 +185,27 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     }
 
     override fun speak(speechOutput: String) {
+        Log.d(TAG, "🗣️ [DEBUG] speak() 被调用: '$speechOutput'")
+        Log.d(TAG, "🗣️ [DEBUG] 当前TTS设备类型: ${wrappedSpeechDevice::class.simpleName}")
+        
         // 在每次speak调用前检查当前设备是否可用
         scope.launch {
-            if (!isCurrentDeviceAvailable()) {
+            val isAvailable = isCurrentDeviceAvailable()
+            Log.d(TAG, "🗣️ [DEBUG] 当前TTS设备可用性: $isAvailable")
+            
+            if (!isAvailable) {
                 Log.w(TAG, "⚠️ 当前TTS设备不可用，尝试降级")
                 // 尝试降级到下一个设备
                 currentFallbackIndex++
                 val newDevice = tryCreateTtsDeviceWithFallback(localeManager.locale.value)
                 wrappedSpeechDevice.cleanup()
                 wrappedSpeechDevice = newDevice
+                Log.d(TAG, "🗣️ [DEBUG] 降级后TTS设备类型: ${wrappedSpeechDevice::class.simpleName}")
             }
             
+            Log.d(TAG, "🗣️ [DEBUG] 调用 wrappedSpeechDevice.speak()")
             wrappedSpeechDevice.speak(speechOutput)
+            Log.d(TAG, "🗣️ [DEBUG] wrappedSpeechDevice.speak() 调用完成")
         }
     }
     
@@ -204,20 +213,35 @@ class SpeechOutputDeviceWrapper @Inject constructor(
      * 检查当前设备是否可用
      */
     private fun isCurrentDeviceAvailable(): Boolean {
-        return when (wrappedSpeechDevice) {
+        val result = when (wrappedSpeechDevice) {
             is WebSocketTtsSpeechDevice -> {
                 val connectionState = webSocketProtocol?.connectionState?.value
-                connectionState is org.stypox.dicio.io.net.ConnectionState.Connected
+                val isConnected = connectionState is org.stypox.dicio.io.net.ConnectionState.Connected
+                Log.d(TAG, "🔍 [DEBUG] WebSocketTTS 连接状态: $connectionState, 可用: $isConnected")
+                isConnected
             }
             is NothingSpeechDevice -> {
                 // NothingSpeechDevice表示降级链已耗尽，返回false触发重新尝试
+                Log.d(TAG, "🔍 [DEBUG] NothingSpeechDevice 不可用")
                 false
+            }
+            is SherpaOnnxTtsSpeechDevice -> {
+                // SherpaOnnx TTS初始化后应该始终可用
+                Log.d(TAG, "🔍 [DEBUG] SherpaOnnxTTS 可用")
+                true
+            }
+            is AndroidTtsSpeechDevice -> {
+                // AndroidTTS初始化后应该始终可用
+                Log.d(TAG, "🔍 [DEBUG] AndroidTTS 可用")
+                true
             }
             else -> {
                 // 其他设备默认认为可用
+                Log.d(TAG, "🔍 [DEBUG] 其他TTS设备 (${wrappedSpeechDevice::class.simpleName}) 可用")
                 true
             }
         }
+        return result
     }
 
     override fun stopSpeaking() {

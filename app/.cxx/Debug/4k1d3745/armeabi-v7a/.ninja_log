@@ -1,0 +1,9 @@
+# ninja log v5
+150	187	1759684928498921061	/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/armeabi-v7a/libopus_jni.so	4d0cd8cd4e7311bc
+0	149	1759684928460004384	CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o	4c683dc8f70582c3
+2	157	1759822899149046570	CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o	4c683dc8f70582c3
+157	207	1759822899199686580	/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/armeabi-v7a/libopus_jni.so	4d0cd8cd4e7311bc
+0	6	0	clean	b5427a546fddb367
+0	2	0	clean	b5427a546fddb367
+2	258	1759830505055754760	CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o	4c683dc8f70582c3
+258	329	1759830505126754985	/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/armeabi-v7a/libopus_jni.so	4d0cd8cd4e7311bc

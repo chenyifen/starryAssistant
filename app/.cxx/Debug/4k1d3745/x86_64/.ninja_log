@@ -1,0 +1,9 @@
+# ninja log v5
+153	189	1759684929458297120	/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/x86_64/libopus_jni.so	8a759a760265ee20
+0	151	1759684929420708746	CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o	9e086a549036e245
+2	124	1759822899565901995	CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o	9e086a549036e245
+124	163	1759822899605845798	/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/x86_64/libopus_jni.so	8a759a760265ee20
+0	4	0	clean	b5427a546fddb367
+0	3	0	clean	b5427a546fddb367
+2	333	1759830505788633679	CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o	9e086a549036e245
+333	388	1759830505844419296	/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/x86_64/libopus_jni.so	8a759a760265ee20
