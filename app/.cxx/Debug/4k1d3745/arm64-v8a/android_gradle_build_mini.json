@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/user/AndroidStudioProjects/dicio-android/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/user/tool/android-sdk-linux/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/Debug/4k1d3745/arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/user/tool/android-sdk-linux/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/Debug/4k1d3745/arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "opus_jni::@6890427a1f51a3e7e1df": {
+      "artifactName": "opus_jni",
+      "abi": "arm64-v8a",
+      "output": "/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/Debug/4k1d3745/obj/arm64-v8a/libopus_jni.so",
+      "runtimeFiles": []
+    }
+  }
+}

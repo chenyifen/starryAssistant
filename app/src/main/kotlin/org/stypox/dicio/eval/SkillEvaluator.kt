@@ -159,12 +159,19 @@ class SkillEvaluatorImpl(
 
             val interactionPlan = output.getInteractionPlan(skillContext)
             addInteractionFromPending(output)
-            output.getSpeechOutput(skillContext).let {
-                if (it.isNotBlank()) {
-                    withContext (Dispatchers.Main) {
-                        skillContext.speechOutputDevice.speak(it)
-                    }
+            
+            val speechOutput = output.getSpeechOutput(skillContext)
+            Log.d(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
+            Log.d(TAG, "🗣️ [DEBUG] speechOutput.isNotBlank(): ${speechOutput.isNotBlank()}")
+            
+            if (speechOutput.isNotBlank()) {
+                withContext (Dispatchers.Main) {
+                    Log.d(TAG, "🗣️ [DEBUG] 即将调用 speechOutputDevice.speak()")
+                    skillContext.speechOutputDevice.speak(speechOutput)
+                    Log.d(TAG, "🗣️ [DEBUG] speechOutputDevice.speak() 调用完成")
                 }
+            } else {
+                Log.w(TAG, "⚠️ [DEBUG] speechOutput 为空，跳过TTS播放")
             }
 
             when (interactionPlan) {
