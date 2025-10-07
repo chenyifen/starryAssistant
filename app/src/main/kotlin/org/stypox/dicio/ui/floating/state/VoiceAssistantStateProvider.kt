@@ -192,6 +192,8 @@ class VoiceAssistantStateProvider @Inject constructor(
             // 获取TTS文本并添加AI回复到会话历史
             try {
                 val speechOutput = lastAnswer.getSpeechOutput(skillContext)
+                DebugLogger.logUI(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
+                
                 if (speechOutput.isNotBlank()) {
                     updateState(
                         uiState = VoiceAssistantUIState.SPEAKING,
@@ -200,8 +202,13 @@ class VoiceAssistantStateProvider @Inject constructor(
                     )
                     addAIMessage(speechOutput)
                     
-                    // 监听TTS播放完成
+                    // ⚠️ 注意：这里不需要再次调用 speak()，因为 SkillEvaluator 已经调用了
+                    // 但是需要监听TTS播放完成
                     setupTTSCompletionCallback()
+                    
+                    DebugLogger.logUI(TAG, "🗣️ [DEBUG] TTS 文本已设置，等待播放完成")
+                } else {
+                    DebugLogger.logUI(TAG, "⚠️ [DEBUG] speechOutput 为空，跳过TTS")
                 }
             } catch (e: Exception) {
                 DebugLogger.logUI(TAG, "❌ Error getting speech output: ${e.message}")
