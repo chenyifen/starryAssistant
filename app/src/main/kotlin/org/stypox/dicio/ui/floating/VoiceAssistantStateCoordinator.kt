@@ -115,8 +115,16 @@ class VoiceAssistantStateCoordinator @Inject constructor(
             }
             
             is SttState.ErrorLoading -> {
-                DebugLogger.logUI(TAG, "❌ STT device loading error: ${sttState.throwable.message}")
-                updateUIState(VoiceAssistantUIState.ERROR, "ERROR")
+                val errorMessage = sttState.throwable.message ?: ""
+                if (errorMessage.contains("was cancelled", ignoreCase = true)) {
+                    // 协程被取消是正常的状态转换，不是真正的错误，直接转回IDLE
+                    DebugLogger.logUI(TAG, "⚠️ STT device loading cancelled (normal), returning to IDLE")
+                    updateUIState(VoiceAssistantUIState.IDLE, "")
+                } else {
+                    // 其他错误才显示ERROR状态
+                    DebugLogger.logUI(TAG, "❌ STT device loading error: $errorMessage")
+                    updateUIState(VoiceAssistantUIState.ERROR, "ERROR")
+                }
             }
             
             is SttState.ErrorDownloading -> {
