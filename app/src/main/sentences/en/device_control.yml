@@ -1,0 +1,166 @@
+power_off:
+  - turn off the? power
+  - power off
+  - shut down
+  - turn off
+
+power_on:
+  - turn on the? power
+  - power on
+  - turn on
+
+volume_up:
+  - turn the? volume up
+  - increase the? volume
+  - volume up
+  - louder
+
+volume_down:
+  - turn the? volume down
+  - decrease the? volume
+  - volume down
+  - quieter
+
+mute_on:
+  - mute on
+  - mute
+  - silence
+
+input_source:
+  - open the? input source window
+  - show input source
+  - input source
+
+hdmi_one:
+  - switch to hdmi one
+  - go to hdmi one
+  - hdmi one
+
+hdmi_two:
+  - switch to hdmi two
+  - go to hdmi two
+  - hdmi two
+
+dp_port:
+  - switch to dp port?
+  - go to dp port?
+  - dp port?
+
+front_hdmi:
+  - switch to front hdmi
+  - go to front hdmi
+  - front hdmi
+
+front_usb_c:
+  - switch to front usb c
+  - go to front usb c
+  - front usb c
+
+ops:
+  - switch to ops
+  - go to ops
+  - ops
+
+home_screen:
+  - go to the? home screen
+  - home screen
+  - go home
+
+google:
+  - go to google
+  - open google
+  - google
+
+browser:
+  - open the? browser
+  - browser
+
+play_store:
+  - open the? play store
+  - play store
+
+youtube:
+  - open youtube
+  - open the youtube
+  - youtube
+
+whiteboard:
+  - open the? whiteboard
+  - whiteboard
+
+save_whiteboard:
+  - save the? whiteboard
+  - save board
+
+red_pen:
+  - red pen
+  - red marker
+
+blue_pen:
+  - blue pen
+  - blue marker
+
+white_pen:
+  - white pen
+  - white marker
+
+black_pen:
+  - black pen
+  - black marker
+
+eraser:
+  - eraser
+  - erase
+
+delete_all:
+  - delete all
+  - clear all
+  - clear board
+
+highlight_pen:
+  - highlight pen
+  - highlighter
+
+fountain_pen:
+  - fountain pen
+
+brush_pen:
+  - brush pen
+  - brush
+
+settings:
+  - open the? settings
+  - settings
+
+recorder:
+  - open the? recorder
+  - recorder
+
+eshare:
+  - open e share
+  - open the e share
+  - open eshare
+  - open the eshare
+  - e share
+  - eshare
+
+camera:
+  - open the? camera
+  - camera
+
+screenshot:
+  - take a? screenshot
+  - screenshot
+  - screen capture
+
+finder:
+  - open the? finder
+  - finder
+
+go_back:
+  - go back
+  - back
+  - return
+  - previous page
+  - go to previous page
+

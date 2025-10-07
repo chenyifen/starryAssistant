@@ -7,6 +7,8 @@ import "speech_output_device.proto";
 import "wake_device.proto";
 import "stt_play_sound.proto";
 import "two_pass_settings.proto";
+import "audio_quality.proto";
+import "fallback_chain.proto";
 
 option java_package = "org.stypox.dicio.settings.datastore";
 option java_multiple_files = true;
@@ -23,4 +25,7 @@ message UserSettings {
     SttPlaySound stt_play_sound = 9;
     TwoPassSettings two_pass_settings = 10;
     bool performance_monitor_enabled = 11;
+    AudioQuality audio_quality = 12;
+    TtsFallbackChain tts_fallback_chain = 13;
+    AsrFallbackChain asr_fallback_chain = 14;
 }

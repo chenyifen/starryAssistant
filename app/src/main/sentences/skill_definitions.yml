@@ -106,3 +106,42 @@ skills:
         captures:
           - id: where
             type: string
+
+  - id: device_control
+    specificity: high
+    sentences:
+      - id: power_off
+      - id: power_on
+      - id: volume_up
+      - id: volume_down
+      - id: mute_on
+      - id: input_source
+      - id: hdmi_one
+      - id: hdmi_two
+      - id: dp_port
+      - id: front_hdmi
+      - id: front_usb_c
+      - id: ops
+      - id: home_screen
+      - id: google
+      - id: browser
+      - id: play_store
+      - id: youtube
+      - id: whiteboard
+      - id: save_whiteboard
+      - id: red_pen
+      - id: blue_pen
+      - id: white_pen
+      - id: black_pen
+      - id: eraser
+      - id: delete_all
+      - id: highlight_pen
+      - id: fountain_pen
+      - id: brush_pen
+      - id: settings
+      - id: recorder
+      - id: eshare
+      - id: camera
+      - id: screenshot
+      - id: finder
+      - id: go_back

@@ -78,7 +78,27 @@ object MessageType {
     const val IOT = "iot"
     const val SYSTEM = "system"
     const val ALERT = "alert"
+    const val AUDIO_CONFIG = "audio_config"  // 音频配置协商
 }
+
+/**
+ * 音频编解码器类型
+ */
+object AudioCodec {
+    const val PCM = "pcm"
+    const val OPUS = "opus"
+}
+
+/**
+ * 音频配置
+ */
+data class AudioConfig(
+    val codec: String = AudioCodec.PCM,
+    val sampleRate: Int = 16000,
+    val channels: Int = 1,
+    val bitRate: Int = 32000, // 仅用于Opus
+    val frameSize: Int = 960   // 仅用于Opus
+)
 
 /**
  * TTS 状态

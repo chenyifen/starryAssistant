@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+option java_package = "org.stypox.dicio.settings.datastore";
+option java_multiple_files = true;
+
+// 音频质量设置
+enum AudioQuality {
+  AUDIO_QUALITY_UNSET = 0;
+  AUDIO_QUALITY_HIGH_QUALITY = 1;    // 高音质模式 (优先PCM)
+  AUDIO_QUALITY_BALANCED = 2;        // 平衡模式 (智能选择)
+  AUDIO_QUALITY_LOW_BANDWIDTH = 3;   // 省流量模式 (优先Opus)
+}
