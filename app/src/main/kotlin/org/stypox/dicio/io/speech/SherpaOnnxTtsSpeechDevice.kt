@@ -295,7 +295,16 @@ class SherpaOnnxTtsSpeechDevice(
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "TTS合成失败: ${e.message}", e)
+                // 区分取消异常和真正的错误
+                if (e is kotlinx.coroutines.CancellationException || 
+                    e.cause is kotlinx.coroutines.CancellationException ||
+                    e.message?.contains("was cancelled", ignoreCase = true) == true) {
+                    // 协程被取消是正常的（新的TTS请求到来时会取消旧的）
+                    Log.d(TAG, "⚠️ TTS合成被取消（正常）: 新的TTS请求到达")
+                } else {
+                    // 真正的错误才记录ERROR
+                    Log.e(TAG, "❌ TTS合成失败: ${e.message}", e)
+                }
                 withContext(Dispatchers.Main) {
                     onSpeakingFinished()
                 }
