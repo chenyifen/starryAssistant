@@ -239,6 +239,20 @@ class SenseVoiceInputDevice private constructor(
         Log.d(TAG, "🛑 停止语音监听...")
         isListening.set(false)
         
+        // 在停止前，如果有累积的音频数据，执行最终识别
+        if (audioBuffer.isNotEmpty() && speechStartTime > 0) {
+            Log.d(TAG, "🔚 执行最终识别，音频缓冲区: ${audioBuffer.size}样本")
+            scope.launch {
+                try {
+                    performFinalRecognition()
+                } catch (e: Exception) {
+                    Log.w(TAG, "最终识别失败", e)
+                }
+            }
+        } else {
+            Log.d(TAG, "🔚 无音频数据，跳过最终识别")
+        }
+        
         // 停止录制
         stopRecording()
         
@@ -624,20 +638,30 @@ class SenseVoiceInputDevice private constructor(
                     // 让出CPU时间
                     yield()
                     
-                } catch (e: IllegalStateException) {
-                    Log.e(TAG, "❌ AudioRecord状态异常", e)
-                    // 确保状态正确重置
-                    isListening.set(false)
-                    isRecording.set(false)
-                    _uiState.value = SttState.ErrorLoading(e)
-                    break
                 } catch (e: kotlinx.coroutines.CancellationException) {
-                    Log.d(TAG, "🛑 录制协程被取消")
-                    // 确保状态正确重置
+                    // 协程取消是正常的，例如用户停止录音或切换设备
+                    Log.d(TAG, "🛑 录制协程被取消（正常）")
                     isListening.set(false)
                     isRecording.set(false)
                     _uiState.value = SttState.Loaded
-                    throw e // 重新抛出取消异常
+                    throw e // 重新抛出取消异常以正确传播
+                } catch (e: IllegalStateException) {
+                    // 检查是否是协程取消引起的IllegalStateException
+                    if (e.cause is kotlinx.coroutines.CancellationException || 
+                        e.message?.contains("was cancelled", ignoreCase = true) == true) {
+                        Log.d(TAG, "🛑 AudioRecord状态异常（协程取消引起，正常）")
+                        isListening.set(false)
+                        isRecording.set(false)
+                        _uiState.value = SttState.Loaded
+                        throw kotlinx.coroutines.CancellationException("Recording cancelled", e.cause)
+                    } else {
+                        // 真正的AudioRecord状态异常
+                        Log.e(TAG, "❌ AudioRecord状态异常（错误）", e)
+                        isListening.set(false)
+                        isRecording.set(false)
+                        _uiState.value = SttState.ErrorLoading(e)
+                        break
+                    }
                 } catch (e: Exception) {
                     if (isRecording.get()) {
                         Log.e(TAG, "❌ 录制音频数据异常", e)
