@@ -113,7 +113,8 @@ class SenseVoiceInputDevice private constructor(
     private val maxBufferSize = SAMPLE_RATE * 10 // 最多存储10秒音频
     private var partialText = ""
     private var lastPartialRecognitionTime = 0L
-    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 200L // 参考demo改为200ms触发间隔
+    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 100L // 优化为100ms触发间隔，提升实时性
+    private val MIN_AUDIO_FOR_PARTIAL = SAMPLE_RATE / 10 // 最少0.1秒音频即可触发部分识别，提升响应速度
     private var isPartialResultAdded = false // 参考demo的结果管理策略
     
     // 协程作用域 - 使用可重新创建的作用域
@@ -708,9 +709,9 @@ class SenseVoiceInputDevice private constructor(
                         }
                         lastSpeechTime = currentTime
                         
-                        // 参考SherpaOnnxSimulateAsr每200ms进行实时识别
+                        // 优化实时识别触发条件，提升响应速度
                         val elapsed = currentTime - lastPartialRecognitionTime
-                        if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= SAMPLE_RATE / 2) {
+                        if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= MIN_AUDIO_FOR_PARTIAL) {
                             performPartialRecognition()
                         }
                         
