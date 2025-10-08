@@ -702,7 +702,9 @@ class SenseVoiceInputDevice private constructor(
                             // 语音开始
                             speechDetected = true
                             speechStartTime = currentTime
-                            Log.d(TAG, "🎤 检测到语音开始")
+                            DebugLogger.logRecognition(TAG, "🎤 ═══════════════════════════════════════════════════")
+                            DebugLogger.logRecognition(TAG, "🎤 检测到语音开始 - 时间戳: ${speechStartTime}")
+                            DebugLogger.logRecognition(TAG, "🎤 ═══════════════════════════════════════════════════")
                             
                             // 不发送状态文本，避免干扰真实的ASR结果显示
                             // 语音开始事件由UI状态管理器处理
@@ -711,7 +713,10 @@ class SenseVoiceInputDevice private constructor(
                         
                         // 优化实时识别触发条件，提升响应速度
                         val elapsed = currentTime - lastPartialRecognitionTime
+                        val audioLengthSeconds = audioBuffer.size.toFloat() / SAMPLE_RATE
+                        
                         if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= MIN_AUDIO_FOR_PARTIAL) {
+                            DebugLogger.logRecognition(TAG, "⏱️ 触发部分识别 - 间隔: ${elapsed}ms, 音频: ${String.format("%.2f", audioLengthSeconds)}s (${audioBuffer.size}样本)")
                             performPartialRecognition()
                         }
                         
@@ -791,33 +796,56 @@ class SenseVoiceInputDevice private constructor(
         try {
             val recognizer = senseVoiceRecognizer ?: return
             
-            val currentTime = System.currentTimeMillis()
-            lastPartialRecognitionTime = currentTime
+            val recognitionStartTime = System.currentTimeMillis()
+            val timeSinceLastRecognition = recognitionStartTime - lastPartialRecognitionTime
+            lastPartialRecognitionTime = recognitionStartTime
             
             // 参考SherpaOnnxSimulateAsr的缓冲管理方式
             val audioData = synchronized(audioBuffer) {
                 if (audioBuffer.size < SAMPLE_RATE / 4) return // 至少0.25秒音频
                 audioBuffer.toFloatArray()
             }
+            
+            DebugLogger.logRecognition(TAG, "🔄 开始识别 - 音频: ${String.format("%.2f", audioData.size / SAMPLE_RATE.toFloat())}s")
             val newText = recognizer.recognize(audioData)
+            val recognitionDuration = System.currentTimeMillis() - recognitionStartTime
             
             if (newText.isNotBlank() && newText != partialText) {
                 val oldText = partialText
                 partialText = newText
+                val textDiff = if (newText.startsWith(oldText)) {
+                    "+\"${newText.substring(oldText.length)}\""
+                } else {
+                    "完全替换"
+                }
+                
+                DebugLogger.logRecognition(TAG, "✅ 识别完成 - 耗时: ${recognitionDuration}ms, 文本变化: $textDiff")
+                DebugLogger.logRecognition(TAG, "   旧: '$oldText'")
+                DebugLogger.logRecognition(TAG, "   新: '$partialText'")
                 
                 // 参考SherpaOnnxSimulateAsr的结果管理策略
                 withContext(Dispatchers.Main) {
+                    val uiUpdateStart = System.currentTimeMillis()
                     if (!isPartialResultAdded) {
                         // 首次添加部分结果
                         eventListener?.invoke(InputEvent.Partial(partialText))
                         isPartialResultAdded = true
+                        DebugLogger.logRecognition(TAG, "📤 首次发送Partial事件到UI - 耗时: ${System.currentTimeMillis() - uiUpdateStart}ms")
                     } else {
                         // 更新现有部分结果
                         eventListener?.invoke(InputEvent.Partial(partialText))
+                        DebugLogger.logRecognition(TAG, "📤 更新Partial事件到UI - 耗时: ${System.currentTimeMillis() - uiUpdateStart}ms")
                     }
                 }
                 
-                Log.d(TAG, "🎯 部分识别更新: '$oldText' → '$partialText' (音频长度: ${audioData.size / SAMPLE_RATE.toFloat()}秒)")
+                val totalLatency = System.currentTimeMillis() - recognitionStartTime
+                DebugLogger.logRecognition(TAG, "⏱️ 总延迟: ${totalLatency}ms (识别: ${recognitionDuration}ms, UI更新: ${totalLatency - recognitionDuration}ms)")
+            } else {
+                if (newText == partialText) {
+                    DebugLogger.logRecognition(TAG, "⏭️ 识别结果未变化 - 耗时: ${recognitionDuration}ms")
+                } else {
+                    DebugLogger.logRecognition(TAG, "⚠️ 识别结果为空 - 耗时: ${recognitionDuration}ms")
+                }
             }
             
         } catch (e: Exception) {

@@ -601,13 +601,16 @@ class DraggableFloatingOrb(
         
         // 更新文本状态
         if (asrTextChanged) {
+            val updateTime = System.currentTimeMillis()
             currentAsrText.value = state.asrText
-            DebugLogger.logUI(TAG, "📝 ASR text updated: '${state.asrText}'")
+            DebugLogger.logRecognition(TAG, "🖼️ UI文本状态更新 (ASR) - 时间戳: $updateTime, 长度: ${state.asrText.length}")
+            DebugLogger.logRecognition(TAG, "   内容: '${state.asrText}'")
         }
         
         if (ttsTextChanged) {
+            val updateTime = System.currentTimeMillis()
             currentTtsText.value = state.ttsText
-            DebugLogger.logUI(TAG, "🎵 TTS text updated: '${state.ttsText}'")
+            DebugLogger.logRecognition(TAG, "🖼️ UI文本状态更新 (TTS) - 时间戳: $updateTime, 长度: ${state.ttsText.length}")
         }
         
         // 性能优化：智能更新策略
@@ -642,12 +645,20 @@ class DraggableFloatingOrb(
      * 性能优化：文本就地更新 - 避免refreshUI()
      */
     private fun updateTextOnly() {
+        val recomposeTime = System.currentTimeMillis()
+        
         // Compose会自动检测状态变化并重组相关组件
         // 无需调用refreshUI()，大幅提升性能
-        DebugLogger.logUI(TAG, "📝 Text updated in-place (ASR: '${currentAsrText.value}', TTS: '${currentTtsText.value}')")
+        DebugLogger.logRecognition(TAG, "🔄 触发Compose重组 - 时间戳: $recomposeTime")
+        DebugLogger.logRecognition(TAG, "   ASR: '${currentAsrText.value}' (${currentAsrText.value.length}字)")
+        DebugLogger.logRecognition(TAG, "   TTS: '${currentTtsText.value}' (${currentTtsText.value.length}字)")
         
         // 文本变化时需要更新窗口高度，但保持位置不变
+        val heightUpdateStart = System.currentTimeMillis()
         updateWindowHeightOnly()
+        val heightUpdateDuration = System.currentTimeMillis() - heightUpdateStart
+        
+        DebugLogger.logRecognition(TAG, "📐 窗口高度更新完成 - 耗时: ${heightUpdateDuration}ms")
     }
     
     /**

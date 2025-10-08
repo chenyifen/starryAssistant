@@ -134,13 +134,23 @@ class VoiceAssistantStateProvider @Inject constructor(
     private fun handleInputEvent(inputEvent: InputEvent) {
         when (inputEvent) {
             is InputEvent.Partial -> {
+                val receiveTime = System.currentTimeMillis()
+                
                 // 性能优化：ASR文本去重，相同文本不触发更新
                 if (inputEvent.utterance != lastAsrText) {
                     lastAsrText = inputEvent.utterance
-                    DebugLogger.logUI(TAG, "📝 ASR partial result: ${inputEvent.utterance}")
+                    val textLength = inputEvent.utterance.length
+                    
+                    DebugLogger.logRecognition(TAG, "📨 收到Partial事件 - 时间戳: $receiveTime, 文本长度: $textLength")
+                    DebugLogger.logRecognition(TAG, "   内容: '${inputEvent.utterance}'")
+                    
+                    val updateStartTime = System.currentTimeMillis()
                     updateState(asrText = inputEvent.utterance)
+                    val updateDuration = System.currentTimeMillis() - updateStartTime
+                    
+                    DebugLogger.logRecognition(TAG, "✅ State更新完成 - 耗时: ${updateDuration}ms")
                 } else {
-                    DebugLogger.logUI(TAG, "📝 ASR text unchanged, skipping update: ${inputEvent.utterance}")
+                    DebugLogger.logRecognition(TAG, "⏭️ ASR文本未变化，跳过更新: ${inputEvent.utterance}")
                 }
             }
             
