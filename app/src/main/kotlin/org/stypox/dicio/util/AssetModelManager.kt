@@ -57,8 +57,12 @@ object AssetModelManager {
     suspend fun copyOpenWakeWordModels(context: Context): Boolean {
         return withContext(Dispatchers.IO) {
             try {
+                Log.d(TAG, "🔄 Starting copyOpenWakeWordModels...")
                 val owwFolder = File(context.filesDir, "openWakeWord")
-                owwFolder.mkdirs()
+                Log.d(TAG, "📁 Target folder: ${owwFolder.absolutePath}")
+                
+                val mkdirResult = owwFolder.mkdirs()
+                Log.d(TAG, "📁 mkdirs result: $mkdirResult, exists: ${owwFolder.exists()}, isDirectory: ${owwFolder.isDirectory}")
                 
                 val modelFiles = listOf(
                     "melspectrogram.tflite",
@@ -66,17 +70,26 @@ object AssetModelManager {
                     "wake.tflite"
                 )
                 
+                Log.d(TAG, "📄 Will copy ${modelFiles.size} files")
+                
                 for (fileName in modelFiles) {
                     val targetFile = File(owwFolder, fileName)
+                    Log.d(TAG, "📄 Processing $fileName, exists: ${targetFile.exists()}, size: ${if (targetFile.exists()) targetFile.length() else 0}")
+                    
                     if (!targetFile.exists()) {
+                        Log.d(TAG, "📥 Copying $fileName from assets...")
                         copyAssetFile(context, "models/openWakeWord/$fileName", targetFile)
-                        Log.d(TAG, "Copied OpenWakeWord model: $fileName")
+                        Log.d(TAG, "✅ Copied OpenWakeWord model: $fileName (${targetFile.length()} bytes)")
+                    } else {
+                        Log.d(TAG, "⏭️  Skipping $fileName, already exists")
                     }
                 }
                 
+                Log.d(TAG, "✅ Successfully copied all OpenWakeWord models")
                 true
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to copy OpenWakeWord models", e)
+                Log.e(TAG, "❌ Failed to copy OpenWakeWord models", e)
+                e.printStackTrace()
                 false
             }
         }

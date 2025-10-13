@@ -6,8 +6,6 @@ import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.stypox.dicio.util.DebugLogger
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 
 /**
  * 音频编解码器类型枚举
@@ -44,16 +42,6 @@ class AdaptiveAudioProcessor(
 ) {
     companion object {
         private const val TAG = "AdaptiveAudioProcessor"
-        
-        // 性能监控阈值
-        private const val ENCODING_TIME_THRESHOLD_MS = 50L  // 编码时间阈值
-        private const val DECODING_TIME_THRESHOLD_MS = 30L  // 解码时间阈值
-        private const val MEMORY_THRESHOLD_MB = 100L        // 内存使用阈值
-        private const val CPU_USAGE_THRESHOLD = 80f         // CPU使用率阈值
-        
-        // 降级触发条件
-        private const val CONSECUTIVE_FAILURES_THRESHOLD = 3  // 连续失败次数阈值
-        private const val PERFORMANCE_CHECK_INTERVAL_MS = 5000L // 性能检查间隔
     }
 
     // Opus编解码器实例
@@ -67,13 +55,6 @@ class AdaptiveAudioProcessor(
     
     // 设备性能等级
     private val devicePerformance: DevicePerformance by lazy { detectDevicePerformance() }
-    
-    // 性能监控
-    private val isMonitoring = AtomicBoolean(false)
-    private val consecutiveFailures = AtomicBoolean(false)
-    private val lastPerformanceCheck = AtomicLong(0)
-    private val encodingTimeStats = mutableListOf<Long>()
-    private val decodingTimeStats = mutableListOf<Long>()
 
     /**
      * 初始化自适应音频处理器
@@ -101,9 +82,6 @@ class AdaptiveAudioProcessor(
                 }
             }
             
-            // 启动性能监控
-            startPerformanceMonitoring()
-            
             DebugLogger.logAudio(TAG, "✅ 自适应音频处理器初始化完成")
             true
         } catch (e: Exception) {
@@ -118,10 +96,8 @@ class AdaptiveAudioProcessor(
      * @return 编码后的音频数据
      */
     suspend fun encodeAudio(pcmData: ShortArray): ByteArray? = withContext(Dispatchers.IO) {
-        val startTime = System.currentTimeMillis()
-        
         try {
-            val result = when (currentCodec) {
+            when (currentCodec) {
                 AudioCodecType.PCM -> {
                     // PCM模式：直接转换为字节数组
                     opusCodec?.pcmShortsToBytes(pcmData) ?: pcmShortsToBytes(pcmData)
@@ -135,15 +111,6 @@ class AdaptiveAudioProcessor(
                     }
                 }
             }
-            
-            // 记录编码时间
-            val encodingTime = System.currentTimeMillis() - startTime
-            recordEncodingTime(encodingTime)
-            
-            // 检查性能
-            checkPerformanceAndAdapt(encodingTime, isEncoding = true)
-            
-            result
         } catch (e: Exception) {
             Log.e(TAG, "❌ 音频编码失败: ${e.message}", e)
             handleEncodingFailure()
@@ -157,10 +124,8 @@ class AdaptiveAudioProcessor(
      * @return PCM音频数据
      */
     suspend fun decodeAudio(audioData: ByteArray): ShortArray? = withContext(Dispatchers.IO) {
-        val startTime = System.currentTimeMillis()
-        
         try {
-            val result = when (currentCodec) {
+            when (currentCodec) {
                 AudioCodecType.PCM -> {
                     // PCM模式：直接转换为ShortArray
                     opusCodec?.pcmBytesToShorts(audioData) ?: pcmBytesToShorts(audioData)
@@ -174,15 +139,6 @@ class AdaptiveAudioProcessor(
                     }
                 }
             }
-            
-            // 记录解码时间
-            val decodingTime = System.currentTimeMillis() - startTime
-            recordDecodingTime(decodingTime)
-            
-            // 检查性能
-            checkPerformanceAndAdapt(decodingTime, isEncoding = false)
-            
-            result
         } catch (e: Exception) {
             Log.e(TAG, "❌ 音频解码失败: ${e.message}", e)
             handleDecodingFailure()
@@ -314,70 +270,6 @@ class AdaptiveAudioProcessor(
         if (currentCodec != AudioCodecType.PCM) {
             DebugLogger.logAudio(TAG, "⬇️ 降级到PCM模式")
             currentCodec = AudioCodecType.PCM
-            consecutiveFailures.set(true)
-        }
-    }
-
-    /**
-     * 启动性能监控
-     */
-    private fun startPerformanceMonitoring() {
-        if (!isMonitoring.getAndSet(true)) {
-            DebugLogger.logAudio(TAG, "📈 启动性能监控")
-        }
-    }
-
-    /**
-     * 记录编码时间
-     */
-    private fun recordEncodingTime(timeMs: Long) {
-        synchronized(encodingTimeStats) {
-            encodingTimeStats.add(timeMs)
-            if (encodingTimeStats.size > 100) {
-                encodingTimeStats.removeAt(0) // 保持最近100次记录
-            }
-        }
-    }
-
-    /**
-     * 记录解码时间
-     */
-    private fun recordDecodingTime(timeMs: Long) {
-        synchronized(decodingTimeStats) {
-            decodingTimeStats.add(timeMs)
-            if (decodingTimeStats.size > 100) {
-                decodingTimeStats.removeAt(0) // 保持最近100次记录
-            }
-        }
-    }
-
-    /**
-     * 检查性能并自适应调整
-     */
-    private suspend fun checkPerformanceAndAdapt(operationTime: Long, isEncoding: Boolean) {
-        val now = System.currentTimeMillis()
-        
-        // 定期进行性能检查
-        if (now - lastPerformanceCheck.get() > PERFORMANCE_CHECK_INTERVAL_MS) {
-            lastPerformanceCheck.set(now)
-            
-            val threshold = if (isEncoding) ENCODING_TIME_THRESHOLD_MS else DECODING_TIME_THRESHOLD_MS
-            
-            if (operationTime > threshold && currentCodec == AudioCodecType.OPUS) {
-                DebugLogger.logAudio(TAG, "⚠️ 性能不佳，考虑降级: ${operationTime}ms > ${threshold}ms")
-                
-                // 检查平均性能
-                val avgTime = if (isEncoding) {
-                    synchronized(encodingTimeStats) { encodingTimeStats.average() }
-                } else {
-                    synchronized(decodingTimeStats) { decodingTimeStats.average() }
-                }
-                
-                if (avgTime > threshold) {
-                    DebugLogger.logAudio(TAG, "📉 平均性能不佳，降级到PCM: 平均${String.format("%.1f", avgTime)}ms")
-                    fallbackToPCM()
-                }
-            }
         }
     }
 
@@ -428,31 +320,12 @@ class AdaptiveAudioProcessor(
     }
 
     /**
-     * 获取性能统计信息
-     */
-    fun getPerformanceStats(): String {
-        val avgEncoding = synchronized(encodingTimeStats) {
-            if (encodingTimeStats.isNotEmpty()) encodingTimeStats.average() else 0.0
-        }
-        val avgDecoding = synchronized(decodingTimeStats) {
-            if (decodingTimeStats.isNotEmpty()) decodingTimeStats.average() else 0.0
-        }
-        
-        return "编码平均耗时: ${String.format("%.1f", avgEncoding)}ms, " +
-               "解码平均耗时: ${String.format("%.1f", avgDecoding)}ms"
-    }
-
-    /**
      * 清理资源
      */
     fun cleanup() {
         DebugLogger.logAudio(TAG, "🧹 清理自适应音频处理器资源")
         
-        isMonitoring.set(false)
         opusCodec?.cleanup()
         opusCodec = null
-        
-        synchronized(encodingTimeStats) { encodingTimeStats.clear() }
-        synchronized(decodingTimeStats) { decodingTimeStats.clear() }
     }
 }
