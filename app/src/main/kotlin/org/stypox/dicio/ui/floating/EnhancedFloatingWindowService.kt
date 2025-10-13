@@ -379,12 +379,8 @@ class EnhancedFloatingWindowService : Service(),
         serviceScope.launch {
             try {
                 dataStore.data.collectLatest { settings ->
-                    // 更新性能监控显示状态（使用轻量级监控避免ANR）
-                    // 在调试模式下自动开启，或者根据用户设置
-                    val performanceMonitorEnabled = BuildConfig.DEBUG || settings.performanceMonitorEnabled
-                    floatingOrb?.updatePerformanceMonitorState(performanceMonitorEnabled)
-                    
-                    DebugLogger.logUI(TAG, "⚙️ Settings updated: performanceMonitor=$performanceMonitorEnabled (debug=${BuildConfig.DEBUG}, userSetting=${settings.performanceMonitorEnabled})")
+                    // Settings observation placeholder
+                    // 可以在这里添加其他设置的监听
                 }
             } catch (e: Exception) {
                 // 错误隔离：设置观察失败不应影响服务运行

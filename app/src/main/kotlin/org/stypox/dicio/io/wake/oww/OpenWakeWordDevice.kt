@@ -107,7 +107,8 @@ class OpenWakeWordDevice(
                     Log.d(TAG, "Copying OpenWakeWord models from assets")
                     val copySuccess = AssetModelManager.copyOpenWakeWordModels(appContext)
                     if (copySuccess) {
-                        _state.value = WakeState.NotLoaded
+                        // 模型文件已就绪，立即加载到内存
+                        loadModel()
                         return@launch
                     }
                     Log.w(TAG, "Failed to copy from assets, falling back to download")
@@ -122,13 +123,57 @@ class OpenWakeWordDevice(
                 ) { progress ->
                     _state.value = WakeState.Downloading(progress)
                 }
+                
+                // 下载完成后，加载模型
+                loadModel()
             } catch (e: Throwable) {
                 Log.e(TAG, "Can't download OpenWakeWord model", e)
                 _state.value = WakeState.ErrorDownloading(e)
                 return@launch
             }
-
-            _state.value = WakeState.NotLoaded
+        }
+    }
+    
+    /**
+     * 加载模型到内存
+     */
+    private fun loadModel() {
+        try {
+            DebugLogger.logWakeWord(TAG, "🔄 Loading OWW model...")
+            _state.value = WakeState.Loading
+            
+            val modelFiles = if (userWakeFileExists) {
+                DebugLogger.logWakeWord(TAG, "👤 Using user wake file: ${userWakeFile.absolutePath}")
+                listOf(melFile.file, embFile.file, userWakeFile)
+            } else {
+                DebugLogger.logWakeWord(TAG, "🔊 Using default wake file: ${wakeFile.file.absolutePath}")
+                listOf(melFile.file, embFile.file, wakeFile.file)
+            }
+            
+            DebugLogger.logWakeWord(TAG, "📄 Model files: ${modelFiles.map { "${it.name} (${if (it.exists()) "✅" else "❌"})" }}")
+            
+            // 检查所有文件是否存在
+            val missingFiles = modelFiles.filter { !it.exists() }
+            if (missingFiles.isNotEmpty()) {
+                val error = IOException("Missing model files: ${missingFiles.joinToString { it.name }}")
+                DebugLogger.logWakeWordError(TAG, "❌ Cannot load model, missing files", error)
+                _state.value = WakeState.ErrorLoading(error)
+                return
+            }
+            
+            model = measureTimeAndLog(TAG, "Load OWW model") {
+                OwwModel(
+                    melFile.file,
+                    embFile.file,
+                    if (userWakeFileExists) userWakeFile else wakeFile.file,
+                )
+            }
+            
+            _state.value = WakeState.Loaded
+            DebugLogger.logWakeWord(TAG, "✅ OWW model loaded successfully")
+        } catch (t: Throwable) {
+            DebugLogger.logWakeWordError(TAG, "❌ Failed to load OWW model", t)
+            _state.value = WakeState.ErrorLoading(t)
         }
     }
 
@@ -140,41 +185,10 @@ class OpenWakeWordDevice(
             )
         }
 
+        // 模型应该已经在download()时加载
         if (model == null) {
-            if (_state.value != WakeState.NotLoaded) {
-                DebugLogger.logWakeWordError(TAG, "❌ Model not ready, current state: ${_state.value}")
-                throw IOException("Model has not been downloaded yet")
-            }
-
-            try {
-                DebugLogger.logWakeWord(TAG, "🔄 Loading OWW model...")
-                _state.value = WakeState.Loading
-                
-                val modelFiles = if (userWakeFileExists) {
-                    DebugLogger.logWakeWord(TAG, "👤 Using user wake file: ${userWakeFile.absolutePath}")
-                    listOf(melFile.file, embFile.file, userWakeFile)
-                } else {
-                    DebugLogger.logWakeWord(TAG, "🔊 Using default wake file: ${wakeFile.file.absolutePath}")
-                    listOf(melFile.file, embFile.file, wakeFile.file)
-                }
-                
-                DebugLogger.logWakeWord(TAG, "📄 Model files: ${modelFiles.map { "${it.name} (${if (it.exists()) "✅" else "❌"})" }}")
-                
-                model = measureTimeAndLog(TAG, "Load OWW model") {
-                    OwwModel(
-                        melFile.file,
-                        embFile.file,
-                        if (userWakeFileExists) userWakeFile else wakeFile.file,
-                    )
-                }
-                
-                _state.value = WakeState.Loaded
-                DebugLogger.logWakeWord(TAG, "✅ OWW model loaded successfully")
-            } catch (t: Throwable) {
-                DebugLogger.logWakeWordError(TAG, "❌ Failed to load OWW model", t)
-                _state.value = WakeState.ErrorLoading(t)
-                return false
-            }
+            DebugLogger.logWakeWordError(TAG, "❌ Model not loaded, current state: ${_state.value}")
+            throw IOException("Model has not been loaded yet")
         }
 
         // 转换音频数据
@@ -182,7 +196,6 @@ class OpenWakeWordDevice(
             audio[i] = audio16bitPcm[i].toFloat() / 32768.0f
         }
 
-        
         // 处理音频帧并获取置信度
         val confidence = measureTimeAndLog(TAG, "Process audio frame") {
             model!!.processFrame(audio)
@@ -190,7 +203,6 @@ class OpenWakeWordDevice(
         
         val threshold = 0.01f
         val detected = confidence > threshold
-        
         
         return detected
     }

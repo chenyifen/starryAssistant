@@ -158,15 +158,16 @@ class VoskInputDevice(
                         }
                     }
                     
-                    // 如果模型复制成功，重置状态以触发重新加载
+                    // 如果模型复制成功，设置状态为NotLoaded以触发加载
                     if (modelCopied) {
+                        Log.d(TAG, "✅ Model files ready, setting state to NotLoaded")
                         _state.value = NotLoaded
                         return@launch
                     } else {
-                        // 没有可用的模型，确保状态是NotLoaded，这样后续会进入下载流程
-                        Log.d(TAG, "❌ No Vosk model available for $localeString, will proceed with download flow")
-                        _state.value = NotLoaded
-                        // 不要return，让后续正常的初始化流程处理下载
+                        // 没有可用的预置模型，保持init()返回的初始状态
+                        // 不要修改状态，让用户通过UI触发下载流程
+                        Log.d(TAG, "❌ No Vosk model available for $localeString in assets or external storage")
+                        Log.d(TAG, "💡 Current state: ${_state.value}, user needs to download model manually")
                     }
                 } else {
                     Log.d(TAG, "Model for language $localeString already exists and is up to date")
