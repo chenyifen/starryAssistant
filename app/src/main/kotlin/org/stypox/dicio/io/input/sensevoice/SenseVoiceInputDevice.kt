@@ -107,8 +107,7 @@ class SenseVoiceInputDevice private constructor(
     private var eventListener: ((InputEvent) -> Unit)? = null
     
     // ========== 音频缓冲 ==========
-    // 使用两个缓冲区：一个用于VAD检测，一个用于累积已检测到的语音
-    private val vadBuffer = ArrayDeque<Float>(VAD_WINDOW_SIZE * 2)  // VAD处理的滑动窗口
+    // 语音缓冲区：只保留检测到的语音数据
     private val speechBuffer = arrayListOf<Float>()  // 检测到语音后累积的音频数据
     
     // ========== VAD状态 ==========
@@ -305,7 +304,6 @@ class SenseVoiceInputDevice private constructor(
      * 重置录制状态
      */
     private fun resetRecordingState() {
-        vadBuffer.clear()
         speechBuffer.clear()
         isSpeechDetected = false
         speechStartTime = 0L
@@ -492,55 +490,59 @@ class SenseVoiceInputDevice private constructor(
     /**
      * 处理新的音频样本并进行VAD检测
      * 返回true表示当前帧包含语音
+     * 
+     * 🔧 修复说明:
+     * - Sherpa-ONNX VAD 的 acceptWaveform 是累积式处理,不应该每次传入固定大小的窗口
+     * - 应该直接传入完整的音频数据,让VAD内部管理缓冲
      */
     private fun processNewSamples(samples: FloatArray): Boolean {
         var hasSpeech = false
         val currentTime = System.currentTimeMillis()
         
-        // 将新样本添加到VAD缓冲区
-        for (sample in samples) {
-            vadBuffer.addLast(sample)
-            
-            // 如果已经检测到语音，也添加到语音缓冲区
-            if (isSpeechDetected) {
+        // 如果已经检测到语音,添加到语音缓冲区
+        if (isSpeechDetected) {
+            for (sample in samples) {
                 speechBuffer.add(sample)
             }
         }
         
-        // 当VAD缓冲区达到窗口大小时进行检测
-        while (vadBuffer.size >= VAD_WINDOW_SIZE) {
-            // 取出一个窗口的数据进行VAD检测
-            val vadWindow = FloatArray(VAD_WINDOW_SIZE) { i -> vadBuffer.elementAt(i) }
-            
-            // 使用VAD或能量检测判断是否有语音
-            val speechDetected = if (vad != null) {
-                vad!!.acceptWaveform(vadWindow)
-                vad!!.isSpeechDetected()
-            } else {
-                detectSpeechByEnergy(vadWindow)
-            }
-            
-            if (speechDetected) {
-                hasSpeech = true
-                lastSpeechTime = currentTime
+        // 使用VAD或能量检测判断是否有语音
+        val speechDetected = if (vad != null) {
+            try {
+                // 🔧 修复: 直接传入完整的samples数组,而不是固定窗口
+                // VAD内部会管理缓冲区和状态
+                vad!!.acceptWaveform(samples)
+                val detected = vad!!.isSpeechDetected()
                 
-                // 如果之前未检测到语音，现在检测到了
-                if (!isSpeechDetected) {
-                    isSpeechDetected = true
-                    speechStartTime = currentTime
-                    // 将VAD缓冲区中的所有数据也加入到语音缓冲区（包括语音开始前的一小段）
-                    for (sample in vadBuffer) {
-                        speechBuffer.add(sample)
-                    }
-                    DebugLogger.logRecognition(TAG, "🎙️ 检测到语音开始")
+                // 添加调试信息
+                if (detected && !isSpeechDetected) {
+                    Log.d(TAG, "🎙️ VAD检测到语音开始 (${samples.size}样本)")
                 }
+                
+                detected
+            } catch (e: Exception) {
+                // 如果VAD出错,降级到能量检测
+                Log.w(TAG, "⚠️ VAD检测异常,降级到能量检测", e)
+                vad = null  // 禁用VAD,避免后续持续出错
+                detectSpeechByEnergy(samples)
             }
+        } else {
+            detectSpeechByEnergy(samples)
+        }
+        
+        if (speechDetected) {
+            hasSpeech = true
+            lastSpeechTime = currentTime
             
-            // 移除已处理的样本（滑动窗口，步长为窗口大小的1/4以提高检测灵敏度）
-            repeat(VAD_WINDOW_SIZE / 4) {
-                if (vadBuffer.isNotEmpty()) {
-                    vadBuffer.removeFirst()
+            // 如果之前未检测到语音,现在检测到了
+            if (!isSpeechDetected) {
+                isSpeechDetected = true
+                speechStartTime = currentTime
+                // 将当前样本也加入到语音缓冲区
+                for (sample in samples) {
+                    speechBuffer.add(sample)
                 }
+                DebugLogger.logRecognition(TAG, "🎙️ 检测到语音开始")
             }
         }
         
@@ -682,8 +684,8 @@ class SenseVoiceInputDevice private constructor(
     fun getDeviceInfo(): String {
         val recognizerInfo = senseVoiceRecognizer?.getInfo() ?: "未初始化"
         val bufferSize = speechBuffer.size
-        val vadBufferSize = vadBuffer.size
         val isActive = isRecording.get()
-        return "SenseVoiceDevice($recognizerInfo, 语音缓冲:${bufferSize}样本, VAD缓冲:${vadBufferSize}样本, 活跃:$isActive)"
+        val vadStatus = if (vad != null) "启用" else "能量检测"
+        return "SenseVoiceDevice($recognizerInfo, 语音缓冲:${bufferSize}样本, VAD:$vadStatus, 活跃:$isActive)"
     }
 }
