@@ -49,8 +49,6 @@
     <string name="pref_input_method">输入法</string>
     <string name="open_with">打开</string>
     <string name="pref_input_method_text">仅文本框</string>
-    <string name="pref_input_method_websocket">WebSocket在线ASR</string>
-    <string name="pref_input_method_websocket_summary">连接到在线服务器进行实时语音识别，支持流式处理</string>
     <string name="pref_input_method_sensevoice">SenseVoice多语言ASR</string>
     <string name="pref_input_method_sensevoice_summary">基于SenseVoice的高精度离线多语言语音识别</string>
     <string name="pref_input_method_vosk">Vosk离线语音识别</string>
