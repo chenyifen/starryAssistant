@@ -409,12 +409,16 @@ class SenseVoiceInputDevice private constructor(
     private fun cleanupAudioRecord() {
         audioRecord?.let {
             try {
-                if (it.state == AudioRecord.STATE_INITIALIZED) {
+                // 检查录音状态，而不是初始化状态
+                // recordingState 表示是否正在录音，而 state 只表示是否初始化成功
+                if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     it.stop()
+                    Log.d(TAG, "🛑 AudioRecord已停止")
                 }
                 it.release()
             } catch (e: Exception) {
-                Log.w(TAG, "清理AudioRecord失败", e)
+                // 即使失败也不要抛出警告，因为可能已经被其他地方清理了
+                Log.d(TAG, "AudioRecord清理时捕获异常（可能已被清理）: ${e.message}")
             }
         }
         audioRecord = null
