@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/x86",
+  "command": "/Users/user/tool/android-sdk-linux/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++ --target=i686-none-linux-android21 --sysroot=/Users/user/tool/android-sdk-linux/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -Dopus_jni_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -mstackrealign -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security  -std=c++11 -O2 -g -DNDEBUG -fPIC -std=gnu++11 -o CMakeFiles/opus_jni.dir/opus_jni_stub.cpp.o -c /Users/user/AndroidStudioProjects/dicio-android/app/src/main/cpp/opus_jni_stub.cpp",
+  "file": "/Users/user/AndroidStudioProjects/dicio-android/app/src/main/cpp/opus_jni_stub.cpp"
+}
+]

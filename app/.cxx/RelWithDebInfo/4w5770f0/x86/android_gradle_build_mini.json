@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "/Users/user/AndroidStudioProjects/dicio-android/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/user/tool/android-sdk-linux/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/user/tool/android-sdk-linux/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "opus_jni::@6890427a1f51a3e7e1df": {
+      "artifactName": "opus_jni",
+      "abi": "x86",
+      "output": "/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/RelWithDebInfo/4w5770f0/obj/x86/libopus_jni.so",
+      "runtimeFiles": []
+    }
+  }
+}

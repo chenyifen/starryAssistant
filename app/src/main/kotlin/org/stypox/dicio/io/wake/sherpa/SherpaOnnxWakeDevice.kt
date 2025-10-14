@@ -1,6 +1,7 @@
 package org.stypox.dicio.io.wake.sherpa
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -40,10 +41,15 @@ class SherpaOnnxWakeDevice(
     private val keywordsFile = File(modelDir, "keywords.txt")
 
     init {
+        Log.d(TAG, "🏗️ [INIT] SherpaOnnxWakeDevice构造函数开始")
         DebugLogger.logWakeWord(TAG, "🚀 Initializing SherpaOnnxWakeDevice")
+        Log.d(TAG, "🚀 [INIT] 启动协程初始化")
         scope.launch {
+            Log.d(TAG, "🔄 [COROUTINE] initialize()协程开始执行")
             initialize()
+            Log.d(TAG, "✅ [COROUTINE] initialize()协程执行完成")
         }
+        Log.d(TAG, "✅ [INIT] SherpaOnnxWakeDevice构造函数完成")
     }
 
     private suspend fun initialize() {

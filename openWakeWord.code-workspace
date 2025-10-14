@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "../openWakeWord"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../OpenwakewordforAndroid-main"
+		},
+		{
+			"path": "../useCosyVoice"
+		},
+		{
+			"path": "../RealVoice"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {}
+}

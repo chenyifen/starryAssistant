@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
+import android.util.Log
 import android.os.IBinder
 import android.provider.Settings
 import androidx.annotation.RequiresApi
@@ -231,13 +232,17 @@ class EnhancedFloatingWindowService : Service(),
      * 处理悬浮球点击
      */
     private fun handleOrbClick() {
+        Log.d(TAG, "🎯 [CLICK] handleOrbClick 开始执行")
         DebugLogger.logUI(TAG, "👆 Orb clicked - expanding to half screen")
         
+        Log.d(TAG, "🔄 [CLICK] 设置Loading状态")
         // 设置加载状态
         floatingOrb?.getAnimationStateManager()?.setLoading()
         
+        Log.d(TAG, "📈 [CLICK] 调用expandToHalfScreen")
         // 展开到半屏
         assistantUIController?.expandToHalfScreen()
+        Log.d(TAG, "✅ [CLICK] handleOrbClick 执行完成")
     }
     
     /**

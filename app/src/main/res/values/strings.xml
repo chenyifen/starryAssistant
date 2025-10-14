@@ -101,6 +101,8 @@
     <string name="pref_wake_method_disabled">Disabled</string>
     <string name="pref_wake_method_openwakeword">OpenWakeWord offline audio processing</string>
     <string name="pref_wake_method_sherpa_onnx">SherpaOnnx KWS (Keyword Spotting)</string>
+    <string name="pref_wake_method_hinudge">HiNudge Korean (하이넛지)</string>
+    <string name="pref_wake_method_hinudge_v8">HiNudge Korean V8 (하이넛지 V8 - 100% 재현율)</string>
     <string name="pref_wake_custom_delete">Delete custom wake word</string>
     <string name="pref_wake_custom_delete_summary">Return to default \"Hey Dicio\" wake word</string>
     <string name="pref_wake_custom_import">Import custom wake word</string>

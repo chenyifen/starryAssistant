@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
  * WebSocket 协议实现
  * 参考 py-xiaozhi 的 WebsocketProtocol 实现
  * 支持与服务端进行 ASR、TTS、MCP 等通信
- * 支持 PCM 和 Opus 音频编解码器自适应选择
+ * 使用PCM音频编解码
  */
 class WebSocketProtocol(
     private val context: Context,
@@ -109,29 +109,20 @@ class WebSocketProtocol(
             // 建立 WebSocket 连接
             webSocket = okHttpClient.newWebSocket(request, InternalWebSocketListener())
 
-            // 发送 hello 消息，包含音频配置协商
-            val currentCodec = audioProcessor.getCurrentCodec()
-            val audioFormat = when (currentCodec) {
-                AudioCodecType.PCM -> AudioCodec.PCM
-                AudioCodecType.OPUS -> AudioCodec.OPUS
-            }
+            // 发送 hello 消息，包含音频配置
+            val audioFormat = AudioCodec.PCM
             
             val helloMessage = JSONObject().apply {
                 put("type", MessageType.HELLO)
                 put("version", 1)
                 put("features", JSONObject().apply {
                     put("mcp", true)
-                    put("opus", true) // 声明支持Opus编解码
                 })
                 put("transport", "websocket")
                 put("audio_params", JSONObject().apply {
                     put("format", audioFormat)
                     put("sample_rate", 16000)
                     put("channels", 1)
-                    put("frame_duration", 60) // Opus 60ms帧
-                    if (audioFormat == AudioCodec.OPUS) {
-                        put("bitrate", 32000) // Opus比特率
-                    }
                 })
             }
             sendText(helloMessage.toString())
@@ -357,39 +348,25 @@ class WebSocketProtocol(
             val serverFormat = audioParams.optString("format", AudioCodec.PCM)
             val serverSampleRate = audioParams.optInt("sample_rate", 16000)
             val serverChannels = audioParams.optInt("channels", 1)
-            val serverBitrate = audioParams.optInt("bitrate", 32000)
-            val serverFrameSize = audioParams.optInt("frame_size", 960)
             
             Log.d(TAG, "🎵 服务器音频配置: format=$serverFormat, rate=${serverSampleRate}Hz, " +
-                      "channels=$serverChannels, bitrate=${serverBitrate}bps, frameSize=$serverFrameSize")
+                      "channels=$serverChannels")
             
             // 更新协商后的音频配置
             negotiatedAudioConfig = AudioConfig(
                 codec = serverFormat,
                 sampleRate = serverSampleRate,
-                channels = serverChannels,
-                bitRate = serverBitrate,
-                frameSize = serverFrameSize
+                channels = serverChannels
             )
             
             // 根据服务器配置调整本地音频处理器
-            val preferredCodec = when (serverFormat) {
-                AudioCodec.OPUS -> {
-                    Log.d(TAG, "✅ 服务器支持Opus，切换到Opus模式")
-                    org.stypox.dicio.io.audio.AudioQuality.LOW_BANDWIDTH
-                }
-                AudioCodec.PCM -> {
-                    Log.d(TAG, "📡 服务器使用PCM，保持PCM模式")
-                    org.stypox.dicio.io.audio.AudioQuality.HIGH_QUALITY
-                }
-                else -> {
-                    Log.w(TAG, "⚠️ 未知音频格式: $serverFormat，使用默认配置")
-                    org.stypox.dicio.io.audio.AudioQuality.BALANCED
-                }
+            if (serverFormat == AudioCodec.PCM) {
+                Log.d(TAG, "📡 服务器使用PCM，保持PCM模式")
+                audioProcessor.setAudioQuality(org.stypox.dicio.io.audio.AudioQuality.HIGH_QUALITY)
+            } else {
+                Log.w(TAG, "⚠️ 未知音频格式: $serverFormat，使用默认PCM配置")
+                audioProcessor.setAudioQuality(org.stypox.dicio.io.audio.AudioQuality.HIGH_QUALITY)
             }
-            
-            // 更新音频处理器配置
-            audioProcessor.setAudioQuality(preferredCodec)
             
             Log.i(TAG, "🔧 音频配置协商完成: ${audioProcessor.getCodecInfo()}")
             

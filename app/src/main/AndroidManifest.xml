@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="auto"> <!-- Allow installing also on external storage -->
+    
+    <!-- Override minSdkVersion check for Hyundai IT API library -->
+    <uses-sdk tools:overrideLibrary="com.ifpdos.sdklib.hyundaiit" />
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

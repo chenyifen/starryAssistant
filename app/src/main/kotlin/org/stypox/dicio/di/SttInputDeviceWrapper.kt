@@ -79,15 +79,19 @@ class SttInputDeviceWrapperImpl(
 
 
     init {
+        Log.d(TAG, "🏗️ [INIT] SttInputDeviceWrapper初始化开始")
         // Run blocking, because the data store is always available right away since LocaleManager
         // also initializes in a blocking way from the same data store.
         val (firstSettings, nextSettingsFlow) = dataStore.data
             .map { Pair(it.inputDevice, it.sttPlaySound) }
             .distinctUntilChangedBlockingFirst()
 
+        Log.d(TAG, "📝 [INIT] 读取配置完成: ${firstSettings.first}")
         inputDeviceSetting = firstSettings.first
         sttPlaySoundSetting = firstSettings.second
+        Log.d(TAG, "🔨 [INIT] 开始构建SttInputDevice")
         sttInputDevice = buildInputDevice(inputDeviceSetting)
+        Log.d(TAG, "✅ [INIT] SttInputDevice构建完成")
         scope.launch {
             restartUiStateJob()
         }

@@ -1,0 +1,38 @@
+{
+  "buildFiles": [
+    "/Users/user/AndroidStudioProjects/dicio-android/app/src/main/cpp/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/user/tool/android-sdk-linux/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/user/tool/android-sdk-linux/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "opus_jni::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "opus_jni",
+      "output": "/Users/user/AndroidStudioProjects/dicio-android/app/build/intermediates/cxx/RelWithDebInfo/4w5770f0/obj/armeabi-v7a/libopus_jni.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/Users/user/tool/android-sdk-linux/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/Users/user/tool/android-sdk-linux/ndk/27.0.12077973/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}
