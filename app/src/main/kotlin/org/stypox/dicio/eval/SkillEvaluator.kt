@@ -82,10 +82,19 @@ class SkillEvaluatorImpl(
             is InputEvent.Final -> {
                 val utterances = event.utterances.map { it.first }
                 Log.d(TAG, "📥 收到Final事件: $utterances")
+                
+                // 过滤：ASR文本为空时，不触发技能排序
+                val firstUtterance = utterances.firstOrNull()?.trim() ?: ""
+                if (firstUtterance.isEmpty()) {
+                    Log.d(TAG, "⏭️ ASR文本为空，跳过技能排序")
+                    _state.value = _state.value.copy(pendingQuestion = null)
+                    return
+                }
+                
                 val updateStateStart = System.currentTimeMillis()
                 _state.value = _state.value.copy(
                     pendingQuestion = PendingQuestion(
-                        userInput = event.utterances[0].first,
+                        userInput = firstUtterance,
                         continuesLastInteraction = skillRanker.hasAnyBatches(),
                         skillBeingEvaluated = null,
                     )
