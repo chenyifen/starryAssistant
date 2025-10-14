@@ -434,8 +434,8 @@ class WakeService : Service() {
                     val bytesRead = ar.read(audio, 0, audio.size)
                     frameCount++
                     
-                    // 每100帧记录一次调试信息
-                    if (frameCount % 100 == 0) {
+                    // 每100帧记录一次调试信息（只在有数据时）
+                    if (frameCount % 100 == 0 && bytesRead > 0) {
                         DebugLogger.logAudioProcessing(TAG, "🔄 Frame #$frameCount, bytesRead=$bytesRead")
                     }
                     
@@ -462,9 +462,7 @@ class WakeService : Service() {
                         }
                     } else if (bytesRead == 0) {
                         // 0字节可能是正常的，特别是在暂停/恢复期间
-                        if (frameCount % 1000 == 0) {
-                            DebugLogger.logWakeWord(TAG, "⚠️ AudioRecord read 0 bytes (frame #$frameCount)")
-                        }
+                        // 不再记录日志，避免刷屏
                     } else {
                         DebugLogger.logWakeWordError(TAG, "❌ AudioRecord read failed: $bytesRead bytes")
                     }

@@ -86,7 +86,6 @@ object MessageType {
  */
 object AudioCodec {
     const val PCM = "pcm"
-    const val OPUS = "opus"
 }
 
 /**
@@ -95,9 +94,7 @@ object AudioCodec {
 data class AudioConfig(
     val codec: String = AudioCodec.PCM,
     val sampleRate: Int = 16000,
-    val channels: Int = 1,
-    val bitRate: Int = 32000, // 仅用于Opus
-    val frameSize: Int = 960   // 仅用于Opus
+    val channels: Int = 1
 )
 
 /**

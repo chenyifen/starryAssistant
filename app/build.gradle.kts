@@ -45,13 +45,6 @@ android {
         ndk {
             abiFilters += arrayOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
         }
-        
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++11"
-                abiFilters += arrayOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            }
-        }
     }
 
     packaging {
@@ -119,11 +112,7 @@ android {
         compose = true
     }
     
-    externalNativeBuild {
-        cmake {
-            path("src/main/cpp/CMakeLists.txt")
-        }
-    }
+
 }
 
 tasks.withType<Test>().configureEach {
@@ -214,6 +203,9 @@ dependencies {
     
     // SherpaOnnx AAR (静态链接版本)
     implementation(files("libs/sherpa-onnx-static-link-onnxruntime-1.12.4.aar"))
+    
+    // Hyundai IT API AAR (设备控制接口)
+    implementation(files("libs/hyundaiit-api-v0.1-2025-10-14-16-release.aar"))
     
     // LiteRT / Tensorflow Lite
     implementation(libs.litert)

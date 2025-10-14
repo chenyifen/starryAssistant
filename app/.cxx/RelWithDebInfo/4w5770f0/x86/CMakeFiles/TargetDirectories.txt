@@ -1,0 +1,3 @@
+/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/x86/CMakeFiles/opus_jni.dir
+/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/x86/CMakeFiles/edit_cache.dir
+/Users/user/AndroidStudioProjects/dicio-android/app/.cxx/RelWithDebInfo/4w5770f0/x86/CMakeFiles/rebuild_cache.dir

@@ -168,6 +168,10 @@ fun wakeDevice() = ListSetting(
             name = stringResource(R.string.pref_wake_method_hinudge),
         ),
         ListSetting.Value(
+            value = WakeDevice.WAKE_DEVICE_HI_NUDGE_V8,
+            name = stringResource(R.string.pref_wake_method_hinudge_v8),
+        ),
+        ListSetting.Value(
             value = WakeDevice.WAKE_DEVICE_NOTHING,
             name = stringResource(R.string.pref_wake_method_disabled),
         )

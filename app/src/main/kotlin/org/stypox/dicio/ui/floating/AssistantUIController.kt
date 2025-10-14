@@ -171,25 +171,35 @@ class AssistantUIController(
      * 展开到半屏模式
      */
     fun expandToHalfScreen() {
+        Log.d(TAG, "🎯 [EXPAND] expandToHalfScreen 开始执行")
         if (_uiMode.value != AssistantUIMode.FLOATING_ORB) {
+            Log.d(TAG, "⚠️ [EXPAND] 当前模式不是FLOATING_ORB: ${_uiMode.value}")
             return
         }
         
+        Log.d(TAG, "🔄 [EXPAND] 设置模式为EXPANDING")
         DebugLogger.logUI(TAG, "📈 Starting expand animation")
         _uiMode.value = AssistantUIMode.EXPANDING
         
+        Log.d(TAG, "🚀 [EXPAND] 启动协程")
         // 简化版本：直接切换到半屏模式
         scope.launch {
+            Log.d(TAG, "⏳ [EXPAND] 协程内: 延迟300ms")
             delay(300) // 模拟动画时间
+            Log.d(TAG, "🔄 [EXPAND] 协程内: 设置模式为HALF_SCREEN")
             _uiMode.value = AssistantUIMode.HALF_SCREEN
             DebugLogger.logUI(TAG, "✅ Expand animation completed")
             
+            Log.d(TAG, "⏲️ [EXPAND] 协程内: 启动自动收起计时器")
             // 启动自动收起计时器
             startAutoDismissTimer()
             
+            Log.d(TAG, "📢 [EXPAND] 协程内: 触发回调")
             // 触发回调
             onExpandToHalfScreen?.invoke()
+            Log.d(TAG, "✅ [EXPAND] 协程执行完成")
         }
+        Log.d(TAG, "✅ [EXPAND] expandToHalfScreen 主逻辑完成")
     }
     
     /**

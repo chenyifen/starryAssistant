@@ -21,6 +21,8 @@ import org.stypox.dicio.io.wake.WakeDevice
 import org.stypox.dicio.io.wake.WakeState
 import org.stypox.dicio.io.wake.oww.OpenWakeWordDevice
 import org.stypox.dicio.io.wake.oww.HiNudgeOpenWakeWordDevice
+import org.stypox.dicio.io.wake.onnx.HiNudgeOnnxWakeDevice
+import org.stypox.dicio.io.wake.onnx.HiNudgeOnnxV8WakeDevice
 import org.stypox.dicio.io.wake.sherpa.SherpaOnnxWakeDevice
 import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.util.DebugLogger
@@ -29,6 +31,7 @@ import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_OWW
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_SHERPA_ONNX
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_HI_NUDGE
+import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_HI_NUDGE_V8
 import org.stypox.dicio.settings.datastore.WakeDevice.WAKE_DEVICE_UNSET
 import org.stypox.dicio.util.distinctUntilChangedBlockingFirst
 import javax.inject.Singleton
@@ -63,14 +66,18 @@ class WakeDeviceWrapperImpl(
     private val currentDevice: MutableStateFlow<WakeDevice?>
 
     init {
+        Log.d("WakeDeviceWrapper", "🏗️ [INIT] WakeDeviceWrapper初始化开始")
         // Run blocking, because the data store is always available right away since LocaleManager
         // also initializes in a blocking way from the same data store.
         val (firstWakeDeviceSetting, nextWakeDeviceFlow) = dataStore.data
             .map { it.wakeDevice }
             .distinctUntilChangedBlockingFirst()
 
+        Log.d("WakeDeviceWrapper", "📝 [INIT] 读取配置完成: $firstWakeDeviceSetting")
         currentSetting = firstWakeDeviceSetting
+        Log.d("WakeDeviceWrapper", "🔨 [INIT] 开始构建WakeDevice")
         val firstWakeDevice = buildInputDevice(firstWakeDeviceSetting)
+        Log.d("WakeDeviceWrapper", "✅ [INIT] WakeDevice构建完成")
         currentDevice = MutableStateFlow(firstWakeDevice)
         _isHeyDicio = MutableStateFlow(firstWakeDevice?.isHeyDicio() ?: true)
         isHeyDicio = _isHeyDicio
@@ -109,7 +116,8 @@ class WakeDeviceWrapperImpl(
             WAKE_DEVICE_UNSET -> SherpaOnnxWakeDevice(appContext) // 默认使用SherpaOnnx KWS
             WAKE_DEVICE_OWW -> OpenWakeWordDevice(appContext, okHttpClient)
             WAKE_DEVICE_SHERPA_ONNX -> SherpaOnnxWakeDevice(appContext)
-            WAKE_DEVICE_HI_NUDGE -> HiNudgeOpenWakeWordDevice(appContext)
+            WAKE_DEVICE_HI_NUDGE -> HiNudgeOnnxWakeDevice(appContext)
+            WAKE_DEVICE_HI_NUDGE_V8 -> HiNudgeOnnxV8WakeDevice(appContext)
             WAKE_DEVICE_NOTHING -> null
         }
     }

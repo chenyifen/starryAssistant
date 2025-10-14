@@ -1,5 +1,5 @@
 package org.stypox.dicio.ui.floating.components
-
+import android.util.Log
 import android.content.Context
 import android.graphics.PixelFormat
 import android.view.Gravity
@@ -123,29 +123,50 @@ class DraggableFloatingOrb(
                 // 不使用AppTheme，因为Service不是Activity
                 // 使用完全透明的背景
                 
-                // 在Composable内部读取状态，以便触发重组
-                val asrText by currentAsrText
-                val ttsText by currentTtsText
-                val dragging by isDragging
-                val longPressing by isLongPressing
+                // ⚡ 性能优化：延迟加载复杂UI，避免阻塞主线程
+                var isFullyInitialized by remember { mutableStateOf(false) }
                 
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Transparent)
-                ) {
-                    FloatingOrbContent(
-                        animationStateManager = animationStateManager,
-                        currentAsrText = asrText,
-                        currentTtsText = ttsText,
-                        isAtEdge = isAtEdge,
-                        isDragging = dragging,
-                        isLongPressing = longPressing,
-                        onOrbClick = { handleOrbClick() },
-                        onOrbLongPress = { handleOrbLongPress() },
-                        onDragStart = { handleDragStart() },
-                        onDragEnd = { handleDragEnd() }
+                LaunchedEffect(Unit) {
+                    Log.d(TAG, "⏳ [COMPOSE] 延迟初始化Compose UI")
+                    // 延迟100ms，让主线程有时间处理其他任务
+                    kotlinx.coroutines.delay(100)
+                    Log.d(TAG, "✅ [COMPOSE] Compose UI延迟初始化完成")
+                    isFullyInitialized = true
+                }
+                
+                if (!isFullyInitialized) {
+                    // 简单占位符 - 快速渲染
+                    Log.d(TAG, "📦 [COMPOSE] 显示占位符")
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
                     )
+                } else {
+                    // 在Composable内部读取状态，以便触发重组
+                    val asrText by currentAsrText
+                    val ttsText by currentTtsText
+                    val dragging by isDragging
+                    val longPressing by isLongPressing
+                    
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
+                    ) {
+                        FloatingOrbContent(
+                            animationStateManager = animationStateManager,
+                            currentAsrText = asrText,
+                            currentTtsText = ttsText,
+                            isAtEdge = isAtEdge,
+                            isDragging = dragging,
+                            isLongPressing = longPressing,
+                            onOrbClick = { handleOrbClick() },
+                            onOrbLongPress = { handleOrbLongPress() },
+                            onDragStart = { handleDragStart() },
+                            onDragEnd = { handleDragEnd() }
+                        )
+                    }
                 }
             }
             
@@ -300,8 +321,11 @@ class DraggableFloatingOrb(
      * 处理悬浮球点击
      */
     private fun handleOrbClick() {
+        Log.d(TAG, "🎯 [CLICK] DraggableFloatingOrb handleOrbClick 开始")
         DebugLogger.logUI(TAG, "👆 Orb clicked")
+        Log.d(TAG, "🔄 [CLICK] 调用 onOrbClick 回调")
         onOrbClick?.invoke()
+        Log.d(TAG, "✅ [CLICK] DraggableFloatingOrb handleOrbClick 完成")
     }
     
     /**

@@ -9,4 +9,5 @@ enum WakeDevice {
   WAKE_DEVICE_OWW = 2; // openWakeWord
   WAKE_DEVICE_SHERPA_ONNX = 3; // SherpaOnnx KWS
   WAKE_DEVICE_HI_NUDGE = 4; // HiNudge Korean OpenWakeWord
+  WAKE_DEVICE_HI_NUDGE_V8 = 5; // HiNudge Korean V8 (100% recall)
 }

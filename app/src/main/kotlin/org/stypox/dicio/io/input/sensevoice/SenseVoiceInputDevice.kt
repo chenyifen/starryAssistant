@@ -106,23 +106,30 @@ class SenseVoiceInputDevice private constructor(
     // ========== 事件监听 ==========
     private var eventListener: ((InputEvent) -> Unit)? = null
     
-    // ========== 音频缓冲 (参考demo) ==========
-    private val audioBuffer = arrayListOf<Float>()
-    private var bufferOffset = 0
+    // ========== 音频缓冲 ==========
+    // 使用两个缓冲区：一个用于VAD检测，一个用于累积已检测到的语音
+    private val vadBuffer = ArrayDeque<Float>(VAD_WINDOW_SIZE * 2)  // VAD处理的滑动窗口
+    private val speechBuffer = arrayListOf<Float>()  // 检测到语音后累积的音频数据
     
     // ========== VAD状态 ==========
     private var isSpeechDetected = false
     private var speechStartTime = 0L
     private var lastRecognitionTime = 0L
+    private var lastSpeechTime = 0L  // 最后一次检测到语音的时间
+    private var lastEnergyLogTime = 0L  // 能量日志时间戳
     private var lastText = ""
     private var added = false  // 参考demo的结果管理
-    private var lastEnergyLogTime = 0L  // 用于控制能量日志频率
 
     init {
+        Log.d(TAG, "🏗️ [INIT] SenseVoiceInputDevice构造函数开始")
         Log.d(TAG, "🎤 SenseVoice输入设备正在初始化...")
+        Log.d(TAG, "🚀 [INIT] 启动协程初始化组件")
         scope.launch {
+            Log.d(TAG, "🔄 [COROUTINE] initializeComponents()协程开始执行")
             initializeComponents()
+            Log.d(TAG, "✅ [COROUTINE] initializeComponents()协程执行完成")
         }
+        Log.d(TAG, "✅ [INIT] SenseVoiceInputDevice构造函数完成")
     }
     
     /**
@@ -148,9 +155,35 @@ class SenseVoiceInputDevice private constructor(
                 return
             }
             
-            // VAD暂时禁用
-            Log.w(TAG, "⚠️ VAD暂时禁用，使用能量检测")
-            vad = null
+            // 初始化VAD
+            if (VadModelManager.isVadModelAvailable(appContext)) {
+                val vadConfig = VadModelManager.createVadConfig(appContext)
+                val modelPaths = VadModelManager.getVadModelPaths(appContext)
+                if (vadConfig != null && modelPaths != null) {
+                    try {
+                        // 🔧 修复：根据模型来源选择正确的构造函数
+                        // Vad构造函数签名: Vad(assetManager: AssetManager?, config: VadModelConfig)
+                        vad = if (modelPaths.isFromAssets) {
+                            Log.d(TAG, "🔧 从Assets加载VAD模型")
+                            Vad(appContext.assets, vadConfig)
+                        } else {
+                            Log.d(TAG, "🔧 从文件系统加载VAD模型: ${modelPaths.modelPath}")
+                            Vad(null, vadConfig)  // assetManager传null，使用配置中的文件路径
+                        }
+                        Log.d(TAG, "✅ VAD初始化成功")
+                        Log.d(TAG, "📊 ${VadModelManager.getVadModelInfo(appContext)}")
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ VAD初始化失败，回退到能量检测", e)
+                        vad = null
+                    }
+                } else {
+                    Log.w(TAG, "⚠️ VAD配置创建失败，使用能量检测")
+                    vad = null
+                }
+            } else {
+                Log.w(TAG, "⚠️ VAD模型不可用，使用能量检测")
+                vad = null
+            }
             
             isInitialized.set(true)
             _uiState.value = SttState.Loaded
@@ -272,11 +305,13 @@ class SenseVoiceInputDevice private constructor(
      * 重置录制状态
      */
     private fun resetRecordingState() {
-        audioBuffer.clear()
-        bufferOffset = 0
+        vadBuffer.clear()
+        speechBuffer.clear()
         isSpeechDetected = false
         speechStartTime = 0L
         lastRecognitionTime = 0L
+        lastSpeechTime = 0L
+        lastEnergyLogTime = 0L
         lastText = ""
         added = false
         vad?.reset()
@@ -406,11 +441,8 @@ class SenseVoiceInputDevice private constructor(
                         break
                     }
                     
-                    // 添加到缓冲区
-                    audioBuffer.addAll(samples.toList())
-                    
-                    // VAD处理
-                    processVAD()
+                    // 处理新的音频样本
+                    val hasSpeech = processNewSamples(samples)
                     
                     // 检查最大录制时长
                     val elapsed = System.currentTimeMillis() - startTime
@@ -419,15 +451,17 @@ class SenseVoiceInputDevice private constructor(
                         break
                     }
                     
-                    // 实时识别
-                    performPartialRecognition()
+                    // 实时识别（只有检测到语音后才执行）
+                    if (isSpeechDetected) {
+                        performPartialRecognition()
+                    }
                     
                     // 检查静音超时
-                    if (isSpeechDetected) {
+                    if (isSpeechDetected && !hasSpeech) {
                         val currentTime = System.currentTimeMillis()
-                        val silenceDuration = currentTime - speechStartTime
+                        val silenceDuration = currentTime - lastSpeechTime
                         if (silenceDuration > SPEECH_TIMEOUT_MS) {
-                            Log.d(TAG, "🔇 检测到静音超时")
+                            Log.d(TAG, "🔇 检测到静音超时 (${silenceDuration}ms)")
                             break
                         }
                     }
@@ -456,29 +490,66 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
-     * VAD处理 - 参考官方demo
+     * 处理新的音频样本并进行VAD检测
+     * 返回true表示当前帧包含语音
      */
-    private fun processVAD() {
-        while (bufferOffset + VAD_WINDOW_SIZE < audioBuffer.size) {
-            val vadSamples = audioBuffer.subList(
-                bufferOffset,
-                bufferOffset + VAD_WINDOW_SIZE
-            ).toFloatArray()
+    private fun processNewSamples(samples: FloatArray): Boolean {
+        var hasSpeech = false
+        val currentTime = System.currentTimeMillis()
+        
+        // 将新样本添加到VAD缓冲区
+        for (sample in samples) {
+            vadBuffer.addLast(sample)
             
-            vad?.acceptWaveform(vadSamples)
-            bufferOffset += VAD_WINDOW_SIZE
-            
-            // 检测语音开始
-            if (!isSpeechDetected && (vad?.isSpeechDetected() == true || detectSpeechByEnergy(vadSamples))) {
-                isSpeechDetected = true
-                speechStartTime = System.currentTimeMillis()
-                DebugLogger.logRecognition(TAG, "🎙️ 检测到语音开始")
+            // 如果已经检测到语音，也添加到语音缓冲区
+            if (isSpeechDetected) {
+                speechBuffer.add(sample)
             }
         }
+        
+        // 当VAD缓冲区达到窗口大小时进行检测
+        while (vadBuffer.size >= VAD_WINDOW_SIZE) {
+            // 取出一个窗口的数据进行VAD检测
+            val vadWindow = FloatArray(VAD_WINDOW_SIZE) { i -> vadBuffer.elementAt(i) }
+            
+            // 使用VAD或能量检测判断是否有语音
+            val speechDetected = if (vad != null) {
+                vad!!.acceptWaveform(vadWindow)
+                vad!!.isSpeechDetected()
+            } else {
+                detectSpeechByEnergy(vadWindow)
+            }
+            
+            if (speechDetected) {
+                hasSpeech = true
+                lastSpeechTime = currentTime
+                
+                // 如果之前未检测到语音，现在检测到了
+                if (!isSpeechDetected) {
+                    isSpeechDetected = true
+                    speechStartTime = currentTime
+                    // 将VAD缓冲区中的所有数据也加入到语音缓冲区（包括语音开始前的一小段）
+                    for (sample in vadBuffer) {
+                        speechBuffer.add(sample)
+                    }
+                    DebugLogger.logRecognition(TAG, "🎙️ 检测到语音开始")
+                }
+            }
+            
+            // 移除已处理的样本（滑动窗口，步长为窗口大小的1/4以提高检测灵敏度）
+            repeat(VAD_WINDOW_SIZE / 4) {
+                if (vadBuffer.isNotEmpty()) {
+                    vadBuffer.removeFirst()
+                }
+            }
+        }
+        
+        return hasSpeech
     }
     
     /**
      * 简单能量检测 (VAD降级方案)
+     * 提高阈值以减少误报
      */
     private fun detectSpeechByEnergy(samples: FloatArray): Boolean {
         if (samples.isEmpty()) return false
@@ -489,15 +560,16 @@ class SenseVoiceInputDevice private constructor(
         }
         val rms = kotlin.math.sqrt(sum / samples.size)
         
-        // 降低阈值，原来0.01太高了
-        val threshold = 0.003
+        // 提高阈值到0.01，避免太多噪音被误检测为语音
+        // 0.003太低了，会把背景噪音也当作语音
+        val threshold = 0.01
         val detected = rms > threshold
         
         // 添加调试日志 - 帮助诊断问题
         if (detected && !isSpeechDetected) {
-            Log.d(TAG, "🔊 能量检测触发: RMS=${"%.6f".format(rms)} > threshold=${"%.6f".format(threshold)}")
-        } else if (System.currentTimeMillis() - lastEnergyLogTime > 1000) {
-            // 每秒记录一次能量值，避免日志过多
+            DebugLogger.logRecognition(TAG, "🔊 能量检测触发: RMS=${"%.6f".format(rms)} > threshold=${"%.6f".format(threshold)}")
+        } else if (System.currentTimeMillis() - lastEnergyLogTime > 2000) {
+            // 每2秒记录一次能量值，避免日志过多
             Log.v(TAG, "🔊 音频能量: RMS=${"%.6f".format(rms)}, 阈值=${"%.6f".format(threshold)}, 已检测=$isSpeechDetected")
             lastEnergyLogTime = System.currentTimeMillis()
         }
@@ -517,14 +589,14 @@ class SenseVoiceInputDevice private constructor(
         val currentTime = System.currentTimeMillis()
         val elapsed = currentTime - lastRecognitionTime
         
-        // 每200ms执行一次识别
-        if (elapsed >= RECOGNITION_INTERVAL_MS && bufferOffset > 0) {
+        // 每200ms执行一次识别，且语音数据要足够长（至少0.5秒）
+        if (elapsed >= RECOGNITION_INTERVAL_MS && speechBuffer.size >= SAMPLE_RATE / 2) {
             val recognizer = senseVoiceRecognizer ?: return
             
-            DebugLogger.logRecognition(TAG, "🔄 开始实时识别")
+            DebugLogger.logRecognition(TAG, "🔄 开始实时识别 (${speechBuffer.size}样本)")
             
-            // 创建stream并识别
-            val audioData = audioBuffer.subList(0, bufferOffset).toFloatArray()
+            // 使用累积的语音数据进行识别
+            val audioData = speechBuffer.toFloatArray()
             val text = recognizer.recognize(audioData)
             
             lastText = text
@@ -554,7 +626,8 @@ class SenseVoiceInputDevice private constructor(
             val recognizer = senseVoiceRecognizer ?: return@withContext
             
             // 检查是否有有效音频
-            if (audioBuffer.isEmpty() || !isSpeechDetected) {
+            if (speechBuffer.isEmpty() || !isSpeechDetected) {
+                Log.d(TAG, "⚠️ 没有有效语音数据")
                 withContext(Dispatchers.Main) {
                     eventListener?.invoke(InputEvent.None)
                 }
@@ -571,10 +644,11 @@ class SenseVoiceInputDevice private constructor(
                 return@withContext
             }
             
-            Log.d(TAG, "🚀 执行最终识别，音频: ${audioBuffer.size}样本, 时长: ${duration}ms")
+            val audioDurationSec = speechBuffer.size.toFloat() / SAMPLE_RATE
+            Log.d(TAG, "🚀 执行最终识别，音频: ${speechBuffer.size}样本 (${String.format("%.2f", audioDurationSec)}秒)")
             
             // 执行识别
-            val audioData = audioBuffer.toFloatArray()
+            val audioData = speechBuffer.toFloatArray()
             val text = recognizer.recognize(audioData)
             
             DebugLogger.logRecognition(TAG, "✅ 最终结果: \"$text\"")
@@ -607,8 +681,9 @@ class SenseVoiceInputDevice private constructor(
      */
     fun getDeviceInfo(): String {
         val recognizerInfo = senseVoiceRecognizer?.getInfo() ?: "未初始化"
-        val bufferSize = audioBuffer.size
+        val bufferSize = speechBuffer.size
+        val vadBufferSize = vadBuffer.size
         val isActive = isRecording.get()
-        return "SenseVoiceDevice($recognizerInfo, 缓冲区:${bufferSize}样本, 活跃:$isActive)"
+        return "SenseVoiceDevice($recognizerInfo, 语音缓冲:${bufferSize}样本, VAD缓冲:${vadBufferSize}样本, 活跃:$isActive)"
     }
 }
