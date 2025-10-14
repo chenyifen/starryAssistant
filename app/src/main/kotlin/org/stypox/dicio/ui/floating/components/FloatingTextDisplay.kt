@@ -173,6 +173,17 @@ class FloatingTextStateManager(private val context: Context) {
      * 设置用户文本（ASR转录结果）
      */
     fun setUserText(text: String) {
+        // 过滤：空文本或与之前文本一致时，不触发更新
+        if (text.isEmpty()) {
+            DebugLogger.logUI(TAG, "⏭️ Skipping empty user text update")
+            return
+        }
+        
+        if (text == _userText.value) {
+            DebugLogger.logUI(TAG, "⏭️ Skipping duplicate user text update: $text")
+            return
+        }
+        
         DebugLogger.logUI(TAG, "📝 Setting user text: $text")
         _userText.value = text
         _isVisible.value = text.isNotEmpty() || _aiText.value.isNotEmpty()
@@ -182,6 +193,17 @@ class FloatingTextStateManager(private val context: Context) {
      * 设置AI文本（TTS回复）
      */
     fun setAiText(text: String) {
+        // 过滤：空文本或与之前文本一致时，不触发更新
+        if (text.isEmpty()) {
+            DebugLogger.logUI(TAG, "⏭️ Skipping empty AI text update")
+            return
+        }
+        
+        if (text == _aiText.value) {
+            DebugLogger.logUI(TAG, "⏭️ Skipping duplicate AI text update: $text")
+            return
+        }
+        
         DebugLogger.logUI(TAG, "🤖 Setting AI text: $text")
         _aiText.value = text
         _isVisible.value = _userText.value.isNotEmpty() || text.isNotEmpty()

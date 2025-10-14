@@ -538,24 +538,32 @@ class DraggableFloatingOrb(
         val uiStateChanged = lastUiState != state.uiState
         val displayTextChanged = lastDisplayText != state.displayText
         
-        // 更新文本状态
-        if (asrTextChanged) {
+        // 更新文本状态（过滤空文本变化）
+        // 注意：如果新文本为空且旧文本也为空，则不触发更新
+        val shouldUpdateAsr = asrTextChanged && !(state.asrText.isEmpty() && currentAsrText.value.isEmpty())
+        val shouldUpdateTts = ttsTextChanged && !(state.ttsText.isEmpty() && currentTtsText.value.isEmpty())
+        
+        if (shouldUpdateAsr) {
             val updateTime = System.currentTimeMillis()
             currentAsrText.value = state.asrText
             DebugLogger.logRecognition(TAG, "🖼️ UI文本状态更新 (ASR) - 时间戳: $updateTime, 长度: ${state.asrText.length}")
             DebugLogger.logRecognition(TAG, "   内容: '${state.asrText}'")
+        } else if (asrTextChanged && !shouldUpdateAsr) {
+            DebugLogger.logRecognition(TAG, "⏭️ 跳过空文本ASR更新")
         }
         
-        if (ttsTextChanged) {
+        if (shouldUpdateTts) {
             val updateTime = System.currentTimeMillis()
             currentTtsText.value = state.ttsText
             DebugLogger.logRecognition(TAG, "🖼️ UI文本状态更新 (TTS) - 时间戳: $updateTime, 长度: ${state.ttsText.length}")
+        } else if (ttsTextChanged && !shouldUpdateTts) {
+            DebugLogger.logRecognition(TAG, "⏭️ 跳过空文本TTS更新")
         }
         
         // 性能优化：智能更新策略
         when {
             // 情况1：仅文本变化 - 使用文本就地更新，避免refreshUI()
-            (asrTextChanged || ttsTextChanged) && !uiStateChanged && !displayTextChanged -> {
+            (shouldUpdateAsr || shouldUpdateTts) && !uiStateChanged && !displayTextChanged -> {
                 DebugLogger.logUI(TAG, "⚡ Text-only update, skipping UI rebuild")
                 updateTextOnly()
             }
@@ -563,7 +571,7 @@ class DraggableFloatingOrb(
             // 情况2：UI状态或显示文本变化 - 需要完整UI更新
             uiStateChanged || displayTextChanged -> {
                 updateUIState(state)
-                if (asrTextChanged || ttsTextChanged) {
+                if (shouldUpdateAsr || shouldUpdateTts) {
                     updateTextOnly()
                 }
             }
