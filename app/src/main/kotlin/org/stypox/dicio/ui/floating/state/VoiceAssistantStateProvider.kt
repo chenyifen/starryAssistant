@@ -513,9 +513,18 @@ class VoiceAssistantStateProvider @Inject constructor(
     ) {
         val previousState = _currentState
         
+        // 修复：状态一致性检查
+        val finalUiState = uiState ?: _currentState.uiState
+        val finalDisplayText = when {
+            displayText != null -> displayText
+            // IDLE状态强制清空displayText
+            finalUiState == VoiceAssistantUIState.IDLE && _currentState.displayText.isNotEmpty() -> ""
+            else -> _currentState.displayText
+        }
+        
         _currentState = _currentState.copy(
-            uiState = uiState ?: _currentState.uiState,
-            displayText = displayText ?: _currentState.displayText,
+            uiState = finalUiState,
+            displayText = finalDisplayText,
             confidence = confidence ?: _currentState.confidence,
             asrText = asrText ?: _currentState.asrText,
             ttsText = ttsText ?: _currentState.ttsText,
@@ -523,6 +532,13 @@ class VoiceAssistantStateProvider @Inject constructor(
             conversationHistory = conversationHistory ?: _currentState.conversationHistory,
             timestamp = System.currentTimeMillis()
         )
+        
+        // 修复：一致性验证
+        if (_currentState.uiState == VoiceAssistantUIState.IDLE && 
+            _currentState.displayText.isNotEmpty()) {
+            DebugLogger.logUI(TAG, "⚠️ 状态不一致：IDLE 但 displayText='${_currentState.displayText}'，已自动修正")
+            _currentState = _currentState.copy(displayText = "")
+        }
         
         // 只有状态真正改变时才通知（忽略timestamp字段）
         if (hasSignificantChange(previousState, _currentState)) {
@@ -677,18 +693,13 @@ class VoiceAssistantStateProvider @Inject constructor(
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
         DebugLogger.logUI(TAG, "🎯 Wake word detected: '$wakeWord' (confidence: $confidence)")
         
-        // 更新状态为唤醒检测
+        // 修复：直接设置为LISTENING，不需要延迟
+        // WAKE_DETECTED状态太短暂，容易导致状态不一致
         updateState(
-            uiState = VoiceAssistantUIState.WAKE_DETECTED,
+            uiState = VoiceAssistantUIState.LISTENING,
             displayText = "LISTENING",
             confidence = confidence
         )
-        
-        // 短暂延迟后转为监听状态
-        scope.launch {
-            kotlinx.coroutines.delay(500) // 0.5秒后转为监听状态
-            updateState(uiState = VoiceAssistantUIState.LISTENING)
-        }
     }
     
     override fun onWakeWordListeningStarted() {

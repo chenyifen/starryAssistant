@@ -258,7 +258,7 @@ class SenseVoiceInputDevice private constructor(
     
     /**
      * 停止语音识别
-     * 简单设置标志，协程会自然结束
+     * 设置标志并立即停止AudioRecord
      */
     override fun stopListening() {
         if (!isRecording.get()) {
@@ -268,8 +268,19 @@ class SenseVoiceInputDevice private constructor(
         Log.d(TAG, "🛑 停止语音识别")
         isRecording.set(false)
         
-        // 注意：不需要手动取消协程或清理资源
-        // 协程会通过 isRecording 标志自然结束
+        // 修复：立即停止AudioRecord，不等协程自然结束
+        audioRecord?.let {
+            try {
+                if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                    it.stop()
+                    Log.d(TAG, "🛑 AudioRecord已立即停止")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "停止AudioRecord失败", e)
+            }
+        }
+        
+        // 注意：协程会通过 isRecording 标志自然结束
         // 资源会在 finally 块中自动清理
     }
     
@@ -486,8 +497,15 @@ class SenseVoiceInputDevice private constructor(
             }
         } finally {
             isRecording.set(false)
-            _uiState.value = SttState.Loaded
-            Log.d(TAG, "🏁 音频处理结束")
+            
+            // 修复：根据情况设置正确的状态
+            _uiState.value = if (isInitialized.get()) {
+                SttState.Idle  // 已初始化，设为空闲
+            } else {
+                SttState.NotInitialized  // 未初始化
+            }
+            
+            Log.d(TAG, "🏁 音频处理结束，状态: ${_uiState.value}")
         }
     }
     
