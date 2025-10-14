@@ -500,7 +500,7 @@ class SenseVoiceInputDevice private constructor(
             
             // 修复：根据情况设置正确的状态
             _uiState.value = if (isInitialized.get()) {
-                SttState.Idle  // 已初始化，设为空闲
+                SttState.Loaded  // 已初始化且加载完成，可以再次监听
             } else {
                 SttState.NotInitialized  // 未初始化
             }
