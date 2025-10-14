@@ -11,23 +11,17 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.dicio.skill.context.SpeechOutputDevice
 import org.stypox.dicio.io.speech.AndroidTtsSpeechDevice
-import org.stypox.dicio.io.speech.CloudTtsSpeechDevice
 import org.stypox.dicio.io.speech.NothingSpeechDevice
 import org.stypox.dicio.io.speech.SherpaOnnxTtsSpeechDevice
 import org.stypox.dicio.io.speech.SnackbarSpeechDevice
 import org.stypox.dicio.io.speech.ToastSpeechDevice
-import org.stypox.dicio.io.speech.WebSocketTtsSpeechDevice
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_ANDROID_TTS
-import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_CLOUD_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SHERPA_ONNX_TTS
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_SNACKBAR
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_TOAST
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_UNSET
-import org.stypox.dicio.settings.datastore.SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_WEBSOCKET
 import org.stypox.dicio.settings.datastore.SpeechOutputDevice.UNRECOGNIZED
-import org.stypox.dicio.io.net.WebSocketProtocol
-import org.stypox.dicio.util.WebSocketConfig
 import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.settings.datastore.TtsFallbackDevice
 import org.stypox.dicio.settings.datastore.TtsFallbackChain
@@ -47,11 +41,9 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     // instantiate SpeechOutputDevices on the main thread
     private val scope = CoroutineScope(Dispatchers.Main)
     private var wrappedSpeechDevice: SpeechOutputDevice = NothingSpeechDevice()
-    private var webSocketProtocol: WebSocketProtocol? = null
     
     // 降级链配置：默认降级顺序
     private val defaultTtsFallbackChain = listOf(
-        TtsFallbackDevice.TTS_FALLBACK_DEVICE_WEBSOCKET,
         TtsFallbackDevice.TTS_FALLBACK_DEVICE_SHERPA_ONNX,
         TtsFallbackDevice.TTS_FALLBACK_DEVICE_ANDROID_TTS,
         TtsFallbackDevice.TTS_FALLBACK_DEVICE_TOAST,
@@ -117,33 +109,6 @@ class SpeechOutputDeviceWrapper @Inject constructor(
      */
     private suspend fun createTtsDevice(deviceType: TtsFallbackDevice, locale: java.util.Locale): SpeechOutputDevice? {
         return when (deviceType) {
-            TtsFallbackDevice.TTS_FALLBACK_DEVICE_WEBSOCKET -> {
-                if (!WebSocketConfig.isWebSocketAvailable(context)) {
-                    Log.w(TAG, "⚠️ WebSocket配置不可用")
-                    return null
-                }
-                
-                // 创建或重用 WebSocket 协议实例
-                if (webSocketProtocol == null) {
-                    webSocketProtocol = WebSocketProtocol(
-                        context = context,
-                        serverUrl = WebSocketConfig.getWebSocketUrl(context),
-                        accessToken = WebSocketConfig.getAccessToken(context),
-                        deviceId = WebSocketConfig.getDeviceId(context),
-                        clientId = WebSocketConfig.getClientId(context)
-                    )
-                    
-                    // 尝试连接
-                    val connected = webSocketProtocol?.connect() ?: false
-                    if (!connected) {
-                        Log.w(TAG, "⚠️ WebSocket连接失败")
-                        webSocketProtocol = null
-                        return null
-                    }
-                }
-                
-                WebSocketTtsSpeechDevice(context, webSocketProtocol!!)
-            }
             TtsFallbackDevice.TTS_FALLBACK_DEVICE_SHERPA_ONNX -> {
                 try {
                     SherpaOnnxTtsSpeechDevice(context, locale)
@@ -157,14 +122,6 @@ class SpeechOutputDeviceWrapper @Inject constructor(
                     AndroidTtsSpeechDevice(context, locale)
                 } catch (e: Exception) {
                     Log.w(TAG, "⚠️ AndroidTtsSpeechDevice创建失败: ${e.message}")
-                    null
-                }
-            }
-            TtsFallbackDevice.TTS_FALLBACK_DEVICE_CLOUD_TTS -> {
-                try {
-                    CloudTtsSpeechDevice(context)
-                } catch (e: Exception) {
-                    Log.w(TAG, "⚠️ CloudTtsSpeechDevice创建失败: ${e.message}")
                     null
                 }
             }
@@ -214,12 +171,6 @@ class SpeechOutputDeviceWrapper @Inject constructor(
      */
     private fun isCurrentDeviceAvailable(): Boolean {
         val result = when (wrappedSpeechDevice) {
-            is WebSocketTtsSpeechDevice -> {
-                val connectionState = webSocketProtocol?.connectionState?.value
-                val isConnected = connectionState is org.stypox.dicio.io.net.ConnectionState.Connected
-                Log.d(TAG, "🔍 [DEBUG] WebSocketTTS 连接状态: $connectionState, 可用: $isConnected")
-                isConnected
-            }
             is NothingSpeechDevice -> {
                 // NothingSpeechDevice表示降级链已耗尽，返回false触发重新尝试
                 Log.d(TAG, "🔍 [DEBUG] NothingSpeechDevice 不可用")

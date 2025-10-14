@@ -112,12 +112,6 @@ fun inputDevice() = ListSetting(
     description = stringResource(R.string.pref_input_method_summary),
     possibleValues = listOf(
         ListSetting.Value(
-            value = InputDevice.INPUT_DEVICE_WEBSOCKET,
-            name = stringResource(R.string.pref_input_method_websocket),
-            description = stringResource(R.string.pref_input_method_websocket_summary),
-            icon = Icons.Default.Cloud,
-        ),
-        ListSetting.Value(
             value = InputDevice.INPUT_DEVICE_SENSEVOICE,
             name = stringResource(R.string.pref_input_method_sensevoice),
             description = stringResource(R.string.pref_input_method_sensevoice_summary),
@@ -193,12 +187,6 @@ fun speechOutputDevice() = ListSetting(
             value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_ANDROID_TTS,
             name = stringResource(R.string.pref_speech_output_method_android),
             icon = Icons.Default.SpeakerPhone,
-        ),
-        ListSetting.Value(
-            value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_CLOUD_TTS,
-            name = stringResource(R.string.pref_speech_output_method_cloud_tts),
-            description = stringResource(R.string.pref_speech_output_method_cloud_tts_summary),
-            icon = Icons.Default.Cloud,
         ),
         ListSetting.Value(
             value = SpeechOutputDevice.SPEECH_OUTPUT_DEVICE_TOAST,

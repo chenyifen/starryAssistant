@@ -10,7 +10,6 @@ import dagger.hilt.android.HiltAndroidApp
 import org.stypox.dicio.activation.ActivationManager
 import org.stypox.dicio.activation.ActivationCodeGenerator
 import org.stypox.dicio.util.checkPermissions
-import org.stypox.dicio.util.WebSocketConfig
 
 // IMPORTANT NOTE: beware of this nasty bug related to allowBackup=true
 // https://medium.com/p/924c91bafcac
@@ -22,12 +21,6 @@ class App : Application() {
         // 初始化激活模块 (独立的功能模块)
         // ⚠️ 注意: 这是一个可选的模块,如果不需要可以删除整个 activation package
         ActivationManager.initialize(this)
-        
-        // 打印配置信息（用于调试）
-        WebSocketConfig.printConfigInfo(this)
-        
-        // 检查设备授权状态
-        checkDeviceAuthorization()
         
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkPermissions(this, Manifest.permission.POST_NOTIFICATIONS)
@@ -84,13 +77,10 @@ class App : Application() {
                 message = "请在服务器控制面板输入此验证码完成设备激活"
             )
             
-            // 获取激活 URL
-            val activationUrl = WebSocketConfig.getActivationUrl(this)
-            
             // 打印激活请求详情
             ActivationCodeGenerator.printActivationRequestInfo(
                 context = this,
-                activationUrl = activationUrl,
+                activationUrl = "服务器激活 URL",
                 challenge = challenge,
                 code = activationCode
             )
