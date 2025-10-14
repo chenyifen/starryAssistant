@@ -17,34 +17,13 @@ import org.dicio.skill.context.SkillContext
 import org.dicio.skill.skill.SkillInfo
 import org.dicio.skill.skill.SkillOutput
 import org.dicio.skill.standard.StandardRecognizerData
-import org.dicio.skill.standard.StandardRecognizerSkill
+import org.dicio.skill.standard.MultiLanguageStandardRecognizerSkill
 import org.stypox.dicio.sentences.Sentences.DeviceControl
 
-class DeviceControlSkill private constructor(
+class DeviceControlSkill(
     correspondingSkillInfo: SkillInfo,
-    data: StandardRecognizerData<DeviceControl>,
-    private val isMultiLanguage: Boolean,
-    private val allLanguageData: List<StandardRecognizerData<DeviceControl>>?
-) : StandardRecognizerSkill<DeviceControl>(correspondingSkillInfo, data) {
-
-    // 主构造函数 - 单语言模式
-    constructor(
-        correspondingSkillInfo: SkillInfo,
-        data: StandardRecognizerData<DeviceControl>,
-        isMultiLanguage: Boolean
-    ) : this(correspondingSkillInfo, data, isMultiLanguage, null)
-    
-    // 次构造函数 - 多语言模式
-    constructor(
-        correspondingSkillInfo: SkillInfo,
-        allData: List<StandardRecognizerData<DeviceControl>>,
-        isMultiLanguage: Boolean
-    ) : this(
-        correspondingSkillInfo,
-        allData.first(), // 使用第一个作为默认
-        isMultiLanguage,
-        allData
-    )
+    allLanguageData: List<StandardRecognizerData<DeviceControl>>,
+) : MultiLanguageStandardRecognizerSkill<DeviceControl>(correspondingSkillInfo, allLanguageData) {
 
     companion object {
         private const val TAG = "DeviceControlSkill"
@@ -52,51 +31,44 @@ class DeviceControlSkill private constructor(
         // 广播Action常量（与服务端保持一致）
         private const val ACTION_DEVICE_CONTROL = "com.xiaozhi.DEVICE_CONTROL"
         private const val EXTRA_COMMAND = "command"
+        
+        // 用于存储score调用的时间戳（线程局部变量）
+        private val scoreTimestamp = ThreadLocal<Long>()
     }
     
     /**
-     * 覆盖父类的 score 方法以支持多语言匹配
+     * 覆盖score方法以记录开始时间
      */
     override fun score(ctx: SkillContext, input: String): Pair<org.dicio.skill.skill.Score, DeviceControl> {
-        // 如果不是多语言模式，直接调用父类方法
-        if (!isMultiLanguage || allLanguageData == null) {
-            return super.score(ctx, input)
-        }
+        val startTime = System.currentTimeMillis()
+        scoreTimestamp.set(startTime)
+        Log.d(TAG, "⏱️ [性能] DeviceControl.score() 开始: input='$input'")
         
-        // 多语言模式：尝试所有语言
-        var bestResult: Pair<org.dicio.skill.skill.Score, DeviceControl>? = null
-        var bestScore = 0.0
+        val result = super.score(ctx, input)
         
-        Log.d(TAG, "🌐 多语言匹配开始: '$input'")
+        val scoreTime = System.currentTimeMillis() - startTime
+        Log.d(TAG, "⏱️ [性能] DeviceControl.score() 完成: ${scoreTime}ms, 分数=${result.first.scoreIn01Range()}")
         
-        for ((index, data) in allLanguageData.withIndex()) {
-            try {
-                val result = data.score(input)
-                val score = result.first.scoreIn01Range().toDouble()
-                
-                Log.d(TAG, "  语言${index + 1} 匹配分数: $score")
-                
-                if (bestResult == null || score > bestScore) {
-                    bestResult = result
-                    bestScore = score
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "  语言${index + 1} 匹配失败: ${e.message}")
-            }
-        }
-        
-        Log.d(TAG, "✅ 最佳匹配分数: $bestScore")
-        
-        return bestResult ?: throw IllegalStateException("No match found for input: $input")
+        return result
     }
 
     override suspend fun generateOutput(
         ctx: SkillContext,
         inputData: DeviceControl
     ): SkillOutput {
+        val executeStartTime = System.currentTimeMillis()
+        val scoreTime = scoreTimestamp.get()
+        
+        if (scoreTime != null) {
+            val totalSinceScore = executeStartTime - scoreTime
+            Log.d(TAG, "⏱️ [性能] 从score到generateOutput的间隔: ${totalSinceScore}ms")
+        }
+        
+        Log.d(TAG, "⏱️ [性能] DeviceControl.generateOutput() 开始: command=${inputData.javaClass.simpleName}")
+        
         return try {
             // 直接执行命令或发送广播
-            when (inputData) {
+            val output = when (inputData) {
                 is DeviceControl.VolumeUp -> executeVolumeUp(ctx)
                 is DeviceControl.VolumeDown -> executeVolumeDown(ctx)
                 is DeviceControl.MuteOn -> executeMute(ctx)
@@ -135,8 +107,38 @@ class DeviceControlSkill private constructor(
                 is DeviceControl.Eshare -> executeEshare(ctx)
                 is DeviceControl.Finder -> executeFinder(ctx)
             }
+            
+            // 记录执行耗时
+            val executeTime = System.currentTimeMillis() - executeStartTime
+            val totalTime = if (scoreTime != null) {
+                System.currentTimeMillis() - scoreTime
+            } else {
+                executeTime
+            }
+            
+            Log.d(TAG, "⏱️ [性能] DeviceControl.generateOutput() 完成: ${executeTime}ms")
+            Log.d(TAG, "⏱️ [性能] ========== DeviceControl 总耗时: ${totalTime}ms ==========")
+            
+            // 清理线程局部变量
+            scoreTimestamp.remove()
+            
+            output
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to execute device control", e)
+            
+            // 即使出错也记录耗时
+            val executeTime = System.currentTimeMillis() - executeStartTime
+            val totalTime = if (scoreTime != null) {
+                System.currentTimeMillis() - scoreTime
+            } else {
+                executeTime
+            }
+            
+            Log.d(TAG, "⏱️ [性能] DeviceControl执行失败: ${executeTime}ms")
+            Log.d(TAG, "⏱️ [性能] ========== DeviceControl 总耗时(失败): ${totalTime}ms ==========")
+            
+            // 清理线程局部变量
+            scoreTimestamp.remove()
             
             DeviceControlOutput(
                 command = "error",

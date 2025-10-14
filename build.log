@@ -1,16 +1,7 @@
-🚀 Dicio Android 构建、安装和启动脚本
-========================================
-☕ 1. 设置Java 17环境...
-✅ Java版本: 17.0.15
-
-📱 2. 检查Android设备连接...
-✅ 检测到 1 个设备
-
-🔨 3. 构建noModels变体...
 > Task :sentences-compiler-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
 > Task :sentences-compiler-plugin:pluginDescriptors UP-TO-DATE
-> Task :dicio-sentences-compiler:sentences_compiler:compileJava UP-TO-DATE
 > Task :sentences-compiler-plugin:processResources UP-TO-DATE
+> Task :dicio-sentences-compiler:sentences_compiler:compileJava UP-TO-DATE
 > Task :dicio-sentences-compiler:sentences_compiler:processResources NO-SOURCE
 > Task :dicio-sentences-compiler:sentences_compiler:classes UP-TO-DATE
 > Task :dicio-sentences-compiler:sentences_compiler:jar UP-TO-DATE
@@ -45,17 +36,10 @@
 > Task :app:generateNoModelsDebugBuildConfig UP-TO-DATE
 > Task :app:extractDebugProto UP-TO-DATE
 > Task :skill:checkKotlinGradlePluginConfigurationErrors SKIPPED
-> Task :skill:compileDebugKotlin UP-TO-DATE
 > Task :skill:javaPreCompileDebug UP-TO-DATE
-> Task :skill:compileDebugJavaWithJavac NO-SOURCE
-> Task :skill:bundleLibRuntimeToJarDebug UP-TO-DATE
-> Task :skill:processDebugJavaRes UP-TO-DATE
-> Task :skill:createFullJarDebug UP-TO-DATE
-> Task :app:extractIncludeNoModelsDebugProto UP-TO-DATE
 > Task :app:extractNoModelsDebugProto UP-TO-DATE
 > Task :app:extractNoModelsProto UP-TO-DATE
 > Task :app:extractProto UP-TO-DATE
-> Task :app:generateNoModelsDebugProto UP-TO-DATE
 > Task :skill:writeDebugAarMetadata UP-TO-DATE
 > Task :app:checkNoModelsDebugAarMetadata UP-TO-DATE
 > Task :app:mapNoModelsDebugSourceSetPaths UP-TO-DATE
@@ -68,8 +52,10 @@
 > Task :app:processNoModelsDebugManifestForPackage UP-TO-DATE
 > Task :skill:compileDebugLibraryResources UP-TO-DATE
 > Task :app:processNoModelsDebugResources UP-TO-DATE
-> Task :app:sentencesCompiler UP-TO-DATE
-> Task :skill:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :skill:compileDebugKotlin
+> Task :app:sentencesCompiler
+> Task :skill:compileDebugJavaWithJavac NO-SOURCE
+> Task :skill:processDebugJavaRes UP-TO-DATE
 > Task :app:javaPreCompileNoModelsDebug UP-TO-DATE
 > Task :app:mergeNoModelsDebugShaders UP-TO-DATE
 > Task :app:compileNoModelsDebugShaders NO-SOURCE
@@ -84,34 +70,25 @@
 > Task :app:checkNoModelsDebugDuplicateClasses UP-TO-DATE
 > Task :app:desugarNoModelsDebugFileDependencies UP-TO-DATE
 > Task :app:mergeExtDexNoModelsDebug UP-TO-DATE
-> Task :app:mergeLibDexNoModelsDebug UP-TO-DATE
-> Task :app:configureCMakeDebug[arm64-v8a]
-> Task :app:buildCMakeDebug[arm64-v8a]
-> Task :app:configureCMakeDebug[armeabi-v7a]
-> Task :app:buildCMakeDebug[armeabi-v7a]
-> Task :app:configureCMakeDebug[x86]
-> Task :app:buildCMakeDebug[x86]
-> Task :app:configureCMakeDebug[x86_64]
-> Task :app:buildCMakeDebug[x86_64]
 > Task :app:mergeNoModelsDebugJniLibFolders UP-TO-DATE
 > Task :skill:mergeDebugJniLibFolders UP-TO-DATE
 > Task :skill:mergeDebugNativeLibs NO-SOURCE
 > Task :skill:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :skill:bundleLibCompileToJarDebug
+> Task :skill:bundleLibRuntimeToJarDebug
 > Task :app:mergeNoModelsDebugNativeLibs UP-TO-DATE
+> Task :skill:createFullJarDebug
+> Task :app:extractIncludeNoModelsDebugProto
+> Task :app:generateNoModelsDebugProto UP-TO-DATE
 > Task :app:stripNoModelsDebugDebugSymbols UP-TO-DATE
 > Task :app:validateSigningNoModelsDebug UP-TO-DATE
 > Task :app:writeNoModelsDebugAppMetadata UP-TO-DATE
 > Task :app:writeNoModelsDebugSigningConfigVersions UP-TO-DATE
+> Task :app:mergeLibDexNoModelsDebug
 > Task :app:kspNoModelsDebugKotlin
 
-> Task :app:compileNoModelsDebugKotlin
-e: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/input/sensevoice/SenseVoiceInputDevice.kt:157:31 Argument type mismatch: actual type is 'com.k2fsa.sherpa.onnx.VadModelConfig', but 'android.content.res.AssetManager?' was expected.
-e: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/input/sensevoice/SenseVoiceInputDevice.kt:157:31 No value passed for parameter 'config'.
-e: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/input/sensevoice/SenseVoiceInputDevice.kt:665:26 Unresolved reference 'audioBuffer'.
-e: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/wake/onnx/HiNudgeOnnxV8WakeDevice.kt:118:63 Unresolved reference 'IOException'.
-e: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/wake/onnx/HiNudgeOnnxV8WakeDevice.kt:129:59 Unresolved reference 'IOException'.
-
 > Task :app:compileNoModelsDebugKotlin FAILED
+e: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/skills/search/SearchInfo.kt:40:40 Argument type mismatch: actual type is 'kotlin.collections.List<org.dicio.skill.standard.StandardRecognizerData<org.stypox.dicio.sentences.Sentences.Search>>', but 'org.dicio.skill.standard.StandardRecognizerData<org.stypox.dicio.sentences.Sentences.Search>' was expected.
 
 FAILURE: Build failed with an exception.
 
@@ -126,6 +103,5 @@ Execution failed for task ':app:compileNoModelsDebugKotlin'.
 > Run with --scan to get full insights.
 > Get more help at https://help.gradle.org.
 
-BUILD FAILED in 7s
-77 actionable tasks: 11 executed, 66 up-to-date
-❌ 构建失败
+BUILD FAILED in 5s
+69 actionable tasks: 10 executed, 59 up-to-date

@@ -62,6 +62,8 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     
     // ONNX Runtime组件
     private val ortEnv: OrtEnvironment = OrtEnvironment.getEnvironment()
+    private var melSession: OrtSession? = null
+    private var embSession: OrtSession? = null
     private var wakeSession: OrtSession? = null
     
     // 流式处理缓冲区
@@ -225,7 +227,13 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
 
             val loadStartTime = System.currentTimeMillis()
             
-            // 加载wake word模型
+            // 🔧 加载所有ONNX模型 - 创建可重用的Session
+            melSession = ortEnv.createSession(melFile.absolutePath)
+            DebugLogger.logWakeWord(TAG, "✅ Mel spectrogram model loaded")
+            
+            embSession = ortEnv.createSession(embFile.absolutePath)
+            DebugLogger.logWakeWord(TAG, "✅ Embedding model loaded")
+            
             wakeSession = ortEnv.createSession(wakeFile.absolutePath)
             DebugLogger.logWakeWord(TAG, "✅ Wake word model loaded")
             
@@ -304,11 +312,12 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
 
     /**
      * 预测唤醒词 - 按照demo的流式处理
+     * 🔧 关键修复: V8模型训练时使用22帧特征 (input_shape: [22, 96])
      */
     private fun predictWakeWord(audioBuffer: FloatArray): Float {
         return try {
             streamingFeatures(audioBuffer)
-            val features = getFeatures(16, -1)
+            val features = getFeatures(22, -1)  // ✅ 修复: 从16改为22，匹配V8模型训练配置
             predictWakeWordFromFeatures(features)
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error in predictWakeWord", e)
@@ -317,14 +326,17 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     }
     
     /**
-     * 获取Mel频谱图 - 使用ONNX
+     * 获取Mel频谱图 - 使用ONNX (重用Session)
      */
     private fun getMelSpectrogram(inputArray: FloatArray): Array<FloatArray> {
-        var session: OrtSession? = null
         var inputTensor: OnnxTensor? = null
         
         return try {
-            session = ortEnv.createSession(melFile.absolutePath)
+            // 🔧 使用已加载的Session，避免重复创建
+            if (melSession == null) {
+                Log.e(TAG, "❌ Mel session not initialized")
+                return Array(76) { FloatArray(32) { 1.0f } }
+            }
             
             val samples = inputArray.size
             val floatBuffer = FloatBuffer.wrap(inputArray)
@@ -334,7 +346,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 longArrayOf(BATCH_SIZE.toLong(), samples.toLong())
             )
             
-            val results = session.run(mapOf(session.inputNames.iterator().next() to inputTensor))
+            val results = melSession!!.run(mapOf(melSession!!.inputNames.iterator().next() to inputTensor))
             val outputTensor = results[0].value as Array<Array<Array<FloatArray>>>
             
             val squeezed = squeeze(outputTensor)
@@ -348,7 +360,6 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
             Array(76) { FloatArray(32) { 1.0f } }
         } finally {
             inputTensor?.close()
-            session?.close()
         }
     }
     
@@ -373,17 +384,21 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     }
     
     /**
-     * 生成Embeddings - 使用ONNX
+     * 生成Embeddings - 使用ONNX (重用Session)
      */
     private fun generateEmbeddings(input: Array<Array<Array<FloatArray>>>): Array<FloatArray> {
-        var session: OrtSession? = null
         var inputTensor: OnnxTensor? = null
         
         return try {
-            session = ortEnv.createSession(embFile.absolutePath)
+            // 🔧 使用已加载的Session，避免重复创建
+            if (embSession == null) {
+                Log.e(TAG, "❌ Embedding session not initialized")
+                return arrayOf()
+            }
+            
             inputTensor = OnnxTensor.createTensor(ortEnv, input)
             
-            val results = session.run(mapOf("input_1" to inputTensor))
+            val results = embSession!!.run(mapOf("input_1" to inputTensor))
             val rawOutput = results[0].value as Array<Array<Array<FloatArray>>>
             
             // 重塑输出
@@ -400,7 +415,6 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
             arrayOf()
         } finally {
             inputTensor?.close()
-            session?.close()
         }
     }
     
@@ -605,10 +619,17 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         
         scope.launch {
             try {
+                // 🔧 关闭所有ONNX Session
+                melSession?.close()
+                melSession = null
+                
+                embSession?.close()
+                embSession = null
+                
                 wakeSession?.close()
                 wakeSession = null
                 
-                DebugLogger.logWakeWord(TAG, "✅ V8 Resources released")
+                DebugLogger.logWakeWord(TAG, "✅ V8 Resources released (mel, emb, wake)")
             } catch (e: Exception) {
                 Log.e(TAG, "Error during destroy", e)
             }
