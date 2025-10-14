@@ -1,0 +1,172 @@
+> Task :sentences-compiler-plugin:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :sentences-compiler-plugin:pluginDescriptors UP-TO-DATE
+> Task :dicio-sentences-compiler:sentences_compiler:compileJava UP-TO-DATE
+> Task :sentences-compiler-plugin:processResources UP-TO-DATE
+> Task :dicio-sentences-compiler:sentences_compiler:processResources NO-SOURCE
+> Task :dicio-sentences-compiler:sentences_compiler:classes UP-TO-DATE
+> Task :dicio-sentences-compiler:sentences_compiler:jar UP-TO-DATE
+> Task :sentences-compiler-plugin:compileKotlin UP-TO-DATE
+> Task :sentences-compiler-plugin:compileJava NO-SOURCE
+> Task :sentences-compiler-plugin:classes UP-TO-DATE
+> Task :sentences-compiler-plugin:jar UP-TO-DATE
+> Task :dicio-numbers:numbers:checkKotlinGradlePluginConfigurationErrors
+> Task :dicio-numbers:numbers:compileKotlin UP-TO-DATE
+> Task :dicio-numbers:numbers:compileJava NO-SOURCE
+> Task :dicio-numbers:numbers:processResources UP-TO-DATE
+> Task :dicio-numbers:numbers:classes UP-TO-DATE
+> Task :dicio-numbers:numbers:jar UP-TO-DATE
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preNoModelsDebugBuild UP-TO-DATE
+> Task :app:dataBindingMergeDependencyArtifactsNoModelsDebug UP-TO-DATE
+> Task :app:generateNoModelsDebugResValues UP-TO-DATE
+> Task :app:generateNoModelsDebugResources UP-TO-DATE
+> Task :skill:preBuild UP-TO-DATE
+> Task :skill:preDebugBuild UP-TO-DATE
+> Task :skill:generateDebugResValues UP-TO-DATE
+> Task :skill:generateDebugResources UP-TO-DATE
+> Task :skill:packageDebugResources UP-TO-DATE
+> Task :app:mergeNoModelsDebugResources UP-TO-DATE
+> Task :app:packageNoModelsDebugResources UP-TO-DATE
+> Task :app:parseNoModelsDebugLocalResources UP-TO-DATE
+> Task :skill:parseDebugLocalResources UP-TO-DATE
+> Task :skill:generateDebugRFile UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesNoModelsDebug UP-TO-DATE
+> Task :app:generateNoModelsDebugBuildConfig UP-TO-DATE
+> Task :app:extractDebugProto UP-TO-DATE
+> Task :skill:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :skill:compileDebugKotlin UP-TO-DATE
+> Task :skill:javaPreCompileDebug UP-TO-DATE
+> Task :skill:compileDebugJavaWithJavac NO-SOURCE
+> Task :skill:bundleLibRuntimeToJarDebug UP-TO-DATE
+> Task :skill:processDebugJavaRes UP-TO-DATE
+> Task :skill:createFullJarDebug UP-TO-DATE
+> Task :app:extractIncludeNoModelsDebugProto UP-TO-DATE
+> Task :app:extractNoModelsDebugProto UP-TO-DATE
+> Task :app:extractNoModelsProto UP-TO-DATE
+> Task :app:extractProto UP-TO-DATE
+> Task :app:generateNoModelsDebugProto UP-TO-DATE
+> Task :skill:writeDebugAarMetadata UP-TO-DATE
+> Task :app:checkNoModelsDebugAarMetadata UP-TO-DATE
+> Task :app:mapNoModelsDebugSourceSetPaths UP-TO-DATE
+> Task :app:createNoModelsDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksNoModelsDebug UP-TO-DATE
+> Task :skill:extractDeepLinksDebug UP-TO-DATE
+> Task :skill:processDebugManifest UP-TO-DATE
+> Task :app:processNoModelsDebugMainManifest UP-TO-DATE
+> Task :app:processNoModelsDebugManifest UP-TO-DATE
+> Task :app:processNoModelsDebugManifestForPackage UP-TO-DATE
+> Task :skill:compileDebugLibraryResources UP-TO-DATE
+> Task :app:processNoModelsDebugResources UP-TO-DATE
+> Task :app:sentencesCompiler UP-TO-DATE
+> Task :skill:bundleLibCompileToJarDebug UP-TO-DATE
+> Task :app:javaPreCompileNoModelsDebug UP-TO-DATE
+> Task :app:mergeNoModelsDebugShaders UP-TO-DATE
+> Task :app:compileNoModelsDebugShaders NO-SOURCE
+> Task :app:generateNoModelsDebugAssets UP-TO-DATE
+> Task :skill:mergeDebugShaders UP-TO-DATE
+> Task :skill:compileDebugShaders NO-SOURCE
+> Task :skill:generateDebugAssets UP-TO-DATE
+> Task :skill:mergeDebugAssets UP-TO-DATE
+> Task :app:mergeNoModelsDebugAssets UP-TO-DATE
+> Task :app:compressNoModelsDebugAssets UP-TO-DATE
+> Task :app:l8DexDesugarLibNoModelsDebug UP-TO-DATE
+> Task :app:checkNoModelsDebugDuplicateClasses UP-TO-DATE
+> Task :app:desugarNoModelsDebugFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexNoModelsDebug UP-TO-DATE
+> Task :app:mergeLibDexNoModelsDebug UP-TO-DATE
+> Task :app:mergeNoModelsDebugJniLibFolders UP-TO-DATE
+> Task :skill:mergeDebugJniLibFolders UP-TO-DATE
+> Task :skill:mergeDebugNativeLibs NO-SOURCE
+> Task :skill:copyDebugJniLibsProjectOnly UP-TO-DATE
+> Task :app:mergeNoModelsDebugNativeLibs UP-TO-DATE
+> Task :app:stripNoModelsDebugDebugSymbols UP-TO-DATE
+> Task :app:validateSigningNoModelsDebug UP-TO-DATE
+> Task :app:writeNoModelsDebugAppMetadata UP-TO-DATE
+> Task :app:writeNoModelsDebugSigningConfigVersions UP-TO-DATE
+> Task :app:preNoModelsDebugAndroidTestBuild SKIPPED
+> Task :app:dataBindingMergeDependencyArtifactsNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:generateNoModelsDebugAndroidTestResValues UP-TO-DATE
+> Task :app:generateNoModelsDebugAndroidTestResources UP-TO-DATE
+> Task :app:mergeNoModelsDebugAndroidTestResources UP-TO-DATE
+> Task :app:dataBindingGenBaseClassesNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:processNoModelsDebugAndroidTestManifest UP-TO-DATE
+> Task :app:generateNoModelsDebugAndroidTestBuildConfig UP-TO-DATE
+> Task :app:extractAndroidTestDebugProto UP-TO-DATE
+> Task :app:extractAndroidTestNoModelsDebugProto UP-TO-DATE
+> Task :app:extractAndroidTestNoModelsProto UP-TO-DATE
+> Task :app:extractAndroidTestProto UP-TO-DATE
+> Task :app:checkNoModelsDebugAndroidTestAarMetadata UP-TO-DATE
+> Task :app:mapNoModelsDebugAndroidTestSourceSetPaths UP-TO-DATE
+> Task :app:processNoModelsDebugAndroidTestResources UP-TO-DATE
+> Task :app:javaPreCompileNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:mergeNoModelsDebugAndroidTestShaders UP-TO-DATE
+> Task :app:compileNoModelsDebugAndroidTestShaders NO-SOURCE
+> Task :app:generateNoModelsDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeNoModelsDebugAndroidTestAssets UP-TO-DATE
+> Task :app:compressNoModelsDebugAndroidTestAssets UP-TO-DATE
+> Task :app:checkNoModelsDebugAndroidTestDuplicateClasses UP-TO-DATE
+> Task :app:desugarNoModelsDebugAndroidTestFileDependencies UP-TO-DATE
+> Task :app:mergeExtDexNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:mergeLibDexNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:mergeNoModelsDebugAndroidTestJniLibFolders UP-TO-DATE
+> Task :app:mergeNoModelsDebugAndroidTestNativeLibs NO-SOURCE
+> Task :app:stripNoModelsDebugAndroidTestDebugSymbols NO-SOURCE
+> Task :app:validateSigningNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:writeNoModelsDebugAndroidTestSigningConfigVersions UP-TO-DATE
+> Task :app:kspNoModelsDebugKotlin
+
+> Task :app:compileNoModelsDebugKotlin
+w: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/wake/onnx/HiNudgeOnnxV8WakeDevice.kt:349:49 Unchecked cast of 'kotlin.Any!' to 'kotlin.Array<kotlin.Array<kotlin.Array<kotlin.FloatArray>>>'.
+w: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/wake/onnx/HiNudgeOnnxV8WakeDevice.kt:401:46 Unchecked cast of 'kotlin.Any!' to 'kotlin.Array<kotlin.Array<kotlin.Array<kotlin.FloatArray>>>'.
+w: file:///Users/user/AndroidStudioProjects/dicio-android/app/src/main/kotlin/org/stypox/dicio/io/wake/onnx/HiNudgeOnnxV8WakeDevice.kt:426:43 Unchecked cast of 'kotlin.Any!' to 'kotlin.Array<kotlin.FloatArray>'.
+
+> Task :app:compileNoModelsDebugJavaWithJavac
+> Task :app:hiltAggregateDepsNoModelsDebug UP-TO-DATE
+> Task :app:hiltJavaCompileNoModelsDebug UP-TO-DATE
+> Task :app:processNoModelsDebugJavaRes UP-TO-DATE
+> Task :app:mergeNoModelsDebugJavaResource UP-TO-DATE
+> Task :app:transformNoModelsDebugClassesWithAsm
+> Task :app:bundleNoModelsDebugClassesToCompileJar
+> Task :app:dexBuilderNoModelsDebug
+> Task :app:mergeNoModelsDebugGlobalSynthetics UP-TO-DATE
+> Task :app:mergeProjectDexNoModelsDebug
+> Task :app:extractIncludeNoModelsDebugAndroidTestProto
+> Task :app:generateNoModelsDebugAndroidTestProto NO-SOURCE
+> Task :app:packageNoModelsDebug
+> Task :app:createNoModelsDebugApkListingFileRedirect UP-TO-DATE
+> Task :app:kspNoModelsDebugAndroidTestKotlin
+> Task :app:compileNoModelsDebugAndroidTestKotlin
+> Task :app:compileNoModelsDebugAndroidTestJavaWithJavac UP-TO-DATE
+> Task :app:hiltAggregateDepsNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:hiltJavaCompileNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:processNoModelsDebugAndroidTestJavaRes UP-TO-DATE
+> Task :app:mergeNoModelsDebugAndroidTestJavaResource UP-TO-DATE
+> Task :app:transformNoModelsDebugAndroidTestClassesWithAsm
+> Task :app:dexBuilderNoModelsDebugAndroidTest
+> Task :app:mergeNoModelsDebugAndroidTestGlobalSynthetics UP-TO-DATE
+> Task :app:mergeProjectDexNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:packageNoModelsDebugAndroidTest UP-TO-DATE
+> Task :app:createNoModelsDebugAndroidTestApkListingFileRedirect UP-TO-DATE
+> Task :app:connectedNoModelsDebugAndroidTest
+Starting 0 tests on IFP51 - 14
+
+Finished 0 tests on IFP51 - 14
+
+> Task :app:connectedNoModelsDebugAndroidTest FAILED
+Test run failed to complete. No test results. onError: commandError=false message=INSTRUMENTATION_ABORTED: System has crashed.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:connectedNoModelsDebugAndroidTest'.
+> There were failing tests. See the report at: file:///Users/user/AndroidStudioProjects/dicio-android/app/build/reports/androidTests/connected/debug/flavors/noModels/index.html
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 44m 56s
+121 actionable tasks: 15 executed, 106 up-to-date
