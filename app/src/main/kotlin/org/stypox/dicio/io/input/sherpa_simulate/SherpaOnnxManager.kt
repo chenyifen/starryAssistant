@@ -76,6 +76,7 @@ object SherpaOnnxManager {
                 modelConfig = OfflineModelConfig(
                     senseVoice = OfflineSenseVoiceModelConfig(
                         model = modelPaths.modelPath,
+                        language = "auto",  // 使用自动语言检测模式
                         useInverseTextNormalization = true
                     ),
                     tokens = modelPaths.tokensPath,

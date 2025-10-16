@@ -535,6 +535,16 @@ class WakeService : Service() {
                 DebugLogger.logWakeWordError(TAG, "❌ Error releasing AudioRecord", e)
             }
             currentAudioRecord = null
+            
+            // 释放麦克风资源（如果还没被释放）
+            runBlocking {
+                try {
+                    AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
+                    DebugLogger.logWakeWord(TAG, "✅ listenForWakeWord结束，已释放麦克风资源")
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "❌ 释放麦克风资源失败", e)
+                }
+            }
         }
     }
 

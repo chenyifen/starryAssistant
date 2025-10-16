@@ -62,6 +62,7 @@ class SenseVoiceRecognizer private constructor(
                         modelConfig = OfflineModelConfig(
                             senseVoice = OfflineSenseVoiceModelConfig(
                                 model = modelPaths.modelPath,
+                                language = "auto",  // 使用自动语言检测模式
                                 useInverseTextNormalization = true // 逆文本规范化 - 关键修复！
                             ),
                             tokens = modelPaths.tokensPath,
