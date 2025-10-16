@@ -22,6 +22,7 @@ import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.input.SttInputDevice
 import org.stypox.dicio.io.input.SttState
 import org.stypox.dicio.util.DebugLogger
+import org.stypox.dicio.io.AudioResourceManager
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -118,6 +119,9 @@ class SenseVoiceInputDevice private constructor(
     
     // 协程作用域 - 使用可重新创建的作用域
     private var scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    
+    // TTS监听器
+    private var ttsListener: ((Boolean) -> Unit)? = null
     
     init {
         Log.d(TAG, "🎤 SenseVoice输入设备正在初始化...")
@@ -245,6 +249,23 @@ class SenseVoiceInputDevice private constructor(
         vadJob?.cancel()
         vadJob = null
         
+        // 释放麦克风资源
+        scope.launch {
+            try {
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
+                Log.d(TAG, "✅ 已释放麦克风资源")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 释放麦克风资源失败", e)
+            }
+        }
+        
+        // 注销TTS监听器
+        ttsListener?.let { 
+            AudioResourceManager.removeTtsListener(it)
+            Log.d(TAG, "✅ 已注销TTS监听器")
+        }
+        ttsListener = null
+        
         _uiState.value = SttState.Loaded
     }
     
@@ -262,8 +283,23 @@ class SenseVoiceInputDevice private constructor(
         Log.d(TAG, "🧹 销毁SenseVoice输入设备...")
         
         try {
-            // 停止所有活动
+            // 停止所有活动（会自动释放资源）
             stopListening()
+            
+            // 确保麦克风资源被释放
+            try {
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
+                Log.d(TAG, "✅ 确保麦克风资源已释放")
+            } catch (e: Exception) {
+                Log.w(TAG, "释放麦克风资源异常", e)
+            }
+            
+            // 确保TTS监听器被注销
+            ttsListener?.let { 
+                AudioResourceManager.removeTtsListener(it)
+                Log.d(TAG, "✅ 确保TTS监听器已注销")
+            }
+            ttsListener = null
             
             // 关闭音频通道
             samplesChannel.close()
@@ -332,15 +368,45 @@ class SenseVoiceInputDevice private constructor(
         }
         
         Log.d(TAG, "🎙️ 开始语音监听...")
-        isListening.set(true)
         
-        // 重置VAD和音频状态
-        resetVadState()
-        
-        _uiState.value = SttState.Listening
-        
-        // 开始录制 (使用协程)
+        // 请求麦克风资源
         scope.launch {
+            val granted = AudioResourceManager.requestMicrophone(
+                AudioResourceManager.AudioOwner.ASR_DEVICE
+            )
+            
+            if (!granted) {
+                Log.w(TAG, "❌ 无法获取麦克风资源（TTS正在播放）")
+                withContext(Dispatchers.Main) {
+                    _uiState.value = SttState.ErrorLoading(Exception("音频资源被占用"))
+                }
+                return@launch
+            }
+            
+            Log.d(TAG, "✅ 成功获取麦克风资源")
+            
+            // 注册TTS监听器
+            ttsListener = { isPlaying ->
+                if (isPlaying) {
+                    Log.d(TAG, "⏸️ TTS播放开始，暂停录音")
+                    // TTS播放时，recordAudioData中的canRecord()会返回false，自动暂停
+                } else {
+                    Log.d(TAG, "▶️ TTS播放结束，恢复录音")
+                    // canRecord()返回true，自动恢复
+                }
+            }
+            AudioResourceManager.addTtsListener(ttsListener!!)
+            
+            isListening.set(true)
+            
+            // 重置VAD和音频状态
+            resetVadState()
+            
+            withContext(Dispatchers.Main) {
+                _uiState.value = SttState.Listening
+            }
+            
+            // 开始录制
             if (startRecording()) {
                 // 启动超时监控任务
                 vadJob = scope.launch {
@@ -356,7 +422,15 @@ class SenseVoiceInputDevice private constructor(
             } else {
                 Log.e(TAG, "❌ 启动录制失败")
                 isListening.set(false)
-                _uiState.value = SttState.ErrorLoading(Exception("启动录制失败"))
+                
+                // 释放资源
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
+                ttsListener?.let { AudioResourceManager.removeTtsListener(it) }
+                ttsListener = null
+                
+                withContext(Dispatchers.Main) {
+                    _uiState.value = SttState.ErrorLoading(Exception("启动录制失败"))
+                }
             }
         }
         return true
@@ -545,6 +619,13 @@ class SenseVoiceInputDevice private constructor(
         try {
             while (isRecording.get() && !Thread.currentThread().isInterrupted && !currentCoroutineContext().job.isCancelled) {
                 try {
+                    // 检查是否可以录音（TTS播放时暂停）
+                    if (!AudioResourceManager.canRecord()) {
+                        // TTS正在播放，暂停录音但不退出循环
+                        delay(50) // 等待50ms再检查
+                        continue
+                    }
+                    
                     val currentAudioRecord = audioRecord
                     if (currentAudioRecord == null) {
                         Log.w(TAG, "⚠️ AudioRecord为null，停止录制")

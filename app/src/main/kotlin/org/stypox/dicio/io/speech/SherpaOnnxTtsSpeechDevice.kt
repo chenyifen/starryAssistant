@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+import org.stypox.dicio.io.AudioResourceManager
 
 /**
  * SherpaOnnx TTS语音输出设备
@@ -313,6 +314,16 @@ class SherpaOnnxTtsSpeechDevice(
     }
 
     private fun playAudio(audio: GeneratedAudio) {
+        // 通知AudioResourceManager: TTS播放开始
+        scope.launch {
+            try {
+                AudioResourceManager.notifyTtsStart()
+                Log.d(TAG, "  📢 已通知AudioResourceManager: TTS播放开始")
+            } catch (e: Exception) {
+                Log.e(TAG, "  ❌ 通知TTS开始失败", e)
+            }
+        }
+        
         try {
             val sampleRate = audio.sampleRate
             val samples = audio.samples
@@ -382,6 +393,16 @@ class SherpaOnnxTtsSpeechDevice(
         audioTrack?.release()
         audioTrack = null
         
+        // 通知AudioResourceManager: TTS播放结束
+        scope.launch {
+            try {
+                AudioResourceManager.notifyTtsEnd()
+                Log.d(TAG, "  📢 已通知AudioResourceManager: TTS播放结束")
+            } catch (e: Exception) {
+                Log.e(TAG, "  ❌ 通知TTS结束失败", e)
+            }
+        }
+        
         // 执行完成回调
         for (runnable in runnablesWhenFinished) {
             runnable.run()
@@ -392,6 +413,8 @@ class SherpaOnnxTtsSpeechDevice(
     }
 
     override fun stopSpeaking() {
+        val wasSpeaking = isSpeakingFlag.getAndSet(false)
+        
         currentJob?.cancel()
         currentJob = null
         
@@ -399,7 +422,18 @@ class SherpaOnnxTtsSpeechDevice(
         audioTrack?.release()
         audioTrack = null
         
-        isSpeakingFlag.set(false)
+        // 如果之前正在播放，通知AudioResourceManager
+        if (wasSpeaking) {
+            scope.launch {
+                try {
+                    AudioResourceManager.notifyTtsEnd()
+                    Log.d(TAG, "  📢 已通知AudioResourceManager: TTS停止")
+                } catch (e: Exception) {
+                    Log.e(TAG, "  ❌ 通知TTS停止失败", e)
+                }
+            }
+        }
+        
         Log.d(TAG, "  ⏹️ TTS播放停止")
     }
 
