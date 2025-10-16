@@ -10,6 +10,12 @@
 /aars/build
 /checkouts
 .kotlin
+app/.cxx
+
+# Ignore CMake build files
+app/.cxx/Debug/
+app/.cxx/RelWithDebInfo/
+app/.cxx/tools/
 
 # Fastlane
 fastlane/report.xml
