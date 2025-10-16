@@ -211,8 +211,8 @@ dependencies {
     // LiteRT / Tensorflow Lite
     implementation(libs.litert)
     
-    // ONNX Runtime for HiNudge wake word - use stable version
-    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.12.1")
+    // ONNX Runtime for HiNudge wake word - 与OpenwakewordforAndroid-main保持一致
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
 
     // OkHttp
     implementation(platform(libs.okhttp.bom))
@@ -247,9 +247,9 @@ dependencies {
 configurations.configureEach {
     resolutionStrategy {
         force(libs.test.core)
-        // 强制统一ONNX Runtime版本，避免版本冲突
-        force("com.microsoft.onnxruntime:onnxruntime-android:1.12.1")
-        force("ai.onnxruntime:onnxruntime:1.12.1")
+        // 强制统一ONNX Runtime版本，避免版本冲突 - 与OpenwakewordforAndroid-main保持一致
+        force("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
+        force("ai.onnxruntime:onnxruntime:1.19.2")
     }
 }
 

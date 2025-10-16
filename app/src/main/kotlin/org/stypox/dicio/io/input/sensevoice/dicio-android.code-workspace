@@ -5,6 +5,18 @@
 		},
 		{
 			"path": "../../../../../../../../../../../openWakeWord"
+		},
+		{
+			"path": "../../../../../../../../../../../../code/sherpa-onnx/android/SherpaOnnxSimulateStreamingAsr"
+		},
+		{
+			"path": "../../../../../../../../../../../../code/sherpa-onnx"
+		},
+		{
+			"path": "../../../../../../../../../../../OpenwakewordforAndroid-main"
+		},
+		{
+			"path": "../../../../../../../../../../../useCosyVoice"
 		}
 	],
 	"settings": {}
