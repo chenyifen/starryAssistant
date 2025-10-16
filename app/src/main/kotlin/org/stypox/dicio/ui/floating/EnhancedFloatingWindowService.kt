@@ -105,6 +105,9 @@ class EnhancedFloatingWindowService : Service(),
     // 当前语音助手状态
     private var currentVoiceState = VoiceAssistantState.IDLE
     
+    // 自动化测试相关
+    private var autoTestReceiver: BroadcastReceiver? = null
+    
     override fun onCreate() {
         super.onCreate()
         DebugLogger.logUI(TAG, "🚀 EnhancedFloatingWindowService created")
@@ -141,6 +144,9 @@ class EnhancedFloatingWindowService : Service(),
         
         // 监听设置变化
         observeSettings()
+        
+        // 注册自动化测试接收器
+        registerAutoTestReceiver()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -150,6 +156,9 @@ class EnhancedFloatingWindowService : Service(),
     
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
+        
+        // 取消注册自动化测试接收器
+        unregisterAutoTestReceiver()
         
         // 隐藏悬浮球
         hideFloatingOrb()
@@ -439,9 +448,62 @@ class EnhancedFloatingWindowService : Service(),
         DebugLogger.logUI(TAG, "✅ Foreground service notification created")
     }
     
+    /**
+     * 注册自动化测试广播接收器
+     */
+    private fun registerAutoTestReceiver() {
+        autoTestReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == ACTION_AUTO_TEST_START) {
+                    Log.i(AUTO_TEST_TAG, "收到自动化测试启动指令")
+                    handleAutoTestStart()
+                }
+            }
+        }
+        
+        val filter = IntentFilter(ACTION_AUTO_TEST_START)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(autoTestReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(autoTestReceiver, filter)
+        }
+        Log.d(TAG, "✅ 自动化测试接收器已注册")
+    }
+    
+    /**
+     * 注销自动化测试广播接收器
+     */
+    private fun unregisterAutoTestReceiver() {
+        autoTestReceiver?.let {
+            try {
+                unregisterReceiver(it)
+                Log.d(TAG, "✅ 自动化测试接收器已注销")
+            } catch (e: Exception) {
+                Log.w(TAG, "注销接收器失败: ${e.message}")
+            }
+        }
+        autoTestReceiver = null
+    }
+    
+    /**
+     * 处理自动化测试启动
+     * 模拟点击悬浮球的效果
+     */
+    private fun handleAutoTestStart() {
+        Log.i(AUTO_TEST_TAG, "开始自动化测试 - 模拟点击悬浮球")
+        
+        // 模拟点击悬浮球，触发语音识别
+        handleOrbClick()
+    }
+    
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "floating_assistant_channel"
         private const val NOTIFICATION_ID = 1001
+        
+        // 自动化测试常量
+        const val ACTION_AUTO_TEST_START = "org.stypox.dicio.AUTO_TEST_START"
+        private const val AUTO_TEST_TAG = "AutoTest"
+        
         /**
          * 启动服务
          */

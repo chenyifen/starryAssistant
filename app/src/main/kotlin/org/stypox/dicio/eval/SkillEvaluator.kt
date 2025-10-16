@@ -91,6 +91,9 @@ class SkillEvaluatorImpl(
                     return
                 }
                 
+                // 自动化测试：打印识别结果
+                Log.i("AutoTest", "ASR结果: $firstUtterance")
+                
                 val updateStateStart = System.currentTimeMillis()
                 _state.value = _state.value.copy(
                     pendingQuestion = PendingQuestion(

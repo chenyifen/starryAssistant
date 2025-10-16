@@ -2,10 +2,13 @@
  * Sherpa-ONNX 单例管理器
  * 参考官方demo: SimulateStreamingAsr.kt
  * 负责集中管理 OfflineRecognizer 和 VAD 的初始化
+ * 
+ * 修改说明：使用SenseVoiceModelManager统一管理模型路径
  */
 
 package org.stypox.dicio.io.input.sherpa_simulate
 
+import android.content.Context
 import android.content.res.AssetManager
 import android.util.Log
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
@@ -15,6 +18,9 @@ import com.k2fsa.sherpa.onnx.OfflineSenseVoiceModelConfig
 import com.k2fsa.sherpa.onnx.Vad
 import com.k2fsa.sherpa.onnx.VadModelConfig
 import com.k2fsa.sherpa.onnx.SileroVadModelConfig
+import kotlinx.coroutines.runBlocking
+import org.stypox.dicio.io.input.sensevoice.SenseVoiceModelManager
+import org.stypox.dicio.io.input.sensevoice.VadModelManager
 
 /**
  * Sherpa-ONNX组件管理器（单例模式）
@@ -34,10 +40,10 @@ object SherpaOnnxManager {
     
     /**
      * 初始化 OfflineRecognizer
-     * 完全参考官方demo，使用assets中的模型
+     * 使用SenseVoiceModelManager统一管理模型
      */
     @Synchronized
-    fun initOfflineRecognizer(assetManager: AssetManager): Boolean {
+    fun initOfflineRecognizer(context: Context): Boolean {
         if (_recognizer != null) {
             Log.d(TAG, "✅ OfflineRecognizer 已初始化，跳过")
             return true
@@ -46,23 +52,33 @@ object SherpaOnnxManager {
         return try {
             Log.i(TAG, "🔧 开始初始化 Sherpa-ONNX OfflineRecognizer...")
             
-            // 直接使用assets中的模型路径（与官方demo一致）
-            val modelDir = "sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2025-09-09"
-            val modelPath = "$modelDir/model.int8.onnx"
-            val tokensPath = "$modelDir/tokens.txt"
+            // 使用SenseVoiceModelManager获取模型路径
+            val modelPaths = runBlocking {
+                SenseVoiceModelManager.getModelPaths(context)
+            }
+            
+            if (modelPaths == null) {
+                Log.e(TAG, "❌ 未找到可用的SenseVoice模型")
+                Log.e(TAG, "💡 请确保已下载SenseVoice模型到:")
+                Log.e(TAG, "   1. Assets目录: app/src/main/assets/models/asr/sensevoice/")
+                Log.e(TAG, "   2. 或外部存储: /storage/emulated/0/Android/data/.../models/sensevoice/")
+                return false
+            }
             
             Log.d(TAG, "📂 模型路径:")
-            Log.d(TAG, "   模型: $modelPath (Assets)")
-            Log.d(TAG, "   Tokens: $tokensPath (Assets)")
+            Log.d(TAG, "   模型: ${modelPaths.modelPath}")
+            Log.d(TAG, "   Tokens: ${modelPaths.tokensPath}")
+            Log.d(TAG, "   来源: ${if (modelPaths.isFromAssets) "Assets" else "外部存储"}")
+            Log.d(TAG, "   类型: ${if (modelPaths.isQuantized) "量化模型(INT8)" else "普通模型"}")
             
-            // 创建配置（完全参考官方demo）
+            // 创建配置
             val config = OfflineRecognizerConfig(
                 modelConfig = OfflineModelConfig(
                     senseVoice = OfflineSenseVoiceModelConfig(
-                        model = modelPath,
+                        model = modelPaths.modelPath,
                         useInverseTextNormalization = true
                     ),
-                    tokens = tokensPath,
+                    tokens = modelPaths.tokensPath,
                     numThreads = 2,
                     provider = "cpu",
                     debug = false
@@ -71,18 +87,28 @@ object SherpaOnnxManager {
                 maxActivePaths = 4
             )
             
-            // 使用AssetManager加载（与官方demo一致）
-            Log.d(TAG, "   📂 使用AssetManager加载模型")
-            _recognizer = OfflineRecognizer(
-                assetManager = assetManager,
-                config = config
-            )
+            // 根据模型来源选择加载方式
+            _recognizer = if (modelPaths.isFromAssets) {
+                Log.d(TAG, "   📂 使用AssetManager加载模型")
+                OfflineRecognizer(
+                    assetManager = context.assets,
+                    config = config
+                )
+            } else {
+                Log.d(TAG, "   💾 从文件系统加载模型")
+                OfflineRecognizer(
+                    assetManager = null,
+                    config = config
+                )
+            }
             
             Log.i(TAG, "✅ Sherpa-ONNX OfflineRecognizer 初始化成功")
+            Log.i(TAG, "🌍 支持语言: 中文、英文、日文、韩文、粤语 (自动检测)")
             true
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ OfflineRecognizer 初始化失败", e)
+            Log.e(TAG, "💡 错误详情: ${e.message}")
             _recognizer = null
             false
         }
@@ -90,10 +116,10 @@ object SherpaOnnxManager {
     
     /**
      * 初始化 VAD
-     * 完全参考官方demo的方式
+     * 使用VadModelManager统一管理模型
      */
     @Synchronized
-    fun initVad(assetManager: AssetManager): Boolean {
+    fun initVad(context: Context): Boolean {
         if (_vad != null) {
             Log.d(TAG, "✅ VAD 已初始化，跳过")
             return true
@@ -102,35 +128,44 @@ object SherpaOnnxManager {
         return try {
             Log.i(TAG, "🔧 开始初始化 Sherpa-ONNX VAD...")
             
-            // 创建VAD配置（完全遵循官方demo）
-            val config = VadModelConfig(
-                sileroVadModelConfig = SileroVadModelConfig(
-                    model = "silero_vad.onnx",  // assets根目录
-                    threshold = 0.5f,
-                    minSilenceDuration = 0.25f,
-                    minSpeechDuration = 0.25f,
-                    windowSize = 512,
-                    maxSpeechDuration = 5.0f
-                ),
-                sampleRate = 16000,
-                numThreads = 1,
-                provider = "cpu",
-                debug = false
-            )
+            // 检查VAD模型是否可用
+            if (!VadModelManager.isVadModelAvailable(context)) {
+                Log.w(TAG, "⚠️ VAD模型不可用，将使用能量检测作为替代")
+                return false
+            }
             
-            Log.d(TAG, "📂 VAD模型: silero_vad.onnx (位于assets根目录)")
+            // 获取VAD配置
+            val config = VadModelManager.createVadConfig(context)
+            if (config == null) {
+                Log.w(TAG, "⚠️ VAD配置创建失败")
+                return false
+            }
             
-            // 参考官方demo，使用AssetManager创建VAD
-            _vad = Vad(
-                assetManager = assetManager,
-                config = config
-            )
+            val modelPaths = VadModelManager.getVadModelPaths(context)
+            if (modelPaths == null) {
+                Log.w(TAG, "⚠️ VAD模型路径获取失败")
+                return false
+            }
+            
+            Log.d(TAG, "📂 VAD模型: ${modelPaths.modelPath}")
+            Log.d(TAG, "   来源: ${if (modelPaths.isFromAssets) "Assets" else "外部存储"}")
+            
+            // 根据模型来源选择加载方式
+            _vad = if (modelPaths.isFromAssets) {
+                Log.d(TAG, "   📂 从Assets加载VAD模型")
+                Vad(context.assets, config)
+            } else {
+                Log.d(TAG, "   💾 从文件系统加载VAD模型")
+                Vad(null, config)
+            }
             
             Log.i(TAG, "✅ Sherpa-ONNX VAD 初始化成功")
+            Log.i(TAG, "📊 ${VadModelManager.getVadModelInfo(context)}")
             true
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ VAD 初始化失败", e)
+            Log.e(TAG, "❌ VAD 初始化失败: ${e.message}", e)
+            Log.w(TAG, "⚠️ 将使用能量检测作为替代")
             _vad = null
             false
         }

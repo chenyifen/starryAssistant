@@ -9,6 +9,7 @@
 package org.stypox.dicio.io.input.sherpa_simulate
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
@@ -60,6 +61,12 @@ class SherpaOnnxSimulateInputDevice(
 
     companion object {
         private const val TAG = "SherpaSimulate"
+        private const val AUTO_TEST_TAG = "AutoTest"
+        
+        // 自动化测试广播
+        const val ACTION_AUTO_TEST_START = "org.stypox.dicio.AUTO_TEST_START"
+        const val ACTION_AUTO_TEST_RESULT = "org.stypox.dicio.AUTO_TEST_RESULT"
+        const val EXTRA_RESULT_TEXT = "result_text"
         
         // 音频配置 (与官方demo一致)
         private const val SAMPLE_RATE = 16000
@@ -79,6 +86,7 @@ class SherpaOnnxSimulateInputDevice(
     // ========== 状态管理 ==========
     private val isInitialized = AtomicBoolean(false)
     private val isRecording = AtomicBoolean(false)
+    private var isAutoTestMode = true  // 自动化测试模式
     
     private val _uiState = MutableStateFlow<SttState>(SttState.NotInitialized)
     override val uiState: StateFlow<SttState> = _uiState.asStateFlow()
@@ -121,8 +129,8 @@ class SherpaOnnxSimulateInputDevice(
             
             // 在IO线程执行耗时的模型加载操作（避免ANR）
             val (recognizerOk, vadOk) = withContext(Dispatchers.IO) {
-                val recOk = SherpaOnnxManager.initOfflineRecognizer(appContext.assets)
-                val vadOk = SherpaOnnxManager.initVad(appContext.assets)
+                val recOk = SherpaOnnxManager.initOfflineRecognizer(appContext)
+                val vadOk = SherpaOnnxManager.initVad(appContext)
                 Pair(recOk, vadOk)
             }
             
@@ -404,9 +412,13 @@ class SherpaOnnxSimulateInputDevice(
                     
                     // 实时识别（每200ms，照搬demo逻辑）
                     val elapsed = System.currentTimeMillis() - startTime
-                    if (isSpeechStarted && elapsed > RECOGNITION_INTERVAL_MS) {
-                        performPartialRecognition(recognizerInstance)
-                        startTime = System.currentTimeMillis()
+                    if (isSpeechStarted) {
+                        Log.d(TAG, "🔍 语音进行中 - elapsed: ${elapsed}ms, threshold: ${RECOGNITION_INTERVAL_MS}ms")
+                        if (elapsed > RECOGNITION_INTERVAL_MS) {
+                            Log.d(TAG, "🎯 开始实时识别 - buffer size: ${buffer.size}, offset: $offset")
+                            performPartialRecognition(recognizerInstance)
+                            startTime = System.currentTimeMillis()
+                        }
                     }
                     
                     // 处理VAD队列中的完整语音段（照搬demo逻辑）
