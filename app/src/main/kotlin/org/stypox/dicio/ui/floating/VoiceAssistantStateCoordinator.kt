@@ -94,19 +94,12 @@ class VoiceAssistantStateCoordinator @Inject constructor(
      */
     private fun handleSttStateChange(sttState: SttState?) {
         when (sttState) {
-            is SttState.Idle -> {
-                DebugLogger.logUI(TAG, "😴 STT device idle")
-                // 修复：处理Idle状态，转为IDLE UI状态
+            is SttState.Loaded -> {
+                DebugLogger.logUI(TAG, "😴 STT device loaded and ready")
+                // 修复：处理Loaded状态，转为IDLE UI状态
                 if (_uiState.value != VoiceAssistantUIState.IDLE) {
                     updateUIState(VoiceAssistantUIState.IDLE, "")
                 }
-            }
-            
-            is SttState.Loaded -> {
-                DebugLogger.logUI(TAG, "🎤 STT device loaded and ready")
-                // 修复：只在合适的时候转换状态
-                // 从WAKE_DETECTED转为LISTENING时才需要状态更新
-                // 其他情况保持当前状态，避免不必要的状态跳转
             }
             
             is SttState.Listening -> {

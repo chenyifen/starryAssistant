@@ -496,29 +496,96 @@ class SherpaOnnxWakeDevice(
             "tokens.txt"
         )
         
+        var copyErrors = mutableListOf<String>()
+        
         requiredFiles.forEach { fileName ->
             val sourceFile = File(sourceDir, fileName)
             val destFile = File(destDir, fileName)
             
+            // 检查源文件是否存在和可读
+            if (!sourceFile.exists()) {
+                val error = "源文件不存在: $fileName"
+                DebugLogger.logWakeWordError(TAG, "❌ $error")
+                copyErrors.add(error)
+                return@forEach
+            }
+            
+            if (!sourceFile.canRead()) {
+                val error = "源文件无读取权限: $fileName"
+                DebugLogger.logWakeWordError(TAG, "❌ $error")
+                copyErrors.add(error)
+                return@forEach
+            }
+            
             // 只有当目标文件不存在或大小不同时才复制
             if (!destFile.exists() || destFile.length() != sourceFile.length()) {
                 try {
+                    // 使用更安全的复制方法
                     sourceFile.inputStream().use { input ->
                         destFile.outputStream().use { output ->
                             input.copyTo(output)
                         }
                     }
-                    DebugLogger.logModelManagement(TAG, "📄 复制模型文件: $fileName (${sourceFile.length()} bytes)")
+                    
+                    // 验证复制结果
+                    if (destFile.exists() && destFile.length() == sourceFile.length()) {
+                        DebugLogger.logModelManagement(TAG, "📄 复制模型文件: $fileName (${sourceFile.length()} bytes)")
+                    } else {
+                        throw IOException("复制后文件大小不匹配")
+                    }
                 } catch (e: Exception) {
-                    DebugLogger.logWakeWordError(TAG, "❌ 复制文件 $fileName 失败: ${e.message}", e)
-                    throw IOException("复制模型文件失败: $fileName", e)
+                    val error = "复制文件 $fileName 失败: ${e.message}"
+                    DebugLogger.logWakeWordError(TAG, "❌ $error", e)
+                    copyErrors.add(error)
+                    
+                    // 如果是权限问题，尝试创建一个默认的keywords.txt
+                    if (fileName == "keywords.txt" && e.message?.contains("Permission denied") == true) {
+                        try {
+                            createDefaultKeywordsFile(destFile)
+                            DebugLogger.logModelManagement(TAG, "🔧 创建默认keywords.txt文件")
+                        } catch (createError: Exception) {
+                            DebugLogger.logWakeWordError(TAG, "❌ 创建默认keywords.txt失败: ${createError.message}")
+                        }
+                    }
                 }
             } else {
                 DebugLogger.logModelManagement(TAG, "✅ 模型文件已存在: $fileName")
             }
         }
         
-        DebugLogger.logModelManagement(TAG, "🎉 所有模型文件已复制到内部存储")
+        // 如果有复制错误，但不是所有文件都失败，给出警告而不是抛出异常
+        if (copyErrors.isNotEmpty()) {
+            val errorMessage = "部分文件复制失败: ${copyErrors.joinToString(", ")}"
+            DebugLogger.logWakeWordError(TAG, "⚠️ $errorMessage")
+            
+            // 检查关键文件是否存在
+            val criticalFiles = listOf(
+                "encoder-epoch-12-avg-2-chunk-16-left-64.onnx",
+                "decoder-epoch-12-avg-2-chunk-16-left-64.onnx", 
+                "joiner-epoch-12-avg-2-chunk-16-left-64.onnx"
+            )
+            
+            val missingCriticalFiles = criticalFiles.filter { fileName ->
+                !File(destDir, fileName).exists()
+            }
+            
+            if (missingCriticalFiles.isNotEmpty()) {
+                throw IOException("关键模型文件缺失: ${missingCriticalFiles.joinToString(", ")}")
+            }
+        }
+        
+        DebugLogger.logModelManagement(TAG, "🎉 模型文件复制完成（可能有部分警告）")
+    }
+    
+    /**
+     * 创建默认的keywords.txt文件
+     */
+    private fun createDefaultKeywordsFile(destFile: File) {
+        val defaultKeywords = """hey dicio
+dicio
+hey
+hello dicio"""
+        destFile.writeText(defaultKeywords)
     }
 
     /**

@@ -130,6 +130,12 @@ fun inputDevice() = ListSetting(
             icon = Icons.Default.Mic,
         ),
         ListSetting.Value(
+            value = InputDevice.INPUT_DEVICE_SHERPA_SIMULATE,
+            name = stringResource(R.string.pref_input_method_sherpa_simulate),
+            description = stringResource(R.string.pref_input_method_sherpa_simulate_summary),
+            icon = Icons.Default.Mic,
+        ),
+        ListSetting.Value(
             value = InputDevice.INPUT_DEVICE_EXTERNAL_POPUP,
             name = stringResource(R.string.pref_input_method_external_popup),
             description = stringResource(R.string.pref_input_method_external_popup_summary),
