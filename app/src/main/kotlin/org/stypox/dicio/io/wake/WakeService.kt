@@ -43,6 +43,7 @@ import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.AudioDebugSaver
 import org.stypox.dicio.io.wake.WakeWordCallbackManager
+import org.stypox.dicio.io.AudioResourceManager
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -57,6 +58,7 @@ class WakeService : Service() {
     private val listening = AtomicBoolean(false)
     private val audioRecordPaused = AtomicBoolean(false) // 用于暂停AudioRecord以避免与ASR冲突
     private var currentAudioRecord: AudioRecord? = null // 当前的AudioRecord实例
+    private var ttsListener: ((Boolean) -> Unit)? = null // TTS状态监听器
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
@@ -97,6 +99,18 @@ class WakeService : Service() {
             }
         }
         
+        // 注册TTS状态监听器
+        ttsListener = { isPlaying ->
+            if (isPlaying) {
+                DebugLogger.logWakeWord(TAG, "⏸️ TTS播放开始，暂停唤醒词监听")
+                // TTS播放时，listenForWakeWord中的canRecord()会返回false，自动暂停
+            } else {
+                DebugLogger.logWakeWord(TAG, "▶️ TTS播放结束，恢复唤醒词监听")
+                // canRecord()返回true，自动恢复
+            }
+        }
+        AudioResourceManager.addTtsListener(ttsListener!!)
+        DebugLogger.logWakeWord(TAG, "✅ 已注册TTS状态监听器")
         
         // 启动时清理旧的音频调试文件
         if (DebugLogger.isAudioSaveEnabled()) {
@@ -203,6 +217,23 @@ class WakeService : Service() {
         
         // 通知回调：停止监听
         WakeWordCallbackManager.notifyListeningStopped()
+        
+        // 释放麦克风资源
+        scope.launch {
+            try {
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
+                DebugLogger.logWakeWord(TAG, "✅ 已释放麦克风资源")
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "❌ 释放麦克风资源失败", e)
+            }
+        }
+        
+        // 注销TTS监听器
+        ttsListener?.let {
+            AudioResourceManager.removeTtsListener(it)
+            DebugLogger.logWakeWord(TAG, "✅ 已注销TTS监听器")
+        }
+        ttsListener = null
         
         job.cancel()
         wakeDevice.reinitializeToReleaseResources()
@@ -343,6 +374,14 @@ class WakeService : Service() {
         DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
         DebugLogger.logWakeWord(TAG, "🔊 Wake word type: ${if (wakeDevice.isHeyDicio.value) "Hey Dicio" else "Custom"}")
         
+        // 请求麦克风资源
+        val granted = runBlocking {
+            AudioResourceManager.requestMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
+        }
+    
+        
+        DebugLogger.logWakeWord(TAG, "✅ 成功获取麦克风资源")
+        
         // 等待模型加载完成，最多等待30秒
         var waitCount = 0
         val maxWaitCount = 300 // 30秒，每100ms检查一次
@@ -405,6 +444,13 @@ class WakeService : Service() {
             DebugLogger.logWakeWord(TAG, "🔄 Starting audio processing loop...")
             
             while (listening.get()) {
+                // 检查是否可以录音（TTS播放时暂停）
+                if (!AudioResourceManager.canRecord()) {
+                    // TTS正在播放，暂停唤醒词检测
+                    Thread.sleep(50)
+                    continue
+                }
+                
                 // 检查是否需要暂停AudioRecord以让ASR使用
                 if (audioRecordPaused.get()) {
                     DebugLogger.logWakeWord(TAG, "⏸️ AudioRecord paused for ASR, waiting...")
@@ -502,6 +548,16 @@ class WakeService : Service() {
         intent.setAction(ACTION_WAKE_WORD)
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
         DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
+
+        // 释放麦克风资源，让ASR使用
+        scope.launch {
+            try {
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
+                DebugLogger.logWakeWord(TAG, "✅ 已释放麦克风资源，让ASR使用")
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "❌ 释放麦克风资源失败", e)
+            }
+        }
 
         // Start listening and pass STT events to the skill evaluator.
         // Note that this works even if the MainActivity is opened later!

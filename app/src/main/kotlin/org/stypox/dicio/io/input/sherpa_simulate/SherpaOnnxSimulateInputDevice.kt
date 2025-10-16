@@ -30,6 +30,7 @@ import org.stypox.dicio.di.LocaleManager
 import org.stypox.dicio.io.input.InputEvent
 import org.stypox.dicio.io.input.SttInputDevice
 import org.stypox.dicio.io.input.SttState
+import org.stypox.dicio.io.AudioResourceManager
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -111,6 +112,9 @@ class SherpaOnnxSimulateInputDevice(
     // ========== 耗时统计 ==========
     private var recordingStartTime = 0L
     private var speechDetectedTime = 0L
+    
+    // ========== TTS监听器 ==========
+    private var ttsListener: ((Boolean) -> Unit)? = null
 
     init {
         Log.d(TAG, "🏗️ SherpaOnnxSimulateInputDevice 初始化")
@@ -184,22 +188,53 @@ class SherpaOnnxSimulateInputDevice(
             Log.d(TAG, "🔄 重新创建协程作用域")
         }
         
-        this.eventListener = thenStartListeningEventListener
-        resetRecordingState()
-        _uiState.value = SttState.Listening
-        
-        // 记录录音开始时间
-        recordingStartTime = System.currentTimeMillis()
-        Log.d(TAG, "⏱️ [T0] 录音开始时间: $recordingStartTime")
-        
-        // 启动音频采集协程 (IO)
-        scope.launch(Dispatchers.IO) {
-            recordAudio()
-        }
-        
-        // 启动音频处理协程 (Default)
-        scope.launch(Dispatchers.Default) {
-            processAudio()
+        // 请求麦克风资源
+        scope.launch {
+            val granted = AudioResourceManager.requestMicrophone(
+                AudioResourceManager.AudioOwner.ASR_DEVICE
+            )
+            
+            if (!granted) {
+                Log.w(TAG, "❌ 无法获取麦克风资源（TTS正在播放）")
+                isRecording.set(false)
+                withContext(Dispatchers.Main) {
+                    _uiState.value = SttState.ErrorLoading(Exception("音频资源被占用"))
+                }
+                return@launch
+            }
+            
+            Log.d(TAG, "✅ 成功获取麦克风资源")
+            
+            // 注册TTS监听器
+            ttsListener = { isPlaying ->
+                if (isPlaying) {
+                    Log.d(TAG, "⏸️ TTS播放开始，暂停录音")
+                } else {
+                    Log.d(TAG, "▶️ TTS播放结束，恢复录音")
+                }
+            }
+            AudioResourceManager.addTtsListener(ttsListener!!)
+            
+            this@SherpaOnnxSimulateInputDevice.eventListener = thenStartListeningEventListener
+            resetRecordingState()
+            
+            withContext(Dispatchers.Main) {
+                _uiState.value = SttState.Listening
+            }
+            
+            // 记录录音开始时间
+            recordingStartTime = System.currentTimeMillis()
+            Log.d(TAG, "⏱️ [T0] 录音开始时间: $recordingStartTime")
+            
+            // 启动音频采集协程 (IO)
+            launch(Dispatchers.IO) {
+                recordAudio()
+            }
+            
+            // 启动音频处理协程 (Default)
+            launch(Dispatchers.Default) {
+                processAudio()
+            }
         }
         
         return true
@@ -249,6 +284,23 @@ class SherpaOnnxSimulateInputDevice(
                 Log.w(TAG, "   ✗ 停止AudioRecord失败", e)
             }
         }
+        
+        // 释放麦克风资源
+        scope.launch {
+            try {
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
+                Log.d(TAG, "✅ 已释放麦克风资源")
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 释放麦克风资源失败", e)
+            }
+        }
+        
+        // 注销TTS监听器
+        ttsListener?.let {
+            AudioResourceManager.removeTtsListener(it)
+            Log.d(TAG, "✅ 已注销TTS监听器")
+        }
+        ttsListener = null
     }
     
     /**
@@ -259,6 +311,21 @@ class SherpaOnnxSimulateInputDevice(
         
         try {
             stopListeningWithReason(StopReason.DEVICE_DESTROY)
+            
+            // 确保麦克风资源被释放
+            try {
+                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
+                Log.d(TAG, "✅ 确保麦克风资源已释放")
+            } catch (e: Exception) {
+                Log.w(TAG, "释放麦克风资源异常", e)
+            }
+            
+            // 确保TTS监听器被注销
+            ttsListener?.let {
+                AudioResourceManager.removeTtsListener(it)
+                Log.d(TAG, "✅ 确保TTS监听器已注销")
+            }
+            ttsListener = null
             
             samplesChannel.close()
             
@@ -336,6 +403,13 @@ class SherpaOnnxSimulateInputDevice(
             var maxAmplitude = 0f
             
             while (isRecording.get()) {
+                // 检查是否可以录音（TTS播放时暂停）
+                if (!AudioResourceManager.canRecord()) {
+                    // TTS正在播放，暂停录音但不退出循环
+                    delay(50) // 等待50ms再检查
+                    continue
+                }
+                
                 val ret = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: -1
                 if (ret > 0) {
                     frameCount++
