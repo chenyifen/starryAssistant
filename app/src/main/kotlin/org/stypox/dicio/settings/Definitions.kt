@@ -287,3 +287,11 @@ fun twoPassShowComparisonLogs() = BooleanSetting(
     descriptionOff = stringResource(R.string.pref_two_pass_show_comparison_logs_summary),
     descriptionOn = stringResource(R.string.pref_two_pass_show_comparison_logs_summary),
 )
+
+@Composable
+fun pauseWakeDuringAsr() = BooleanSetting(
+    title = "ASR时暂停唤醒",
+    icon = Icons.Default.Hearing,
+    descriptionOff = "唤醒服务持续运行（可能导致资源冲突）",
+    descriptionOn = "ASR运行时暂停唤醒服务（推荐）",
+)

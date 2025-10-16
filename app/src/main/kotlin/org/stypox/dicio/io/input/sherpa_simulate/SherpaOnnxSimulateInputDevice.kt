@@ -331,17 +331,47 @@ class SherpaOnnxSimulateInputDevice(
             audioRecord?.startRecording()
             Log.d(TAG, "🎙️ AudioRecord 开始录音")
             
+            var frameCount = 0
+            var totalSamples = 0
+            var maxAmplitude = 0f
+            
             while (isRecording.get()) {
                 val ret = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: -1
                 if (ret > 0) {
+                    frameCount++
+                    totalSamples += ret
+                    
                     val samples = FloatArray(ret) { audioBuffer[it] / 32768.0f }
+                    
+                    // 计算当前帧的最大振幅和能量
+                    val amplitude = samples.maxOfOrNull { kotlin.math.abs(it) } ?: 0f
+                    val energy = samples.map { it * it }.average()
+                    
+                    if (amplitude > maxAmplitude) {
+                        maxAmplitude = amplitude
+                    }
+                    
+                    // 每50帧（约5秒）打印一次统计
+                    if (frameCount % 50 == 0) {
+                        Log.d(TAG, "🎵 音频采集统计 - Frame: $frameCount | Samples: $totalSamples | MaxAmp: %.4f | Energy: %.6f".format(maxAmplitude, energy))
+                    }
+                    
+                    // 如果检测到音频，打印详细信息
+                    if (amplitude > 0.01f) {
+                        Log.d(TAG, "🔊 检测到音频信号 - Frame: $frameCount | Amp: %.4f | Energy: %.6f | Samples: $ret".format(amplitude, energy))
+                    }
+                    
                     samplesChannel.send(samples)
+                } else if (ret == 0) {
+                    Log.w(TAG, "⚠️ AudioRecord读取返回0字节")
+                } else {
+                    Log.e(TAG, "❌ AudioRecord读取失败: $ret")
                 }
             }
             
             // 发送空数组作为结束信号
             samplesChannel.send(FloatArray(0))
-            Log.d(TAG, "🎵 音频采集结束")
+            Log.d(TAG, "🎵 音频采集结束 - 总帧数: $frameCount, 总样本: $totalSamples, 最大振幅: %.4f".format(maxAmplitude))
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 音频采集失败", e)
@@ -376,35 +406,66 @@ class SherpaOnnxSimulateInputDevice(
                 return@withContext
             }
             
+            Log.i(TAG, "✅ VAD和识别器已就绪，开始处理音频流")
+            
+            var receivedFrames = 0
+            var processedVadFrames = 0
+            
             while (isRecording.get()) {
                 for (samples in samplesChannel) {
                     if (samples.isEmpty()) {
+                        Log.d(TAG, "🔚 收到空样本（结束信号）")
                         break
+                    }
+                    
+                    receivedFrames++
+                    
+                    // 每10帧打印一次接收状态
+                    if (receivedFrames % 10 == 0) {
+                        Log.d(TAG, "📦 已接收音频帧: $receivedFrames | Buffer大小: ${buffer.size} | Offset: $offset")
                     }
                     
                     // 添加样本到缓冲区
                     buffer.addAll(samples.toList())
                     
+                    Log.d(TAG, "📥 接收到音频样本 - Frame: $receivedFrames | Samples: ${samples.size} | Buffer: ${buffer.size}")
+                    
                     // VAD处理
                     while (offset + VAD_WINDOW_SIZE < buffer.size) {
                         try {
-                            vadInstance.acceptWaveform(
-                                buffer.subList(offset, offset + VAD_WINDOW_SIZE).toFloatArray()
-                            )
+                            val vadFrame = buffer.subList(offset, offset + VAD_WINDOW_SIZE).toFloatArray()
+                            
+                            // 计算音频能量（调试用）
+                            val energy = vadFrame.map { it * it }.average()
+                            
+                            vadInstance.acceptWaveform(vadFrame)
                             offset += VAD_WINDOW_SIZE
                             
+                            val speechDetected = vadInstance.isSpeechDetected()
+                            
+                            // 每10帧打印一次VAD状态
+                            if (offset % (VAD_WINDOW_SIZE * 10) == 0) {
+                                Log.d(TAG, "🎤 VAD Frame - offset: $offset | buffer: ${buffer.size} | energy: %.6f | speech: %s | started: %s".format(
+                                    energy, if (speechDetected) "✅" else "❌", if (isSpeechStarted) "YES" else "NO"
+                                ))
+                            }
+                            
                             // 检测语音开始
-                            if (!isSpeechStarted && vadInstance.isSpeechDetected()) {
+                            if (!isSpeechStarted && speechDetected) {
                                 isSpeechStarted = true
                                 startTime = System.currentTimeMillis()
                                 
                                 // 记录语音检测时间和延迟
                                 speechDetectedTime = System.currentTimeMillis()
                                 val detectDelay = speechDetectedTime - recordingStartTime
+                                Log.i(TAG, "🎯 语音开始检测!")
                                 Log.d(TAG, "⏱️ [T1] 语音检测时间: ${speechDetectedTime}ms (检测延迟: ${detectDelay}ms)")
+                                Log.d(TAG, "📊 VAD状态 - buffer: ${buffer.size} | offset: $offset | energy: %.6f".format(energy))
                             }
                         } catch (e: Exception) {
                             Log.e(TAG, "❌ VAD处理失败", e)
+                            Log.e(TAG, "   错误详情: ${e.message}")
+                            Log.e(TAG, "   堆栈: ${e.stackTraceToString()}")
                             stopListeningWithReason(StopReason.ERROR)
                             return@withContext
                         }
@@ -451,21 +512,34 @@ class SherpaOnnxSimulateInputDevice(
      */
     private suspend fun performPartialRecognition(recognizerInstance: OfflineRecognizer) {
         try {
+            Log.d(TAG, "🔍 [Partial Recognition] 开始实时识别...")
             val recognitionStart = System.currentTimeMillis()
+            
+            val audioData = buffer.subList(0, offset).toFloatArray()
+            Log.d(TAG, "   音频数据: ${audioData.size} 样本 (${audioData.size / SAMPLE_RATE.toFloat()} 秒)")
+            
+            // 计算音频能量
+            val energy = audioData.map { it * it }.average()
+            Log.d(TAG, "   音频能量: %.6f".format(energy))
             
             // 创建stream并识别
             val stream = recognizerInstance.createStream()
-            stream.acceptWaveform(
-                buffer.subList(0, offset).toFloatArray(),
-                SAMPLE_RATE
-            )
+            Log.d(TAG, "   ✓ Stream 已创建")
+            
+            stream.acceptWaveform(audioData, SAMPLE_RATE)
+            Log.d(TAG, "   ✓ 音频数据已提交")
+            
             recognizerInstance.decode(stream)
+            Log.d(TAG, "   ✓ 解码完成")
+            
             val result = recognizerInstance.getResult(stream)
             stream.release()
             
             val recognitionTime = System.currentTimeMillis() - recognitionStart
             
             lastText = result?.text ?: ""
+            
+            Log.d(TAG, "   识别结果: \"$lastText\" (${lastText.length} 字符)")
             
             if (lastText.isNotBlank()) {
                 val totalTime = System.currentTimeMillis() - recordingStartTime
@@ -475,24 +549,32 @@ class SherpaOnnxSimulateInputDevice(
                     0L
                 }
                 
-                // 打印耗时统计
-                Log.d(TAG, "🎯 总耗时: ${totalTime}ms | 检测延迟: ${detectDelay}ms | 识别耗时: ${recognitionTime}ms | 文本: \"$lastText\"")
+                // 打印详细耗时统计
+                Log.i(TAG, "✅ [Partial] 识别成功!")
+                Log.d(TAG, "   📊 总耗时: ${totalTime}ms")
+                Log.d(TAG, "   📊 检测延迟: ${detectDelay}ms")
+                Log.d(TAG, "   📊 识别耗时: ${recognitionTime}ms")
+                Log.d(TAG, "   📝 文本: \"$lastText\"")
                 
                 // 照搬demo的结果管理逻辑
                 withContext(Dispatchers.Main) {
                     if (!added) {
                         eventListener?.invoke(InputEvent.Partial(lastText))
                         added = true
-                        Log.d(TAG, "📤 [Partial] 首次发送: $lastText")
+                        Log.i(TAG, "📤 [Partial] 首次发送: $lastText")
                     } else {
                         eventListener?.invoke(InputEvent.Partial(lastText))
-                        Log.d(TAG, "📤 [Partial] 更新结果: $lastText")
+                        Log.i(TAG, "📤 [Partial] 更新结果: $lastText")
                     }
                 }
+            } else {
+                Log.w(TAG, "⚠️ [Partial] 识别结果为空 (耗时: ${recognitionTime}ms)")
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 实时识别失败", e)
+            Log.e(TAG, "   错误详情: ${e.message}")
+            Log.e(TAG, "   堆栈: ${e.stackTraceToString()}")
         }
     }
     
@@ -501,14 +583,27 @@ class SherpaOnnxSimulateInputDevice(
      */
     private suspend fun performFinalRecognition(vadInstance: Vad, recognizerInstance: OfflineRecognizer) {
         try {
+            Log.d(TAG, "🏁 [Final Recognition] 开始最终识别...")
             val recognitionStart = System.currentTimeMillis()
             
             // 从VAD队列获取完整语音段
             val speechSegment = vadInstance.front()
+            Log.d(TAG, "   语音段数据: ${speechSegment.samples.size} 样本 (${speechSegment.samples.size / SAMPLE_RATE.toFloat()} 秒)")
+            Log.d(TAG, "   语音段起始: ${speechSegment.start} 秒")
+            
+            // 计算语音段能量
+            val energy = speechSegment.samples.map { it * it }.average()
+            Log.d(TAG, "   音频能量: %.6f".format(energy))
             
             val stream = recognizerInstance.createStream()
+            Log.d(TAG, "   ✓ Stream 已创建")
+            
             stream.acceptWaveform(speechSegment.samples, SAMPLE_RATE)
+            Log.d(TAG, "   ✓ 音频数据已提交")
+            
             recognizerInstance.decode(stream)
+            Log.d(TAG, "   ✓ 解码完成")
+            
             val result = recognizerInstance.getResult(stream)
             stream.release()
             
@@ -517,8 +612,14 @@ class SherpaOnnxSimulateInputDevice(
             
             val finalText = result?.text ?: ""
             
-            // 打印最终识别耗时
-            Log.d(TAG, "🏁 [Final] 总耗时: ${totalTime}ms | 识别耗时: ${recognitionTime}ms | 文本: \"$finalText\"")
+            Log.d(TAG, "   识别结果: \"$finalText\" (${finalText.length} 字符)")
+            
+            // 打印详细最终识别耗时
+            Log.i(TAG, "🏁 [Final] 识别完成!")
+            Log.d(TAG, "   📊 总耗时: ${totalTime}ms")
+            Log.d(TAG, "   📊 识别耗时: ${recognitionTime}ms")
+            Log.d(TAG, "   📝 文本: \"$finalText\"")
+            Log.d(TAG, "   🔄 上一次部分结果: \"$lastText\"")
             
             // 照搬demo的结果管理逻辑
             if (lastText.isNotBlank()) {
@@ -526,18 +627,22 @@ class SherpaOnnxSimulateInputDevice(
                     if (added) {
                         // 已有部分结果，发送最终结果
                         eventListener?.invoke(InputEvent.Final(listOf(finalText to 1.0f)))
-                        Log.d(TAG, "📤 [Final] 更新为最终结果: $finalText")
+                        Log.i(TAG, "📤 [Final] 更新为最终结果: $finalText")
                     } else {
                         // 没有部分结果，直接添加
                         eventListener?.invoke(InputEvent.Final(listOf(finalText to 1.0f)))
-                        Log.d(TAG, "📤 [Final] 直接添加最终结果: $finalText")
+                        Log.i(TAG, "📤 [Final] 直接添加最终结果: $finalText")
                     }
                     added = false
                 }
+            } else {
+                Log.w(TAG, "⚠️ [Final] 没有部分识别结果，跳过最终结果发送")
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 最终识别失败", e)
+            Log.e(TAG, "   错误详情: ${e.message}")
+            Log.e(TAG, "   堆栈: ${e.stackTraceToString()}")
         }
     }
 }

@@ -11,6 +11,7 @@ object UserSettingsSerializer : Serializer<UserSettings> {
         .toBuilder()
         .setAutoFinishSttPopup(true)
         .setInputDevice(InputDevice.INPUT_DEVICE_SENSEVOICE)
+        .setPauseWakeDuringAsr(true) // 默认启用：ASR时暂停唤醒服务
         .build()
 
     override suspend fun readFrom(input: InputStream): UserSettings {
