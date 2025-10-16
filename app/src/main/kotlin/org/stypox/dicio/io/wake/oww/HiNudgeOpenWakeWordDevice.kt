@@ -207,11 +207,11 @@ class HiNudgeOpenWakeWordDevice(
     }
 
     override fun processFrame(audio16bitPcm: ShortArray): Boolean {
-        // 添加调试日志确认方法被调用
+        // 注释掉常规日志，减少输出
         frameCount++
-        if (frameCount % 100 == 0) {
-            DebugLogger.logWakeWord(TAG, "🔄 HiNudge processing frame #$frameCount, size: ${audio16bitPcm.size}")
-        }
+        // if (frameCount % 100 == 0) {
+        //     DebugLogger.logWakeWord(TAG, "🔄 HiNudge processing frame #$frameCount, size: ${audio16bitPcm.size}")
+        // }
         
         if (audio16bitPcm.size != N_PREPARED_SAMPLES) {
             DebugLogger.logWakeWordError(TAG, "❌ Invalid frame size: ${audio16bitPcm.size}, expected: $N_PREPARED_SAMPLES")
@@ -237,15 +237,11 @@ class HiNudgeOpenWakeWordDevice(
             
             val processingTime = System.currentTimeMillis() - startTime
             
-            // 每1000帧记录一次性能统计
-            if (frameCount % 1000 == 0) {
-                DebugLogger.logWakeWord(TAG, "⚡ Frame processing time: ${processingTime}ms")
-            }
-            
-            // 每1000帧记录一次处理状态
-            if (frameCount % 1000 == 0) {
-                DebugLogger.logWakeWord(TAG, "📊 HiNudge processed $frameCount frames, latest score: $score")
-            }
+            // 注释掉常规日志，只在检测到唤醒词时输出
+            // if (frameCount % 1000 == 0) {
+            //     DebugLogger.logWakeWord(TAG, "⚡ Frame processing time: ${processingTime}ms")
+            //     DebugLogger.logWakeWord(TAG, "📊 HiNudge processed $frameCount frames, latest score: $score")
+            // }
             
             // 检查是否检测到唤醒词（阈值按照demo设置）
             val threshold = 0.05f

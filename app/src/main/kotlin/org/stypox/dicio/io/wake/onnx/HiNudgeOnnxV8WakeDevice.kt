@@ -317,8 +317,9 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         // 最终检测结果：需要连续检测、足够音频能量、冷却时间已过
         val detected = consecutiveHighScores >= consecutiveThreshold && hasMinEnergy && cooldownPassed
         
-        // 记录日志
-        if (frameCount % 100 == 0 || detected || score > 0.2f) {
+        // 记录日志：只在检测到唤醒词时打印，减少日志输出
+        // 如需调试，可以临时启用：frameCount % 1000 == 0 条件
+        if (detected) {
             val timeSinceLastLog = currentTime - lastLogTime
             DebugLogger.logWakeWord(TAG, "🎤 V17 Frame #$frameCount | Score: %.4f | Threshold: %.2f | Energy: %.6f | Consecutive: %d | Cooldown: %dms | Detected: %s | Δt: %dms".format(
                 score, DETECTION_THRESHOLD, audioEnergy, consecutiveHighScores, timeSinceLastDetection, if (detected) "✅" else "❌", timeSinceLastLog

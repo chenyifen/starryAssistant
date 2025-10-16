@@ -23,19 +23,23 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
+import androidx.datastore.core.DataStore
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.stypox.dicio.MainActivity
 import org.stypox.dicio.MainActivity.Companion.ACTION_WAKE_WORD
 import org.stypox.dicio.R
 import org.stypox.dicio.di.SttInputDeviceWrapper
 import org.stypox.dicio.di.WakeDeviceWrapper
 import org.stypox.dicio.eval.SkillEvaluator
+import org.stypox.dicio.settings.datastore.UserSettings
 import org.stypox.dicio.util.DebugLogger
 import org.stypox.dicio.util.AudioDebugSaver
 import org.stypox.dicio.io.wake.WakeWordCallbackManager
@@ -60,6 +64,8 @@ class WakeService : Service() {
     lateinit var sttInputDevice: SttInputDeviceWrapper
     @Inject
     lateinit var wakeDevice: WakeDeviceWrapper
+    @Inject
+    lateinit var dataStore: DataStore<UserSettings>
 
     private val handler = Handler(Looper.getMainLooper())
     private val releaseSttResourcesRunnable = Runnable {
@@ -434,10 +440,10 @@ class WakeService : Service() {
                     val bytesRead = ar.read(audio, 0, audio.size)
                     frameCount++
                     
-                    // 每100帧记录一次调试信息（只在有数据时）
-                    if (frameCount % 100 == 0 && bytesRead > 0) {
-                        DebugLogger.logAudioProcessing(TAG, "🔄 Frame #$frameCount, bytesRead=$bytesRead")
-                    }
+                    // 注释掉常规帧日志，减少输出
+                    // if (frameCount % 100 == 0 && bytesRead > 0) {
+                    //     DebugLogger.logAudioProcessing(TAG, "🔄 Frame #$frameCount, bytesRead=$bytesRead")
+                    // }
                     
                     if (bytesRead > 0) {
                         val wakeWordDetected = wakeDevice.processFrame(audio)
@@ -456,10 +462,10 @@ class WakeService : Service() {
 
                         lastHeard.set(now)
                         
-                        // 每1000帧记录一次状态
-                        if (frameCount % 1000 == 0) {
-                            DebugLogger.logAudioProcessing(TAG, "📊 Processed $frameCount frames, still listening...")
-                        }
+                        // 注释掉状态日志，只在重要事件时输出
+                        // if (frameCount % 1000 == 0) {
+                        //     DebugLogger.logAudioProcessing(TAG, "📊 Processed $frameCount frames, still listening...")
+                        // }
                     } else if (bytesRead == 0) {
                         // 0字节可能是正常的，特别是在暂停/恢复期间
                         // 不再记录日志，避免刷屏
@@ -491,9 +497,6 @@ class WakeService : Service() {
         
         // 通知所有注册的回调
         WakeWordCallbackManager.notifyWakeWordDetected()
-        
-        // 暂停WakeService的AudioRecord以让ASR使用
-        pauseAudioRecordForASR()
 
         val intent = Intent(this, MainActivity::class.java)
         intent.setAction(ACTION_WAKE_WORD)
@@ -507,6 +510,12 @@ class WakeService : Service() {
         // 直接启动ASR，不需要协调器检查
         val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
         DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
+        
+        // 延迟暂停WakeService，让ASR先初始化完成（300ms足够启动AudioRecord）
+        scope.launch {
+            delay(300)
+            pauseAudioRecordForASR()
+        }
 
         // 🔧 保持原有的资源释放机制作为备用，并在STT完成后恢复WakeService
         handler.removeCallbacks(releaseSttResourcesRunnable)
@@ -566,6 +575,16 @@ class WakeService : Service() {
      * 暂停WakeService的AudioRecord以让ASR使用音频资源
      */
     private fun pauseAudioRecordForASR() {
+        // 读取设置：是否需要在ASR时暂停唤醒服务
+        val shouldPause = runBlocking { 
+            dataStore.data.first().pauseWakeDuringAsr 
+        }
+        
+        if (!shouldPause) {
+            DebugLogger.logWakeWord(TAG, "⏭️ 跳过暂停WakeService（用户设置：持续运行）")
+            return
+        }
+        
         DebugLogger.logWakeWord(TAG, "⏸️ Pausing WakeService AudioRecord for ASR")
         audioRecordPaused.set(true)
         
@@ -589,6 +608,16 @@ class WakeService : Service() {
      * 恢复WakeService的AudioRecord在ASR完成后
      */
     private fun resumeAudioRecordAfterASR() {
+        // 读取设置：是否需要在ASR时暂停唤醒服务
+        val shouldPause = runBlocking { 
+            dataStore.data.first().pauseWakeDuringAsr 
+        }
+        
+        if (!shouldPause) {
+            DebugLogger.logWakeWord(TAG, "⏭️ 跳过恢复WakeService（用户设置：持续运行）")
+            return
+        }
+        
         DebugLogger.logWakeWord(TAG, "▶️ Resuming WakeService AudioRecord after ASR")
         audioRecordPaused.set(false)
         

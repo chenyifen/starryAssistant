@@ -219,6 +219,12 @@ private fun MainSettingsScreen(
                 viewModel::setAutoFinishSttPopup
             )
         }
+        item {
+            pauseWakeDuringAsr().Render(
+                settings.pauseWakeDuringAsr,
+                viewModel::setPauseWakeDuringAsr
+            )
+        }
 
         item {
             Spacer(modifier = Modifier.height(8.dp))

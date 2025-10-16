@@ -1,12 +1,6 @@
 /*
- * Dicio SenseVoice Input Device - Refactored
+ * Dicio SenseVoice Input Device
  * 基于SenseVoice多语言ASR的语音输入设备实现
- * 
- * 重构说明：
- * - 参考SherpaOnnxSimulateStreamingAsr官方demo的设计模式
- * - 使用状态驱动而非Job管理
- * - 简化协程生命周期管理
- * - 修复时序混乱和协程取消问题
  */
 
 package org.stypox.dicio.io.input.sensevoice
@@ -17,6 +11,7 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import com.k2fsa.sherpa.onnx.Vad
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,12 +26,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * SenseVoice语音输入设备 - 单例模式
- * 
- * 设计原则：
- * 1. 状态驱动：使用 isRecording 标志控制流程，而非Job引用
- * 2. 两个独立协程：音频采集(IO) + 音频处理(Default)
- * 3. Channel通信：协程间通过Channel传递音频数据
- * 4. 自动清理：资源在finally块中自动释放
+ * 直接使用SenseVoice进行语音识别，不依赖Vosk
+ * 使用单例模式避免多实例冲突
  */
 class SenseVoiceInputDevice private constructor(
     private val appContext: Context,
@@ -46,23 +37,26 @@ class SenseVoiceInputDevice private constructor(
     companion object {
         private const val TAG = "SenseVoiceInputDevice"
         
-        // 音频配置 (与官方demo保持一致)
+        // 音频录制配置 (参考demo的配置)
         private const val SAMPLE_RATE = 16000
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
         private const val AUDIO_SOURCE = MediaRecorder.AudioSource.MIC
         
-        // VAD和识别参数
-        private const val VAD_WINDOW_SIZE = 512                    // VAD窗口大小 (32ms @ 16kHz)
-        private const val RECOGNITION_INTERVAL_MS = 200L           // 实时识别间隔 (与demo一致)
-        private const val SPEECH_TIMEOUT_MS = 6000L                // 静音超时 (3秒)
-        private const val MAX_RECORDING_DURATION_MS = 30000L       // 最大录制时长 (30秒)
-        private const val MIN_SPEECH_DURATION_MS = 500L            // 最短有效语音
+        // VAD和录制控制参数
+        private const val VAD_FRAME_SIZE = 512 // VAD处理帧大小 (32ms @ 16kHz)
+        private const val SPEECH_TIMEOUT_MS = 4000L // 静音8秒后自动停止，给用户更多思考时间
+        private const val MAX_RECORDING_DURATION_MS = 30000L // 最长录制时间30秒
+        private const val MIN_SPEECH_DURATION_MS = 500L // 最短有效语音时间
 
         // 单例实例
         @Volatile
         private var INSTANCE: SenseVoiceInputDevice? = null
+        
 
+        /**
+         * 获取单例实例
+         */
         fun getInstance(appContext: Context, localeManager: LocaleManager): SenseVoiceInputDevice {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: SenseVoiceInputDevice(appContext, localeManager).also { 
@@ -72,11 +66,15 @@ class SenseVoiceInputDevice private constructor(
             }
         }
 
+        /**
+         * 重置单例实例（用于测试或重新初始化）
+         */
         fun resetInstance() {
             synchronized(this) {
                 INSTANCE?.let { instance ->
                     Log.d(TAG, "🔄 重置SenseVoiceInputDevice单例实例")
-                    CoroutineScope(Dispatchers.Default).launch {
+                    // 清理当前实例 - 使用协程
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
                         instance.destroy()
                     }
                 }
@@ -85,619 +83,857 @@ class SenseVoiceInputDevice private constructor(
         }
     }
 
-    // ========== 硬件资源 ==========
+    // SenseVoice识别器和VAD
     private var senseVoiceRecognizer: SenseVoiceRecognizer? = null
     private var vad: Vad? = null
-    private var audioRecord: AudioRecord? = null
     
-    // ========== 状态管理 ==========
-    private val isInitialized = AtomicBoolean(false)
-    private val isRecording = AtomicBoolean(false)  // 主控制标志
-    
+    // UI状态管理
     private val _uiState = MutableStateFlow<SttState>(SttState.NotInitialized)
     override val uiState: StateFlow<SttState> = _uiState.asStateFlow()
     
-    // ========== 通信Channel ==========
+    // 控制标志
+    private val isInitialized = AtomicBoolean(false)
+    private val isListening = AtomicBoolean(false)
+    private val isRecording = AtomicBoolean(false)
+    
+    // 音频录制相关
+    private var audioRecord: AudioRecord? = null
+    private var recordingJob: Job? = null
+    private var vadJob: Job? = null
+    private var eventListener: ((InputEvent) -> Unit)? = null
     private var samplesChannel = Channel<FloatArray>(capacity = Channel.UNLIMITED)
     
-    // ========== 协程作用域 ==========
+    // VAD和语音检测状态
+    private var speechDetected = false
+    private var speechStartTime = 0L
+    private var lastSpeechTime = 0L
+    // 参考SherpaOnnxSimulateAsr使用ArrayList进行高效缓冲管理
+    private val audioBuffer = arrayListOf<Float>()
+    private var bufferOffset = 0
+    private val maxBufferSize = SAMPLE_RATE * 10 // 最多存储10秒音频
+    private var partialText = ""
+    private var lastPartialRecognitionTime = 0L
+    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 200L // 参考demo改为200ms触发间隔
+    private var isPartialResultAdded = false // 参考demo的结果管理策略
+    
+    // 协程作用域 - 使用可重新创建的作用域
     private var scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
-    // ========== 事件监听 ==========
-    private var eventListener: ((InputEvent) -> Unit)? = null
-    
-    // ========== 音频缓冲 ==========
-    // 语音缓冲区：只保留检测到的语音数据
-    private val speechBuffer = arrayListOf<Float>()  // 检测到语音后累积的音频数据
-    
-    // ========== VAD状态 ==========
-    private var isSpeechDetected = false
-    private var speechStartTime = 0L
-    private var lastRecognitionTime = 0L
-    private var lastSpeechTime = 0L  // 最后一次检测到语音的时间
-    private var lastEnergyLogTime = 0L  // 能量日志时间戳
-    private var lastText = ""
-    private var added = false  // 参考demo的结果管理
-
     init {
-        Log.d(TAG, "🏗️ [INIT] SenseVoiceInputDevice构造函数开始")
         Log.d(TAG, "🎤 SenseVoice输入设备正在初始化...")
-        Log.d(TAG, "🚀 [INIT] 启动协程初始化组件")
+        
+        // 异步初始化SenseVoice和VAD
         scope.launch {
-            Log.d(TAG, "🔄 [COROUTINE] initializeComponents()协程开始执行")
             initializeComponents()
-            Log.d(TAG, "✅ [COROUTINE] initializeComponents()协程执行完成")
         }
-        Log.d(TAG, "✅ [INIT] SenseVoiceInputDevice构造函数完成")
     }
     
     /**
-     * 初始化识别器和VAD
+     * 初始化SenseVoice识别器和VAD
      */
     private suspend fun initializeComponents() {
-        Log.d(TAG, "🔧 开始初始化组件...")
+        Log.d(TAG, "🔧 开始初始化SenseVoice和VAD组件...")
         _uiState.value = SttState.Loading(thenStartListening = false)
         
         try {
-            // 检查模型可用性
+            // 检查SenseVoice模型可用性
             if (!SenseVoiceModelManager.isModelAvailable(appContext)) {
                 Log.e(TAG, "❌ SenseVoice模型不可用")
-                _uiState.value = SttState.ErrorLoading(Exception("SenseVoice模型不可用"))
+                _uiState.value = SttState.ErrorLoading(Exception("SenseVoice模型不可用，请检查模型文件"))
                 return
             }
             
-            // 创建识别器
+            // 检查VAD模型可用性
+            if (!VadModelManager.isVadModelAvailable(appContext)) {
+                Log.w(TAG, "⚠️ VAD模型不可用，将使用简单能量检测")
+            }
+            
+            // 创建SenseVoice识别器
             senseVoiceRecognizer = SenseVoiceRecognizer.create(appContext)
             if (senseVoiceRecognizer == null) {
-                Log.e(TAG, "❌ 识别器创建失败")
-                _uiState.value = SttState.ErrorLoading(Exception("识别器创建失败"))
+                Log.e(TAG, "❌ SenseVoice识别器创建失败")
+                _uiState.value = SttState.ErrorLoading(Exception("SenseVoice识别器创建失败"))
                 return
             }
             
-            // 初始化VAD
-            if (VadModelManager.isVadModelAvailable(appContext)) {
-                val vadConfig = VadModelManager.createVadConfig(appContext)
-                val modelPaths = VadModelManager.getVadModelPaths(appContext)
-                if (vadConfig != null && modelPaths != null) {
-                    try {
-                        // 🔧 修复：根据模型来源选择正确的构造函数
-                        // Vad构造函数签名: Vad(assetManager: AssetManager?, config: VadModelConfig)
-                        vad = if (modelPaths.isFromAssets) {
-                            Log.d(TAG, "🔧 从Assets加载VAD模型")
-                            Vad(appContext.assets, vadConfig)
-                        } else {
-                            Log.d(TAG, "🔧 从文件系统加载VAD模型: ${modelPaths.modelPath}")
-                            Vad(null, vadConfig)  // assetManager传null，使用配置中的文件路径
-                        }
-                        Log.d(TAG, "✅ VAD初始化成功")
-                        Log.d(TAG, "📊 ${VadModelManager.getVadModelInfo(appContext)}")
-                    } catch (e: Exception) {
-                        Log.e(TAG, "❌ VAD初始化失败，回退到能量检测", e)
-                        vad = null
+            // 暂时禁用VAD，避免模型兼容性问题导致崩溃
+            Log.w(TAG, "⚠️ VAD暂时禁用，使用能量检测代替")
+            vad = null
+            
+            /*
+            // 创建VAD (如果可用)
+            val vadConfig = VadModelManager.createVadConfig(appContext)
+            if (vadConfig != null) {
+                try {
+                    val vadModelPaths = VadModelManager.getVadModelPaths(appContext)
+                    vad = if (vadModelPaths?.isFromAssets == true) {
+                        Vad(assetManager = appContext.assets, config = vadConfig)
+                    } else {
+                        Vad(config = vadConfig)
                     }
-                } else {
-                    Log.w(TAG, "⚠️ VAD配置创建失败，使用能量检测")
+                    Log.d(TAG, "✅ VAD初始化成功")
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ VAD初始化失败，将使用简单能量检测", e)
                     vad = null
                 }
-            } else {
-                Log.w(TAG, "⚠️ VAD模型不可用，使用能量检测")
-                vad = null
             }
+            */
             
+            Log.d(TAG, "✅ SenseVoice识别器初始化成功")
             isInitialized.set(true)
             _uiState.value = SttState.Loaded
             
-            Log.d(TAG, "✅ 初始化完成")
-            Log.d(TAG, "📊 ${SenseVoiceModelManager.getModelInfo(appContext)}")
+            val senseVoiceInfo = SenseVoiceModelManager.getModelInfo(appContext)
+            val vadInfo = VadModelManager.getVadModelInfo(appContext)
+            Log.d(TAG, "📊 $senseVoiceInfo")
+            Log.d(TAG, "📊 $vadInfo")
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ 初始化异常", e)
+            Log.e(TAG, "❌ 初始化组件异常", e)
             _uiState.value = SttState.ErrorLoading(e)
         }
     }
     
-    /**
-     * 启动语音识别
-     * 参考官方demo的简洁设计
-     */
     override fun tryLoad(thenStartListeningEventListener: ((InputEvent) -> Unit)?): Boolean {
-        Log.d(TAG, "🚀 启动语音识别")
+        Log.d(TAG, "🚀 尝试加载并开始监听...")
         
-        // 检查初始化状态
-        if (!isInitialized.get() || senseVoiceRecognizer == null) {
-            Log.e(TAG, "❌ 识别器未初始化")
+        // 确保协程作用域可用
+        if (!scope.isActive) {
+            recreateScope()
+        }
+        
+        if (!isInitialized.get()) {
+            Log.w(TAG, "⚠️ SenseVoice未初始化，无法开始监听")
             return false
         }
         
-        // 使用CAS确保原子性操作
-        if (!isRecording.compareAndSet(false, true)) {
-            Log.w(TAG, "⚠️ 已在录制中")
+        if (isListening.get()) {
+            Log.w(TAG, "⚠️ 已在监听中，停止当前监听")
+            stopListening()
+        }
+        
+        this.eventListener = thenStartListeningEventListener
+        
+        // 开始录制和识别
+        return startListening()
+    }
+    
+    override fun onClick(eventListener: (InputEvent) -> Unit) {
+        Log.d(TAG, "🖱️ 点击开始语音输入...")
+        
+        if (isListening.get()) {
+            // 如果正在监听，停止监听
+            stopListening()
+        } else {
+            // 开始监听
+            tryLoad(eventListener)
+        }
+    }
+    
+    override fun stopListening() {
+        if (!isListening.get()) {
+            return
+        }
+        
+        Log.d(TAG, "🛑 停止语音监听...")
+        isListening.set(false)
+        
+        // 停止录制
+        stopRecording()
+        
+        // 取消VAD任务
+        vadJob?.cancel()
+        vadJob = null
+        
+        _uiState.value = SttState.Loaded
+    }
+    
+    /**
+     * 强制停止录制（单例模式下的停止方法）
+     */
+    fun forceStop() {
+        Log.w(TAG, "⚠️ 单例实例被强制停止")
+        isListening.set(false)
+        isRecording.set(false)
+        cleanupAudioRecord()
+    }
+    
+    override suspend fun destroy() {
+        Log.d(TAG, "🧹 销毁SenseVoice输入设备...")
+        
+        try {
+            // 停止所有活动
+            stopListening()
+            
+            // 关闭音频通道
+            samplesChannel.close()
+            
+            // 释放SenseVoice识别器
+            senseVoiceRecognizer?.release()
+            senseVoiceRecognizer = null
+            
+            // 释放VAD资源
+            try {
+                vad?.release()
+                vad = null
+                Log.d(TAG, "✅ VAD资源已释放")
+            } catch (e: Exception) {
+                Log.w(TAG, "释放VAD资源失败", e)
+            }
+            
+            // 不取消协程作用域，保持单例可重用
+            // scope.cancel() // 注释掉，单例模式下保持作用域活跃
+            
+            // 重置所有状态
+            resetVadState()
+            
+            // 清空事件监听器引用
+            eventListener = null
+            
+            // 重置状态
+            isInitialized.set(false)
+            _uiState.value = SttState.NotInitialized
+            
+            Log.d(TAG, "✅ SenseVoice输入设备资源已释放")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 销毁SenseVoice输入设备失败", e)
+        }
+    }
+    
+    /**
+     * 重新创建协程作用域（用于单例重用）
+     */
+    private fun recreateScope() {
+        if (scope.isActive) {
+            scope.cancel()
+        }
+        scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+        Log.d(TAG, "🔄 重新创建协程作用域")
+    }
+
+    /**
+     * 开始监听
+     */
+    private fun startListening(): Boolean {
+        if (!isInitialized.get() || senseVoiceRecognizer == null) {
+            Log.e(TAG, "❌ SenseVoice未准备好，无法开始监听")
+            return false
+        }
+        
+        // 防止重复启动
+        if (isListening.get()) {
+            Log.w(TAG, "⚠️ 已在监听中，忽略重复启动请求")
             return true
         }
         
         // 确保协程作用域可用
         if (!scope.isActive) {
-            scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-            Log.d(TAG, "🔄 重新创建协程作用域")
+            recreateScope()
         }
         
-        // 保存事件监听器
-        this.eventListener = thenStartListeningEventListener
+        Log.d(TAG, "🎙️ 开始语音监听...")
+        isListening.set(true)
         
-        // 重置状态
-        resetRecordingState()
+        // 重置VAD和音频状态
+        resetVadState()
         
-        // 更新UI状态
         _uiState.value = SttState.Listening
         
-        // 启动音频采集协程 (IO Dispatcher)
-        scope.launch(Dispatchers.IO) {
-            recordAudio()
+        // 开始录制 (使用协程)
+        scope.launch {
+            if (startRecording()) {
+                // 启动超时监控任务
+                vadJob = scope.launch {
+                    try {
+                        delay(MAX_RECORDING_DURATION_MS)
+                        // 达到最大录制时间，自动停止
+                        Log.d(TAG, "⏰ 达到最大录制时间，自动停止")
+                        stopListeningAndProcess()
+                    } catch (e: CancellationException) {
+                        // 正常取消，不需要处理
+                    }
+                }
+            } else {
+                Log.e(TAG, "❌ 启动录制失败")
+                isListening.set(false)
+                _uiState.value = SttState.ErrorLoading(Exception("启动录制失败"))
+            }
         }
-        
-        // 启动音频处理协程 (Default Dispatcher)
-        scope.launch(Dispatchers.Default) {
-            processAudio()
-        }
-        
         return true
     }
     
     /**
-     * 点击事件处理
+     * 开始录制音频 (修复缓冲区管理问题和并发访问)
      */
-    override fun onClick(eventListener: (InputEvent) -> Unit) {
-        Log.d(TAG, "🖱️ 点击事件")
-        
-        if (isRecording.get()) {
-            stopListening()
-        } else {
-            tryLoad(eventListener)
-        }
-    }
-    
-    /**
-     * 停止语音识别
-     * 设置标志并立即停止AudioRecord
-     */
-    override fun stopListening() {
-        if (!isRecording.get()) {
-            return
-        }
-        
-        Log.d(TAG, "🛑 停止语音识别")
-        isRecording.set(false)
-        
-        // 修复：立即停止AudioRecord，不等协程自然结束
-        audioRecord?.let {
-            try {
-                if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                    it.stop()
-                    Log.d(TAG, "🛑 AudioRecord已立即停止")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "停止AudioRecord失败", e)
+    private suspend fun startRecording(): Boolean {
+        try {
+            // 防止同一实例重复启动录制
+            if (isRecording.get()) {
+                Log.w(TAG, "⚠️ 实例 ${this.hashCode()} 已在录制中，忽略重复启动")
+                return true
             }
-        }
-        
-        // 注意：协程会通过 isRecording 标志自然结束
-        // 资源会在 finally 块中自动清理
-    }
-    
-    /**
-     * 销毁设备
-     */
-    override suspend fun destroy() {
-        Log.d(TAG, "🧹 销毁设备...")
-        
-        try {
-            stopListening()
             
-            samplesChannel.close()
+            // 单例模式下不需要资源锁
+            Log.d(TAG, "🎵 单例实例开始录制音频...")
             
-            senseVoiceRecognizer?.release()
-            senseVoiceRecognizer = null
+            // 确保先清理之前的资源
+            cleanupAudioRecord()
             
-            vad?.release()
-            vad = null
-            
-            eventListener = null
-            isInitialized.set(false)
-            _uiState.value = SttState.NotInitialized
-            
-            Log.d(TAG, "✅ 设备已销毁")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ 销毁失败", e)
-        }
-    }
-    
-    /**
-     * 重置录制状态
-     */
-    private fun resetRecordingState() {
-        speechBuffer.clear()
-        isSpeechDetected = false
-        speechStartTime = 0L
-        lastRecognitionTime = 0L
-        lastSpeechTime = 0L
-        lastEnergyLogTime = 0L
-        lastText = ""
-        added = false
-        vad?.reset()
-        
-        // 重新创建Channel
-        samplesChannel.close()
-        samplesChannel = Channel(capacity = Channel.UNLIMITED)
-        
-        Log.d(TAG, "🔄 状态已重置")
-    }
-    
-    /**
-     * 音频采集协程 - 参考官方demo
-     * 运行在 IO Dispatcher
-     */
-    private suspend fun recordAudio() = withContext(Dispatchers.IO) {
-        try {
-            Log.d(TAG, "🎵 启动音频采集")
-            
-            // 创建AudioRecord
-            val bufferSize = AudioRecord.getMinBufferSize(
+            val minBufferSizeInBytes = AudioRecord.getMinBufferSize(
                 SAMPLE_RATE,
                 CHANNEL_CONFIG,
                 AUDIO_FORMAT
             )
+            
+            if (minBufferSizeInBytes == AudioRecord.ERROR || minBufferSizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
+                Log.e(TAG, "❌ 无法获取AudioRecord缓冲区大小")
+                return false
+            }
+            
+            // 使用更大的缓冲区以避免缓冲区溢出，至少是最小缓冲区的4倍
+            val actualBufferSize = maxOf(minBufferSizeInBytes * 4, VAD_FRAME_SIZE * 2 * 4) // 4倍安全边界
+            
+            Log.d(TAG, "🔧 实例 ${this.hashCode()} 音频缓冲区配置: 最小=${minBufferSizeInBytes}字节, 实际=${actualBufferSize}字节")
             
             audioRecord = AudioRecord(
                 AUDIO_SOURCE,
                 SAMPLE_RATE,
                 CHANNEL_CONFIG,
                 AUDIO_FORMAT,
-                bufferSize * 2
+                actualBufferSize
             )
             
             if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                Log.e(TAG, "❌ AudioRecord初始化失败")
-                isRecording.set(false)
-                return@withContext
+                Log.e(TAG, "❌ AudioRecord初始化失败，状态: ${audioRecord?.state}")
+                cleanupAudioRecord()
+                return false
             }
             
+            // 检查录制状态
+            if (audioRecord?.recordingState != AudioRecord.RECORDSTATE_STOPPED) {
+                Log.w(TAG, "⚠️ AudioRecord不在停止状态: ${audioRecord?.recordingState}")
+            }
+            
+            // 开始录制
             audioRecord?.startRecording()
-            Log.d(TAG, "✅ 录制已启动")
             
-            // 音频采集缓冲区 (100ms)
-            val interval = 0.1
-            val frameSize = (interval * SAMPLE_RATE).toInt()
-            val buffer = ShortArray(frameSize)
-            
-            // 持续采集直到停止标志
-            var totalSamplesRead = 0
-            while (isRecording.get()) {
-                val ret = audioRecord?.read(buffer, 0, buffer.size) ?: -1
-                
-                when {
-                    ret > 0 -> {
-                        // 转换为Float并归一化
-                        val samples = FloatArray(ret) { i ->
-                            buffer[i].toFloat() / 32768.0f
-                        }
-                        
-                        // 添加音频数据诊断 (前几次或定期)
-                        totalSamplesRead++
-                        if (totalSamplesRead <= 3 || totalSamplesRead % 50 == 0) {
-                            val maxSample = samples.maxOrNull() ?: 0f
-                            val minSample = samples.minOrNull() ?: 0f
-                            val avgSample = samples.average()
-                            Log.v(TAG, "📊 音频数据#$totalSamplesRead: size=$ret, max=${"%.4f".format(maxSample)}, min=${"%.4f".format(minSample)}, avg=${"%.6f".format(avgSample)}")
-                        }
-                        
-                        samplesChannel.send(samples)
-                    }
-                    ret == 0 -> {
-                        delay(1)
-                    }
-                    ret < 0 -> {
-                        Log.e(TAG, "❌ 音频读取错误: $ret")
-                        break
-                    }
-                }
+            // 验证录制状态
+            if (audioRecord?.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                Log.e(TAG, "❌ AudioRecord启动录制失败，状态: ${audioRecord?.recordingState}")
+                cleanupAudioRecord()
+                return false
             }
             
-            // 发送结束信号
-            samplesChannel.send(FloatArray(0))
-            Log.d(TAG, "🏁 音频采集结束")
+            isRecording.set(true)
             
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ 音频采集异常", e)
-        } finally {
-            // 清理AudioRecord
+            Log.d(TAG, "🎵 实例 ${this.hashCode()} 开始录制音频，缓冲区大小: ${actualBufferSize}字节")
+            
+            // 启动音频采集协程 (使用IO调度器)
+            recordingJob = scope.launch(Dispatchers.IO) {
+                recordAudioData()
+            }
+            
+            // 启动音频处理协程 (使用Default调度器)
+            vadJob = scope.launch(Dispatchers.Default) {
+                processAudioForRecognition()
+            }
+            
+            return true
+        } catch (e: SecurityException) {
+            Log.e(TAG, "❌ 录音权限不足", e)
             cleanupAudioRecord()
+            return false
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 启动录制异常", e)
+            cleanupAudioRecord()
+            return false
         }
     }
     
     /**
-     * 清理AudioRecord资源
+     * 清理AudioRecord资源 (修复资源泄漏和状态管理)
      */
     private fun cleanupAudioRecord() {
-        audioRecord?.let {
+        try {
+            // 先停止录制标志
+            isRecording.set(false)
+            
+            // 取消录制协程
+            recordingJob?.cancel()
+            recordingJob = null
+            
+            // 取消VAD协程
+            vadJob?.cancel()
+            vadJob = null
+            
+            // 关闭样本通道
             try {
-                // 检查录音状态，而不是初始化状态
-                // recordingState 表示是否正在录音，而 state 只表示是否初始化成功
-                if (it.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                    it.stop()
-                    Log.d(TAG, "🛑 AudioRecord已停止")
-                }
-                it.release()
+                samplesChannel.close()
+                // 重新创建通道以供下次使用
+                samplesChannel = Channel(capacity = Channel.UNLIMITED)
             } catch (e: Exception) {
-                // 即使失败也不要抛出警告，因为可能已经被其他地方清理了
-                Log.d(TAG, "AudioRecord清理时捕获异常（可能已被清理）: ${e.message}")
+                Log.w(TAG, "关闭样本通道失败", e)
             }
+            
+            // 清理AudioRecord
+            audioRecord?.let { record ->
+                try {
+                    // 检查并停止录制
+                    if (record.state == AudioRecord.STATE_INITIALIZED) {
+                        when (record.recordingState) {
+                            AudioRecord.RECORDSTATE_RECORDING -> {
+                                Log.d(TAG, "🛑 实例 ${this.hashCode()} 停止AudioRecord录制")
+                                record.stop()
+                                
+                                // 等待停止完成
+                                var attempts = 0
+                                while (record.recordingState == AudioRecord.RECORDSTATE_RECORDING && attempts < 10) {
+                                    Thread.sleep(10)
+                                    attempts++
+                                }
+                                
+                                if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                                    Log.w(TAG, "⚠️ AudioRecord停止超时")
+                                }
+                            }
+                            AudioRecord.RECORDSTATE_STOPPED -> {
+                                Log.d(TAG, "✅ AudioRecord已停止")
+                            }
+                            else -> {
+                                Log.w(TAG, "⚠️ AudioRecord状态异常: ${record.recordingState}")
+                            }
+                        }
+                    } else {
+                        Log.w(TAG, "⚠️ AudioRecord状态不是INITIALIZED: ${record.state}")
+                    }
+                } catch (e: IllegalStateException) {
+                    Log.w(TAG, "停止AudioRecord时状态异常", e)
+                } catch (e: Exception) {
+                    Log.w(TAG, "停止AudioRecord时出错", e)
+                }
+                
+                // 释放资源
+                try {
+                    Log.d(TAG, "🗑️ 实例 ${this.hashCode()} 释放AudioRecord资源")
+                    record.release()
+                } catch (e: Exception) {
+                    Log.w(TAG, "释放AudioRecord时出错", e)
+                }
+            }
+            
+            audioRecord = null
+            
+            Log.d(TAG, "✅ 单例实例 AudioRecord资源清理完成")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 清理AudioRecord资源失败", e)
         }
-        audioRecord = null
-        Log.d(TAG, "✅ AudioRecord已清理")
     }
     
     /**
-     * 音频处理协程 - 参考官方demo
-     * 运行在 Default Dispatcher
+     * 录制音频数据 (修复缓冲区管理和并发问题)
      */
-    private suspend fun processAudio() = withContext(Dispatchers.Default) {
+    private suspend fun recordAudioData() {
+        Log.d(TAG, "🔄 开始音频数据录制...")
+        
+        // 使用合适的缓冲区大小，确保不超过AudioRecord的缓冲区
+        val bufferSize = VAD_FRAME_SIZE // 512 samples = 1024 bytes
+        val buffer = ShortArray(bufferSize)
+        var consecutiveErrors = 0
+        val maxConsecutiveErrors = 5
+        
         try {
-            Log.d(TAG, "🔄 启动音频处理")
+            while (isRecording.get() && !Thread.currentThread().isInterrupted && !currentCoroutineContext().job.isCancelled) {
+                try {
+                    val currentAudioRecord = audioRecord
+                    if (currentAudioRecord == null) {
+                        Log.w(TAG, "⚠️ AudioRecord为null，停止录制")
+                        break
+                    }
+                    
+                    // 检查AudioRecord状态
+                    if (currentAudioRecord.state != AudioRecord.STATE_INITIALIZED) {
+                        Log.e(TAG, "❌ AudioRecord状态异常: ${currentAudioRecord.state}")
+                        break
+                    }
+                    
+                    if (currentAudioRecord.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                        Log.e(TAG, "❌ AudioRecord录制状态异常: ${currentAudioRecord.recordingState}")
+                        break
+                    }
+                    
+                    // 读取音频数据，使用同步方式避免缓冲区问题
+                    val readSamples = currentAudioRecord.read(buffer, 0, buffer.size)
+                    
+                    when {
+                        readSamples > 0 -> {
+                            // 成功读取数据，重置错误计数
+                            consecutiveErrors = 0
+                            
+                            // 转换为Float数组 (归一化到 -1.0 到 1.0)
+                            val samples = FloatArray(readSamples) { i -> 
+                                buffer[i].toFloat() / 32768.0f 
+                            }
+                            
+                            // 发送到处理通道
+                            if (!samplesChannel.isClosedForSend) {
+                                samplesChannel.send(samples)
+                            } else {
+                                Log.w(TAG, "⚠️ 样本通道已关闭")
+                                break
+                            }
+                        }
+                        
+                        readSamples == 0 -> {
+                            // 没有数据可读，稍微等待
+                            delay(1)
+                        }
+                        
+                        readSamples == AudioRecord.ERROR_INVALID_OPERATION -> {
+                            Log.e(TAG, "❌ AudioRecord无效操作错误")
+                            consecutiveErrors++
+                        }
+                        
+                        readSamples == AudioRecord.ERROR_BAD_VALUE -> {
+                            Log.e(TAG, "❌ AudioRecord参数错误")
+                            consecutiveErrors++
+                        }
+                        
+                        readSamples == AudioRecord.ERROR_DEAD_OBJECT -> {
+                            Log.e(TAG, "❌ AudioRecord对象已死亡")
+                            break
+                        }
+                        
+                        readSamples < 0 -> {
+                            Log.e(TAG, "❌ AudioRecord读取错误: $readSamples")
+                            consecutiveErrors++
+                        }
+                    }
+                    
+                    // 如果连续错误太多，停止录制
+                    if (consecutiveErrors >= maxConsecutiveErrors) {
+                        Log.e(TAG, "❌ 连续错误过多($consecutiveErrors)，停止录制")
+                        // 确保状态正确重置
+                        isListening.set(false)
+                        isRecording.set(false)
+                        _uiState.value = SttState.ErrorLoading(Exception("连续音频错误过多"))
+                        break
+                    }
+                    
+                    // 让出CPU时间
+                    yield()
+                    
+                } catch (e: IllegalStateException) {
+                    Log.e(TAG, "❌ AudioRecord状态异常", e)
+                    // 确保状态正确重置
+                    isListening.set(false)
+                    isRecording.set(false)
+                    _uiState.value = SttState.ErrorLoading(e)
+                    break
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    Log.d(TAG, "🛑 录制协程被取消")
+                    // 确保状态正确重置
+                    isListening.set(false)
+                    isRecording.set(false)
+                    _uiState.value = SttState.Loaded
+                    throw e // 重新抛出取消异常
+                } catch (e: Exception) {
+                    if (isRecording.get()) {
+                        Log.e(TAG, "❌ 录制音频数据异常", e)
+                        consecutiveErrors++
+                        if (consecutiveErrors >= maxConsecutiveErrors) {
+                            // 确保状态正确重置
+                            isListening.set(false)
+                            isRecording.set(false)
+                            _uiState.value = SttState.ErrorLoading(Exception("连续音频异常过多"))
+                            break
+                        }
+                    } else {
+                        // 正常停止，不记录错误
+                        break
+                    }
+                }
+            }
+        } finally {
+            // 发送空数组表示结束
+            try {
+                if (!samplesChannel.isClosedForSend) {
+                    samplesChannel.send(FloatArray(0))
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "发送结束信号失败", e)
+            }
             
-            val startTime = System.currentTimeMillis()
-            
-            while (isRecording.get()) {
+            Log.d(TAG, "🏁 音频数据录制结束")
+        }
+    }
+    
+    /**
+     * 处理音频进行VAD检测和识别
+     */
+    private suspend fun processAudioForRecognition() {
+        Log.d(TAG, "🧠 开始音频处理和VAD检测...")
+        
+        try {
+            while (isListening.get()) {
                 for (samples in samplesChannel) {
-                    // 检查结束信号
                     if (samples.isEmpty()) {
-                        Log.d(TAG, "📥 收到结束信号")
+                        Log.d(TAG, "收到空音频数据，处理结束")
                         break
                     }
                     
-                    // 处理新的音频样本
-                    val hasSpeech = processNewSamples(samples)
-                    
-                    // 检查最大录制时长
-                    val elapsed = System.currentTimeMillis() - startTime
-                    if (elapsed > MAX_RECORDING_DURATION_MS) {
-                        Log.d(TAG, "⏰ 达到最大录制时间")
-                        break
+                    // 参考SherpaOnnxSimulateAsr的高效缓冲管理
+                    synchronized(audioBuffer) {
+                        audioBuffer.addAll(samples.toList())
+                        // 如果缓冲区太大，移除旧数据
+                        while (audioBuffer.size > maxBufferSize) {
+                            audioBuffer.removeAt(0)
+                            if (bufferOffset > 0) bufferOffset--
+                        }
                     }
                     
-                    // 实时识别（只有检测到语音后才执行）
-                    if (isSpeechDetected) {
-                        performPartialRecognition()
-                    }
+                    // VAD检测
+                    val isSpeech = detectSpeech(samples)
+                    val currentTime = System.currentTimeMillis()
                     
-                    // 检查静音超时
-                    if (isSpeechDetected && !hasSpeech) {
-                        val currentTime = System.currentTimeMillis()
+                    if (isSpeech) {
+                        if (!speechDetected) {
+                            // 语音开始
+                            speechDetected = true
+                            speechStartTime = currentTime
+                            Log.d(TAG, "🎤 检测到语音开始")
+                            
+                            // 不发送状态文本，避免干扰真实的ASR结果显示
+                            // 语音开始事件由UI状态管理器处理
+                        }
+                        lastSpeechTime = currentTime
+                        
+                        // 参考SherpaOnnxSimulateAsr每200ms进行实时识别
+                        val elapsed = currentTime - lastPartialRecognitionTime
+                        if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= SAMPLE_RATE / 2) {
+                            performPartialRecognition()
+                        }
+                        
+                    } else if (speechDetected) {
+                        // 检查是否静音超时
                         val silenceDuration = currentTime - lastSpeechTime
                         if (silenceDuration > SPEECH_TIMEOUT_MS) {
-                            Log.d(TAG, "🔇 检测到静音超时 (${silenceDuration}ms)")
+                            Log.d(TAG, "🔇 检测到静音超时，停止监听")
+                            stopListeningAndProcess()
                             break
                         }
                     }
+                    
+                    // 检查最大录制时间
+                    if (speechDetected && (currentTime - speechStartTime) > MAX_RECORDING_DURATION_MS) {
+                        Log.d(TAG, "⏰ 达到最大录制时间，停止监听")
+                        stopListeningAndProcess()
+                        break
+                    }
                 }
-                
-                // 退出for循环，说明需要停止
-                break
             }
-            
-            Log.d(TAG, "🎯 开始最终识别")
-            performFinalRecognition()
-            
-        } catch (e: CancellationException) {
-            Log.d(TAG, "🛑 音频处理被取消")
-            throw e
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            Log.d(TAG, "🛑 音频处理协程被取消")
+            // 正常的协程取消，不需要记录为错误
+            throw e // 重新抛出取消异常
         } catch (e: Exception) {
             Log.e(TAG, "❌ 音频处理异常", e)
-            withContext(Dispatchers.Main) {
-                eventListener?.invoke(InputEvent.Error(e))
-            }
+            // 设置错误状态
+            _uiState.value = SttState.ErrorLoading(e)
         } finally {
-            isRecording.set(false)
-            
-            // 修复：根据情况设置正确的状态
-            _uiState.value = if (isInitialized.get()) {
-                SttState.Loaded  // 已初始化，设为已加载状态
-            } else {
-                SttState.NotInitialized  // 未初始化
-            }
-            
-            Log.d(TAG, "🏁 音频处理结束，状态: ${_uiState.value}")
+            Log.d(TAG, "🏁 音频处理结束")
         }
     }
     
     /**
-     * 处理新的音频样本并进行VAD检测
-     * 返回true表示当前帧包含语音
-     * 
-     * 🔧 修复说明:
-     * - Sherpa-ONNX VAD 的 acceptWaveform 是累积式处理,不应该每次传入固定大小的窗口
-     * - 应该直接传入完整的音频数据,让VAD内部管理缓冲
+     * VAD语音检测
      */
-    private fun processNewSamples(samples: FloatArray): Boolean {
-        var hasSpeech = false
-        val currentTime = System.currentTimeMillis()
-        
-        // 如果已经检测到语音,添加到语音缓冲区
-        if (isSpeechDetected) {
-            for (sample in samples) {
-                speechBuffer.add(sample)
-            }
-        }
-        
-        // 使用VAD或能量检测判断是否有语音
-        val speechDetected = if (vad != null) {
+    private fun detectSpeech(audioSamples: FloatArray): Boolean {
+        return if (vad != null) {
             try {
-                // 🔧 修复: 直接传入完整的samples数组,而不是固定窗口
-                // VAD内部会管理缓冲区和状态
-                vad!!.acceptWaveform(samples)
-                val detected = vad!!.isSpeechDetected()
-                
-                // 添加调试信息
-                if (detected && !isSpeechDetected) {
-                    Log.d(TAG, "🎙️ VAD检测到语音开始 (${samples.size}样本)")
-                }
-                
-                detected
+                // 使用SherpaOnnx VAD进行检测
+                vad!!.acceptWaveform(audioSamples)
+                val isSpeech = vad!!.isSpeechDetected()
+                vad!!.clear() // 清除VAD状态，准备下一帧
+                isSpeech
             } catch (e: Exception) {
-                // 如果VAD出错,降级到能量检测
-                Log.w(TAG, "⚠️ VAD检测异常,降级到能量检测", e)
-                vad = null  // 禁用VAD,避免后续持续出错
-                detectSpeechByEnergy(samples)
+                Log.w(TAG, "VAD检测异常，使用能量检测", e)
+                detectSpeechByEnergy(audioSamples)
             }
         } else {
-            detectSpeechByEnergy(samples)
+            // 降级到简单能量检测
+            detectSpeechByEnergy(audioSamples)
         }
-        
-        if (speechDetected) {
-            hasSpeech = true
-            lastSpeechTime = currentTime
-            
-            // 如果之前未检测到语音,现在检测到了
-            if (!isSpeechDetected) {
-                isSpeechDetected = true
-                speechStartTime = currentTime
-                // 将当前样本也加入到语音缓冲区
-                for (sample in samples) {
-                    speechBuffer.add(sample)
-                }
-                DebugLogger.logRecognition(TAG, "🎙️ 检测到语音开始")
-            }
-        }
-        
-        return hasSpeech
     }
     
     /**
-     * 简单能量检测 (VAD降级方案)
-     * 提高阈值以减少误报
+     * 简单的能量检测（VAD降级方案）
      */
-    private fun detectSpeechByEnergy(samples: FloatArray): Boolean {
-        if (samples.isEmpty()) return false
+    private fun detectSpeechByEnergy(audioSamples: FloatArray): Boolean {
+        if (audioSamples.isEmpty()) return false
         
+        // 计算RMS能量
         var sum = 0.0
-        for (sample in samples) {
+        for (sample in audioSamples) {
             sum += (sample * sample).toDouble()
         }
-        val rms = kotlin.math.sqrt(sum / samples.size)
+        val rms = kotlin.math.sqrt(sum / audioSamples.size)
         
-        // 提高阈值到0.01，避免太多噪音被误检测为语音
-        // 0.003太低了，会把背景噪音也当作语音
-        val threshold = 0.01
-        val detected = rms > threshold
-        
-        // 添加调试日志 - 帮助诊断问题
-        if (detected && !isSpeechDetected) {
-            DebugLogger.logRecognition(TAG, "🔊 能量检测触发: RMS=${"%.6f".format(rms)} > threshold=${"%.6f".format(threshold)}")
-        } else if (System.currentTimeMillis() - lastEnergyLogTime > 2000) {
-            // 每2秒记录一次能量值，避免日志过多
-            Log.v(TAG, "🔊 音频能量: RMS=${"%.6f".format(rms)}, 阈值=${"%.6f".format(threshold)}, 已检测=$isSpeechDetected")
-            lastEnergyLogTime = System.currentTimeMillis()
-        }
-        
-        return detected
+        // 简单的阈值检测
+        return rms > 0.01 // 可调整的阈值
     }
     
     /**
-     * 实时部分识别 - 参考官方demo
+     * 执行部分识别（实时反馈）- 参考SherpaOnnxSimulateAsr优化
      */
     private suspend fun performPartialRecognition() {
-        if (!isSpeechDetected) {
-            Log.v(TAG, "⏭️ 跳过实时识别 - 未检测到语音")
-            return
-        }
-        
-        val currentTime = System.currentTimeMillis()
-        val elapsed = currentTime - lastRecognitionTime
-        
-        // 每200ms执行一次识别，且语音数据要足够长（至少0.5秒）
-        if (elapsed >= RECOGNITION_INTERVAL_MS && speechBuffer.size >= SAMPLE_RATE / 2) {
+        try {
             val recognizer = senseVoiceRecognizer ?: return
             
-            DebugLogger.logRecognition(TAG, "🔄 开始实时识别 (${speechBuffer.size}样本)")
+            val currentTime = System.currentTimeMillis()
+            lastPartialRecognitionTime = currentTime
             
-            // 使用累积的语音数据进行识别
-            val audioData = speechBuffer.toFloatArray()
-            val text = recognizer.recognize(audioData)
+            // 参考SherpaOnnxSimulateAsr的缓冲管理方式
+            val audioData = synchronized(audioBuffer) {
+                if (audioBuffer.size < SAMPLE_RATE / 4) return // 至少0.25秒音频
+                audioBuffer.toFloatArray()
+            }
+            val newText = recognizer.recognize(audioData)
             
-            lastText = text
-            lastRecognitionTime = currentTime
-            
-            if (text.isNotBlank()) {
-                // 参考demo的结果管理
+            if (newText.isNotBlank() && newText != partialText) {
+                val oldText = partialText
+                partialText = newText
+                
+                // 参考SherpaOnnxSimulateAsr的结果管理策略
                 withContext(Dispatchers.Main) {
-                    if (!added) {
-                        eventListener?.invoke(InputEvent.Partial(text))
-                        added = true
-                        DebugLogger.logRecognition(TAG, "📤 首次发送: $text")
+                    if (!isPartialResultAdded) {
+                        // 首次添加部分结果
+                        eventListener?.invoke(InputEvent.Partial(partialText))
+                        isPartialResultAdded = true
                     } else {
-                        eventListener?.invoke(InputEvent.Partial(text))
-                        DebugLogger.logRecognition(TAG, "📤 更新结果: $text")
+                        // 更新现有部分结果
+                        eventListener?.invoke(InputEvent.Partial(partialText))
                     }
                 }
+                
+                Log.d(TAG, "🎯 部分识别更新: '$oldText' → '$partialText' (音频长度: ${audioData.size / SAMPLE_RATE.toFloat()}秒)")
             }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 部分识别异常", e)
         }
     }
     
     /**
-     * 最终识别 - 使用 NonCancellable 确保不被中断
+     * 停止监听并处理最终结果
      */
-    private suspend fun performFinalRecognition() = withContext(NonCancellable) {
+    private suspend fun stopListeningAndProcess() {
+        isListening.set(false)
+        stopRecording()
+        
+        // 处理最终识别结果
+        performFinalRecognition()
+    }
+    
+    /**
+     * 执行最终识别 (使用SenseVoice的方式)
+     */
+    private suspend fun performFinalRecognition() {
         try {
-            val recognizer = senseVoiceRecognizer ?: return@withContext
+            val recognizer = senseVoiceRecognizer ?: return
             
-            // 检查是否有有效音频
-            if (speechBuffer.isEmpty() || !isSpeechDetected) {
-                Log.d(TAG, "⚠️ 没有有效语音数据")
+            // 检查是否有足够的语音数据
+            if (audioBuffer.isEmpty() || !speechDetected) {
                 withContext(Dispatchers.Main) {
                     eventListener?.invoke(InputEvent.None)
                 }
-                return@withContext
+                _uiState.value = SttState.Loaded
+                return
             }
             
-            // 检查时长
-            val duration = System.currentTimeMillis() - speechStartTime
-            if (duration < MIN_SPEECH_DURATION_MS) {
-                Log.d(TAG, "⚠️ 语音时长太短: ${duration}ms")
+            // 检查语音时长是否足够
+            val speechDuration = System.currentTimeMillis() - speechStartTime
+            if (speechDuration < MIN_SPEECH_DURATION_MS) {
+                Log.d(TAG, "语音时长太短 (${speechDuration}ms)，忽略")
                 withContext(Dispatchers.Main) {
                     eventListener?.invoke(InputEvent.None)
                 }
-                return@withContext
+                _uiState.value = SttState.Loaded
+                return
             }
             
-            val audioDurationSec = speechBuffer.size.toFloat() / SAMPLE_RATE
-            Log.d(TAG, "🚀 执行最终识别，音频: ${speechBuffer.size}样本 (${String.format("%.2f", audioDurationSec)}秒)")
+            Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioBuffer.size}样本，语音时长: ${speechDuration}ms")
             
-            // 执行识别
-            val audioData = speechBuffer.toFloatArray()
-            val text = recognizer.recognize(audioData)
+            // 安全地从队列中获取所有音频数据
+            val bufferList = audioBuffer.toList()
+            val audioData = bufferList.toFloatArray()
+            val finalText = recognizer.recognize(audioData)
             
-            DebugLogger.logRecognition(TAG, "✅ 最终结果: \"$text\"")
+            DebugLogger.logRecognition(TAG, "最终识别结果: \"$finalText\"")
+            Log.d(TAG, "🔍 识别结果详情: 长度=${finalText.length}, 是否空白=${finalText.isBlank()}")
             
-            // 发送结果
             withContext(Dispatchers.Main) {
-                if (text.isNotBlank()) {
-                    // 参考demo：如果有部分结果，更新它；否则添加新结果
-                    if (lastText.isNotBlank() && added) {
-                        eventListener?.invoke(InputEvent.Final(listOf(Pair(text, 1.0f))))
-                    } else {
-                        eventListener?.invoke(InputEvent.Final(listOf(Pair(text, 1.0f))))
-                    }
-                    added = false
+                if (finalText.isNotBlank()) {
+                    Log.d(TAG, "✅ 发送Final事件: \"$finalText\"")
+                    eventListener?.invoke(InputEvent.Final(listOf(Pair(finalText, 1.0f))))
                 } else {
+                    Log.d(TAG, "⚠️ 识别结果为空，发送None事件")
                     eventListener?.invoke(InputEvent.None)
                 }
             }
+            
+            _uiState.value = SttState.Loaded
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 最终识别异常", e)
             withContext(Dispatchers.Main) {
                 eventListener?.invoke(InputEvent.Error(e))
             }
+            _uiState.value = SttState.ErrorLoading(e)
+        } finally {
+            // 重置状态
+            resetVadState()
         }
+    }
+    
+    /**
+     * 重置VAD和语音检测状态
+     */
+    private fun resetVadState() {
+        speechDetected = false
+        speechStartTime = 0L
+        lastSpeechTime = 0L
+        synchronized(audioBuffer) {
+            audioBuffer.clear()
+            bufferOffset = 0
+        }
+        partialText = ""
+        isPartialResultAdded = false // 重置结果管理标志
+        
+        // 重置VAD状态
+        try {
+            vad?.reset()
+        } catch (e: Exception) {
+            Log.w(TAG, "重置VAD状态失败", e)
+        }
+    }
+    
+    /**
+     * 停止录制音频
+     */
+    private fun stopRecording() {
+        if (!isRecording.get()) {
+            return
+        }
+        
+        Log.d(TAG, "🔇 停止录制音频...")
+        isRecording.set(false)
+        
+        // 取消录制协程
+        recordingJob?.cancel()
+        recordingJob = null
+        
+        cleanupAudioRecord()
     }
     
     /**
@@ -705,9 +941,8 @@ class SenseVoiceInputDevice private constructor(
      */
     fun getDeviceInfo(): String {
         val recognizerInfo = senseVoiceRecognizer?.getInfo() ?: "未初始化"
-        val bufferSize = speechBuffer.size
-        val isActive = isRecording.get()
-        val vadStatus = if (vad != null) "启用" else "能量检测"
-        return "SenseVoiceDevice($recognizerInfo, 语音缓冲:${bufferSize}样本, VAD:$vadStatus, 活跃:$isActive)"
+        val bufferSize = audioBuffer.size
+        val isActive = isListening.get()
+        return "SenseVoiceDevice($recognizerInfo, 缓冲区:${bufferSize}样本, 活跃:$isActive)"
     }
 }
