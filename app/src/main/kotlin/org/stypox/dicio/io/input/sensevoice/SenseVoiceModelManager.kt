@@ -201,6 +201,13 @@ object SenseVoiceModelManager {
      */
     private fun validateModelFiles(paths: SenseVoiceModelPaths): Boolean {
         return try {
+            // Assets中的文件不需要验证（已经通过checkAssetsModel确认存在）
+            if (paths.isFromAssets) {
+                DebugLogger.logModelManagement(TAG, "✅ Assets模型无需验证，直接通过")
+                return true
+            }
+            
+            // 外部存储的文件需要验证
             val modelFile = File(paths.modelPath)
             val tokensFile = File(paths.tokensPath)
             
