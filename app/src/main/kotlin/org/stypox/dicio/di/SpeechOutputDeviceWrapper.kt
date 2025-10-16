@@ -43,8 +43,9 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     private var wrappedSpeechDevice: SpeechOutputDevice = NothingSpeechDevice()
     
     // 降级链配置：默认降级顺序
+    // 使用完整版sherpa-onnx 1.12.14，包含TTS功能
     private val defaultTtsFallbackChain = listOf(
-        TtsFallbackDevice.TTS_FALLBACK_DEVICE_SHERPA_ONNX,
+        TtsFallbackDevice.TTS_FALLBACK_DEVICE_SHERPA_ONNX,  // 完整版AAR包含TTS
         TtsFallbackDevice.TTS_FALLBACK_DEVICE_ANDROID_TTS,
         TtsFallbackDevice.TTS_FALLBACK_DEVICE_TOAST,
         TtsFallbackDevice.TTS_FALLBACK_DEVICE_SNACKBAR

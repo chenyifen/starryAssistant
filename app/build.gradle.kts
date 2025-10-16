@@ -201,8 +201,9 @@ dependencies {
     implementation(libs.jna) { artifact { type = "aar" } }
     implementation(libs.vosk.android)
     
-    // SherpaOnnx AAR (静态链接版本)
-    implementation(files("libs/sherpa-onnx-static-link-onnxruntime-1.12.4.aar"))
+    // SherpaOnnx AAR (完整版 1.12.14)
+    // 包含所有功能：ASR、TTS、VAD等
+    implementation(files("libs/sherpa-onnx-1.12.14.aar"))
     
     // Hyundai IT API AAR (设备控制接口)
     implementation(files("libs/hyundaiit-api-v0.1-2025-10-14-16-release.aar"))

@@ -244,6 +244,10 @@
     <string name="pref_input_method_two_pass">两阶段识别</string>
     <string name="pref_input_method_two_pass_summary">实时Vosk + 高精度SenseVoice</string>
     <string name="pref_two_pass_enable_second_pass">启用第二阶段识别</string>
+    
+    <!-- Sherpa-ONNX 模拟流式识别 -->
+    <string name="pref_input_method_sherpa_simulate">Sherpa-ONNX 模拟流式识别</string>
+    <string name="pref_input_method_sherpa_simulate_summary">使用SenseVoice的模拟流式识别（VAD + 200ms间隔）</string>
     <string name="pref_two_pass_enable_second_pass_summary">使用SenseVoice获得最终准确结果</string>
     <string name="pref_two_pass_show_comparison_logs">显示对比日志</string>
     <string name="pref_two_pass_show_comparison_logs_summary">在日志中显示详细的识别对比</string>

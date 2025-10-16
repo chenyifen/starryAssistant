@@ -26,6 +26,7 @@ import org.stypox.dicio.io.input.external_popup.ExternalPopupInputDevice
 import org.stypox.dicio.io.input.vosk.VoskInputDevice
 import org.stypox.dicio.io.input.TwoPassInputDevice
 import org.stypox.dicio.io.input.sensevoice.SenseVoiceInputDevice
+import org.stypox.dicio.io.input.sherpa_simulate.SherpaOnnxSimulateInputDevice
 import org.stypox.dicio.settings.datastore.InputDevice
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_NOTHING
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_EXTERNAL_POPUP
@@ -33,6 +34,7 @@ import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_UNSET
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_VOSK
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_TWO_PASS
 import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_SENSEVOICE
+import org.stypox.dicio.settings.datastore.InputDevice.INPUT_DEVICE_SHERPA_SIMULATE
 import org.stypox.dicio.settings.datastore.InputDevice.UNRECOGNIZED
 import org.stypox.dicio.settings.datastore.SttPlaySound
 import org.stypox.dicio.settings.datastore.UserSettings
@@ -104,10 +106,22 @@ class SttInputDeviceWrapperImpl(
     }
 
     private suspend fun changeInputDeviceTo(setting: InputDevice) {
+        Log.d(TAG, "🔄 切换输入设备: $setting")
         val prevSttInputDevice = sttInputDevice
-        inputDeviceSetting = setting
-        sttInputDevice = buildInputDevice(setting)
+        
+        // 🔧 修复时序：先销毁旧设备，释放VAD等资源
+        Log.d(TAG, "🧹 销毁旧设备...")
         prevSttInputDevice?.destroy()
+        
+        // 等待一小段时间确保资源完全释放
+        kotlinx.coroutines.delay(100)
+        
+        // 然后创建新设备
+        inputDeviceSetting = setting
+        Log.d(TAG, "🏗️ 创建新设备...")
+        sttInputDevice = buildInputDevice(setting)
+        
+        Log.d(TAG, "✅ 设备切换完成")
         restartUiStateJob()
     }
 
@@ -135,6 +149,10 @@ class SttInputDeviceWrapperImpl(
             INPUT_DEVICE_EXTERNAL_POPUP -> {
                 Log.d(TAG, "   🖥️ 创建ExternalPopupInputDevice")
                 ExternalPopupInputDevice(appContext, activityForResultManager, localeManager)
+            }
+            INPUT_DEVICE_SHERPA_SIMULATE -> {
+                Log.d(TAG, "   🎬 创建SherpaOnnxSimulateInputDevice")
+                SherpaOnnxSimulateInputDevice(appContext, localeManager)
             }
             INPUT_DEVICE_NOTHING -> {
                 Log.d(TAG, "   ❌ 无输入设备")
