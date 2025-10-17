@@ -28,7 +28,7 @@ import com.ai.voice.skills.media.MediaInfo
 import com.ai.voice.skills.navigation.NavigationInfo
 import com.ai.voice.skills.open.OpenInfo
 import com.ai.voice.skills.search.SearchInfo
-import com.ai.voice.skills.telephone.TelephoneInfo
+// import com.ai.voice.skills.telephone.TelephoneInfo  // 已禁用：不再需要电话和通讯录权限
 import com.ai.voice.skills.timer.TimerInfo
 import com.ai.voice.skills.weather.WeatherInfo
 import javax.inject.Inject
@@ -48,7 +48,7 @@ class SkillHandler @Inject constructor(
         OpenInfo,
         CalculatorInfo,
         NavigationInfo,
-        TelephoneInfo,
+        // TelephoneInfo,  // 已禁用：不再需要电话和通讯录权限
         TimerInfo,
         CurrentTimeInfo,
         MediaInfo,

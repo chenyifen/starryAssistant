@@ -19,14 +19,7 @@ import dev.shreyaspatil.permissionflow.compose.rememberMultiplePermissionState
 import org.dicio.skill.skill.Permission
 import com.ai.voice.R
 
-val PERMISSION_READ_CONTACTS = Permission.NormalPermission(
-    name = R.string.perm_read_contacts,
-    id = Manifest.permission.READ_CONTACTS,
-)
-val PERMISSION_CALL_PHONE = Permission.NormalPermission(
-    name = R.string.perm_call_phone,
-    id = Manifest.permission.CALL_PHONE,
-)
+// 已删除：PERMISSION_READ_CONTACTS 和 PERMISSION_CALL_PHONE（不再支持电话功能）
 
 /**
  * @param context the Android context
