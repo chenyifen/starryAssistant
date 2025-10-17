@@ -20,10 +20,8 @@ object ModelPathManager {
     
     // 多个候选路径（按优先级排序）
     private val CANDIDATE_BASE_PATHS = listOf(
-        "/sdcard/Dicio/models",                    // 1. 现有的 Dicio 目录（最高优先级）
         "/sdcard/Android/data/org.stypox.dicio.master/files/models", // 2. 应用专用外部存储
-        "/storage/emulated/0/Dicio/models",        // 3. 传统路径（兼容性）
-        "/sdcard/models"                           // 4. 简化路径
+        "/storage/emulated/0/Assistant/models",        // 3. 传统路径（兼容性）
     )
     
     // 各类型模型的子目录

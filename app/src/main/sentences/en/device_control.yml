@@ -3,138 +3,297 @@ power_off:
   - power off
   - shut down
   - turn off
+  - switch off the power
+  - power down
+  - turn the? power off
+  - shut the? system down
 
 power_on:
   - turn on the? power
   - power on
   - turn on
+  - switch on the? power
+  - power up
+  - turn the? power on
+  - start the? system
 
 volume_up:
   - turn the? volume up
   - increase the? volume
   - volume up
   - louder
+  - make it? louder
+  - raise the? volume
+  - turn up the? volume
+  - increase volume
+  - more volume
+  - up the? volume
 
 volume_down:
   - turn the? volume down
   - decrease the? volume
   - volume down
   - quieter
+  - make it? quieter
+  - lower the? volume
+  - turn down the? volume
+  - decrease volume
+  - less volume
+  - down the? volume
 
 mute_on:
   - mute on
   - mute
   - silence
+  - turn on mute
+  - enable mute
+  - silence the? audio
+  - mute the? sound
+  - turn off the? sound
 
 input_source:
   - open the? input source window
   - show input source
   - input source
+  - display input source
+  - show input source menu
+  - open input source menu
+  - input source menu
+  - show sources
+  - open source window
+  - source selection
 
 hdmi_one:
   - switch to hdmi one
   - go to hdmi one
   - hdmi one
+  - connect to hdmi one
+  - change to hdmi one
+  - select hdmi one
+  - use hdmi one
+  - turn on hdmi one
+  - switch to h d m i one
+  - go to h d m i one
 
 hdmi_two:
   - switch to hdmi two
   - go to hdmi two
   - hdmi two
+  - connect to hdmi two
+  - change to hdmi two
+  - select hdmi two
+  - use hdmi two
+  - turn on hdmi two
+  - switch to h d m i two
+  - go to h d m i two
 
 dp_port:
   - switch to dp port?
   - go to dp port?
   - dp port?
+  - connect to dp port?
+  - change to dp port?
+  - display port?
+  - switch to display port?
+  - go to display port?
+  - select dp port?
+  - use dp port?
 
 front_hdmi:
   - switch to front hdmi
   - go to front hdmi
   - front hdmi
+  - connect to front hdmi
+  - change to front hdmi
+  - select front hdmi
+  - use front hdmi
+  - turn on front hdmi
+  - front panel hdmi
 
 front_usb_c:
   - switch to front usb c
   - go to front usb c
   - front usb c
+  - connect to front usb c
+  - change to front usb c
+  - select front usb c
+  - use front usb c
+  - turn on front usb c
+  - front panel usb c
+  - usb c
 
 ops:
   - switch to ops
   - go to ops
   - ops
+  - connect to ops
+  - change to ops
+  - select ops
+  - use ops
+  - turn on ops
 
 home_screen:
   - go to the? home screen
   - home screen
   - go home
+  - return to home
+  - back to home screen
+  - main screen
+  - go to main screen
+  - return to main screen
+  - home page
+  - main page
+  - go to home page
 
 google:
   - go to google
   - open google
   - google
+  - launch google
+  - start google
+  - access google
+  - google page
 
 browser:
   - open the? browser
   - browser
+  - open web browser
+  - launch browser
+  - start browser
+  - internet browser
+  - web browser
 
 play_store:
   - open the? play store
   - play store
+  - open google play
+  - google play store
+  - launch play store
+  - start play store
+  - app store
+  - google play
 
 youtube:
   - open youtube
   - open the youtube
   - youtube
+  - launch youtube
+  - start youtube
+  - go to youtube
 
 whiteboard:
   - open the? whiteboard
   - whiteboard
+  - launch whiteboard
+  - start whiteboard
+  - open board
+  - white board
 
 save_whiteboard:
   - save the? whiteboard
   - save board
+  - save the? board
+  - save current board
+  - save white board
+  - store whiteboard
+  - save this
 
 red_pen:
   - red pen
   - red marker
+  - use red pen
+  - change to red pen
+  - select red pen
+  - switch to red
+  - red color
 
 blue_pen:
   - blue pen
   - blue marker
+  - use blue pen
+  - change to blue pen
+  - select blue pen
+  - switch to blue
+  - blue color
 
 white_pen:
   - white pen
   - white marker
+  - use white pen
+  - change to white pen
+  - select white pen
+  - switch to white
+  - white color
 
 black_pen:
   - black pen
   - black marker
+  - use black pen
+  - change to black pen
+  - select black pen
+  - switch to black
+  - black color
 
 eraser:
   - eraser
   - erase
+  - use eraser
+  - change to eraser
+  - select eraser
+  - switch to eraser
+  - erase mode
 
 delete_all:
   - delete all
   - clear all
   - clear board
+  - erase everything
+  - remove all
+  - clear whiteboard
+  - erase all
+  - delete everything
+  - clear the board
+  - empty board
 
 highlight_pen:
   - highlight pen
   - highlighter
+  - use highlighter
+  - change to highlighter
+  - select highlighter
+  - highlight marker
 
 fountain_pen:
   - fountain pen
+  - use fountain pen
+  - change to fountain pen
+  - select fountain pen
 
 brush_pen:
   - brush pen
   - brush
+  - use brush pen
+  - change to brush pen
+  - select brush pen
+  - brush tool
 
 settings:
   - open the? settings
   - settings
+  - open system settings
+  - system settings
+  - launch settings
+  - go to settings
+  - settings menu
 
 recorder:
   - open the? recorder
   - recorder
+  - screen recorder
+  - open screen recorder
+  - launch recorder
+  - start recording
+  - record screen
 
 eshare:
   - open e share
@@ -143,19 +302,35 @@ eshare:
   - open the eshare
   - e share
   - eshare
+  - launch e share
+  - start e share
+  - screen share
 
 camera:
   - open the? camera
   - camera
+  - launch camera
+  - start camera
+  - take photo
+  - open camera app
 
 screenshot:
   - take a? screenshot
   - screenshot
   - screen capture
+  - capture screen
+  - take screen shot
+  - save screenshot
+  - capture the? screen
 
 finder:
   - open the? finder
   - finder
+  - file manager
+  - open file manager
+  - file explorer
+  - open file explorer
+  - launch finder
 
 go_back:
   - go back
@@ -163,4 +338,8 @@ go_back:
   - return
   - previous page
   - go to previous page
+  - back button
+  - go to last page
+  - previous screen
+  - return to previous
 
