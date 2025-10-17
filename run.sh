@@ -65,11 +65,11 @@ fi
 
 echo "✅ 安装成功"
 
-# 启动应用
+# 启动应用（启动悬浮球启动器）
 echo ""
-echo "🎯 5. 启动应用..."
+echo "🎯 5. 启动应用（悬浮球启动器）..."
 package_name="com.ai.voice"
-activity_name="com.ai.voice.MainActivity"
+activity_name="com.ai.voice.ui.floating.FloatingLauncherActivity"
 
 adb shell am start -n "$package_name/$activity_name"
 
