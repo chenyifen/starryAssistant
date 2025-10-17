@@ -121,7 +121,7 @@ object VadModelManager {
     }
     
     /**
-     * 创建VAD配置（优化版：快速响应）
+     * 创建VAD配置
      */
     fun createVadConfig(context: Context): VadModelConfig? {
         val modelPaths = getVadModelPaths(context) ?: return null
@@ -129,11 +129,11 @@ object VadModelManager {
         return VadModelConfig(
             sileroVadModelConfig = SileroVadModelConfig(
                 model = modelPaths.modelPath,
-                threshold = 0.3f,             // 降低阈值：0.5 → 0.3 (更敏感)
-                minSilenceDuration = 0.1f,    // 最小静音持续时间: 0.25 → 0.1秒 (更快响应)
-                minSpeechDuration = 0.05f,    // 最小语音持续时间: 0.25 → 0.05秒 (更快触发)
-                windowSize = 512,             // 窗口大小: 32ms (保持不变)
-                maxSpeechDuration = 10.0f     // 最大语音持续时间: 5 → 10秒 (支持更长语音)
+                threshold = 0.5f,
+                minSilenceDuration = 0.25f,  // 最小静音持续时间
+                minSpeechDuration = 0.25f,   // 最小语音持续时间
+                windowSize = 512,            // 窗口大小
+                maxSpeechDuration = 5.0f     // 最大语音持续时间
             ),
             sampleRate = 16000,
             numThreads = 1,

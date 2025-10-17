@@ -519,7 +519,7 @@ class DeviceControlSkill(
         return DeviceControlOutput(
             command = commandName,
             success = true,
-            message = getSuccessMessage(commandName)
+            message = getSuccessMessage(ctx, commandName)
         )
     }
     
@@ -535,44 +535,193 @@ class DeviceControlSkill(
         ctx.android.sendBroadcast(intent)
     }
 
-    private fun getSuccessMessage(command: String): String {
+    /**
+     * 根据当前语言返回成功消息
+     */
+    private fun getSuccessMessage(ctx: SkillContext, command: String): String {
+        val lang = ctx.locale.language
+        
         return when (command) {
-            "power_off" -> "Turning off the power"
-            "power_on" -> "Turning on the power"
-            "volume_up" -> "Volume increased"
-            "volume_down" -> "Volume decreased"
-            "mute_on" -> "Muted"
-            "input_source" -> "Opening input source"
-            "hdmi_one" -> "Switching to HDMI 1"
-            "hdmi_two" -> "Switching to HDMI 2"
-            "dp_port" -> "Switching to DP port"
-            "front_hdmi" -> "Switching to front HDMI"
-            "front_usb_c" -> "Switching to front USB-C"
-            "ops" -> "Switching to OPS"
-            "home_screen" -> "Going to home screen"
-            "google" -> "Opening Google"
-            "browser" -> "Opening browser"
-            "play_store" -> "Opening Play Store"
-            "youtube" -> "Opening YouTube"
-            "whiteboard" -> "Opening whiteboard"
-            "save_whiteboard" -> "Saving whiteboard"
-            "red_pen" -> "Red pen selected"
-            "blue_pen" -> "Blue pen selected"
-            "white_pen" -> "White pen selected"
-            "black_pen" -> "Black pen selected"
-            "eraser" -> "Eraser selected"
-            "delete_all" -> "Clearing all content"
-            "highlight_pen" -> "Highlight pen selected"
-            "fountain_pen" -> "Fountain pen selected"
-            "brush_pen" -> "Brush pen selected"
-            "settings" -> "Opening settings"
-            "recorder" -> "Opening recorder"
-            "eshare" -> "Opening E-share"
-            "camera" -> "Opening camera"
-            "screenshot" -> "Taking screenshot"
-            "finder" -> "Opening finder"
-            "go_back" -> "Going back"
-            else -> "Command executed"
+            "power_off" -> when (lang) {
+                "ko" -> "전원을 끕니다"
+                "zh" -> "正在关闭电源"
+                else -> "Turning off the power"
+            }
+            "power_on" -> when (lang) {
+                "ko" -> "전원을 켭니다"
+                "zh" -> "正在打开电源"
+                else -> "Turning on the power"
+            }
+            "volume_up" -> when (lang) {
+                "ko" -> "볼륨을 높입니다"
+                "zh" -> "音量已增加"
+                else -> "Volume increased"
+            }
+            "volume_down" -> when (lang) {
+                "ko" -> "볼륨을 낮춥니다"
+                "zh" -> "音量已降低"
+                else -> "Volume decreased"
+            }
+            "mute_on" -> when (lang) {
+                "ko" -> "음소거됨"
+                "zh" -> "已静音"
+                else -> "Muted"
+            }
+            "input_source" -> when (lang) {
+                "ko" -> "입력 소스 창을 엽니다"
+                "zh" -> "正在打开输入源窗口"
+                else -> "Opening input source"
+            }
+            "hdmi_one" -> when (lang) {
+                "ko" -> "HDMI 1로 전환합니다"
+                "zh" -> "正在切换到 HDMI 1"
+                else -> "Switching to HDMI 1"
+            }
+            "hdmi_two" -> when (lang) {
+                "ko" -> "HDMI 2로 전환합니다"
+                "zh" -> "正在切换到 HDMI 2"
+                else -> "Switching to HDMI 2"
+            }
+            "dp_port" -> when (lang) {
+                "ko" -> "DP 포트로 전환합니다"
+                "zh" -> "正在切换到 DP 端口"
+                else -> "Switching to DP port"
+            }
+            "front_hdmi" -> when (lang) {
+                "ko" -> "전면 HDMI로 전환합니다"
+                "zh" -> "正在切换到前置 HDMI"
+                else -> "Switching to front HDMI"
+            }
+            "front_usb_c" -> when (lang) {
+                "ko" -> "전면 USB-C로 전환합니다"
+                "zh" -> "正在切换到前置 USB-C"
+                else -> "Switching to front USB-C"
+            }
+            "ops" -> when (lang) {
+                "ko" -> "OPS로 전환합니다"
+                "zh" -> "正在切换到 OPS"
+                else -> "Switching to OPS"
+            }
+            "home_screen" -> when (lang) {
+                "ko" -> "홈 화면으로 이동합니다"
+                "zh" -> "正在前往主屏幕"
+                else -> "Going to home screen"
+            }
+            "google" -> when (lang) {
+                "ko" -> "구글을 엽니다"
+                "zh" -> "正在打开谷歌"
+                else -> "Opening Google"
+            }
+            "browser" -> when (lang) {
+                "ko" -> "브라우저를 엽니다"
+                "zh" -> "正在打开浏览器"
+                else -> "Opening browser"
+            }
+            "play_store" -> when (lang) {
+                "ko" -> "플레이 스토어를 엽니다"
+                "zh" -> "正在打开应用商店"
+                else -> "Opening Play Store"
+            }
+            "youtube" -> when (lang) {
+                "ko" -> "유튜브를 엽니다"
+                "zh" -> "正在打开YouTube"
+                else -> "Opening YouTube"
+            }
+            "whiteboard" -> when (lang) {
+                "ko" -> "화이트보드를 엽니다"
+                "zh" -> "正在打开白板"
+                else -> "Opening whiteboard"
+            }
+            "save_whiteboard" -> when (lang) {
+                "ko" -> "화이트보드를 저장합니다"
+                "zh" -> "正在保存白板"
+                else -> "Saving whiteboard"
+            }
+            "red_pen" -> when (lang) {
+                "ko" -> "빨간 펜을 선택했습니다"
+                "zh" -> "已选择红笔"
+                else -> "Red pen selected"
+            }
+            "blue_pen" -> when (lang) {
+                "ko" -> "파란 펜을 선택했습니다"
+                "zh" -> "已选择蓝笔"
+                else -> "Blue pen selected"
+            }
+            "white_pen" -> when (lang) {
+                "ko" -> "흰 펜을 선택했습니다"
+                "zh" -> "已选择白笔"
+                else -> "White pen selected"
+            }
+            "black_pen" -> when (lang) {
+                "ko" -> "검은 펜을 선택했습니다"
+                "zh" -> "已选择黑笔"
+                else -> "Black pen selected"
+            }
+            "eraser" -> when (lang) {
+                "ko" -> "지우개를 선택했습니다"
+                "zh" -> "已选择橡皮擦"
+                else -> "Eraser selected"
+            }
+            "delete_all" -> when (lang) {
+                "ko" -> "모든 내용을 지웁니다"
+                "zh" -> "正在清除所有内容"
+                else -> "Clearing all content"
+            }
+            "highlight_pen" -> when (lang) {
+                "ko" -> "형광펜을 선택했습니다"
+                "zh" -> "已选择荧光笔"
+                else -> "Highlight pen selected"
+            }
+            "fountain_pen" -> when (lang) {
+                "ko" -> "만년필을 선택했습니다"
+                "zh" -> "已选择钢笔"
+                else -> "Fountain pen selected"
+            }
+            "brush_pen" -> when (lang) {
+                "ko" -> "붓펜을 선택했습니다"
+                "zh" -> "已选择毛笔"
+                else -> "Brush pen selected"
+            }
+            "settings" -> when (lang) {
+                "ko" -> "설정을 엽니다"
+                "zh" -> "正在打开设置"
+                else -> "Opening settings"
+            }
+            "recorder" -> when (lang) {
+                "ko" -> "녹음기를 엽니다"
+                "zh" -> "正在打开录音机"
+                else -> "Opening recorder"
+            }
+            "eshare" -> when (lang) {
+                "ko" -> "이셰어를 엽니다"
+                "zh" -> "正在打开屏幕共享"
+                else -> "Opening E-share"
+            }
+            "camera" -> when (lang) {
+                "ko" -> "카메라를 엽니다"
+                "zh" -> "正在打开相机"
+                else -> "Opening camera"
+            }
+            "screenshot" -> when (lang) {
+                "ko" -> "스크린샷을 찍습니다"
+                "zh" -> "正在截屏"
+                else -> "Taking screenshot"
+            }
+            "finder" -> when (lang) {
+                "ko" -> "파인더를 엽니다"
+                "zh" -> "正在打开文件管理器"
+                else -> "Opening finder"
+            }
+            "go_back" -> when (lang) {
+                "ko" -> "뒤로 갑니다"
+                "zh" -> "正在返回"
+                else -> "Going back"
+            }
+            else -> when (lang) {
+                "ko" -> "명령이 실행되었습니다"
+                "zh" -> "命令已执行"
+                else -> "Command executed"
+            }
         }
     }
 }
