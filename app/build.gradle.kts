@@ -19,21 +19,22 @@ plugins {
     alias(libs.plugins.com.google.devtools.ksp)
     alias(libs.plugins.com.google.dagger.hilt.android)
     alias(libs.plugins.com.google.protobuf)
+
     // 使用传统方式应用插件，避免与buildscript冲突
     id("org.stypox.dicio.sentencesCompilerPlugin")
 }
 
 android {
-    namespace = "org.stypox.dicio"
+    namespace = "com.ai.voice"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "org.stypox.dicio"
+        applicationId = "com.ai.voice"
         minSdk = 21
         targetSdk = 36
         versionCode = 16
         versionName = "3.2"
-        testInstrumentationRunner = "org.stypox.dicio.CustomTestRunner"
+        testInstrumentationRunner = "com.ai.voice.CustomTestRunner"
 
         vectorDrawables.useSupportLibrary = true
 
@@ -82,15 +83,13 @@ android {
 
     buildTypes {
         debug {
-            var normalizedGitBranch = gitBranch().replaceFirst("^[^A-Za-z]+", "").replace(Regex("[^0-9A-Za-z]+"), "")
-            applicationIdSuffix = ".$normalizedGitBranch"
-            versionNameSuffix = "-$normalizedGitBranch"
-
-            resValue("string", "app_name", "Dicio-${gitBranch()}")
+            // 固定包名和应用名，不添加分支后缀
+            resValue("string", "app_name", "VoiceAssistant")
         }
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            resValue("string", "app_name", "VoiceAssistant")
         }
     }
 

@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "org.dicio.skill"
+    namespace = "com.ai.voice.skill"
     compileSdk = 35
     defaultConfig {
         minSdk = 21

@@ -68,8 +68,8 @@ echo "✅ 安装成功"
 # 启动应用
 echo ""
 echo "🎯 5. 启动应用..."
-package_name="org.stypox.dicio.master"
-activity_name="org.stypox.dicio.MainActivity"
+package_name="com.ai.voice"
+activity_name="com.ai.voice.MainActivity"
 
 adb shell am start -n "$package_name/$activity_name"
 
