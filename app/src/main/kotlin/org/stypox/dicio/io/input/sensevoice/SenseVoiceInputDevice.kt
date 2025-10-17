@@ -46,9 +46,14 @@ class SenseVoiceInputDevice private constructor(
         
         // VAD和录制控制参数
         private const val VAD_FRAME_SIZE = 512 // VAD处理帧大小 (32ms @ 16kHz)
-        private const val SPEECH_TIMEOUT_MS = 4000L // 静音8秒后自动停止，给用户更多思考时间
+        private const val SPEECH_TIMEOUT_MS = 3000L // 静音3秒后自动停止
         private const val MAX_RECORDING_DURATION_MS = 30000L // 最长录制时间30秒
         private const val MIN_SPEECH_DURATION_MS = 500L // 最短有效语音时间
+        
+        // 🆕 高分提前结束参数（方案1: 保守的高分提前结束）
+        private const val MIN_TEXT_LENGTH_FOR_EARLY_STOP = 3  // 至少3个字才考虑提前结束
+        private const val STABLE_COUNT_THRESHOLD = 3          // Partial连续3次稳定
+        private const val EARLY_STOP_CONFIRM_DELAY_MS = 500L  // 提前结束前等待500ms确认
 
         // 单例实例
         @Volatile
@@ -116,6 +121,12 @@ class SenseVoiceInputDevice private constructor(
     private var lastPartialRecognitionTime = 0L
     private val PARTIAL_RECOGNITION_COOLDOWN_MS = 200L // 参考demo改为200ms触发间隔
     private var isPartialResultAdded = false // 参考demo的结果管理策略
+    
+    // 🆕 高分提前结束优化（方案1）
+    private var lastStablePartialText = ""      // 上一次稳定的Partial文本
+    private var partialStableCount = 0          // Partial稳定计数
+    private var stablePartialConfirmTime = 0L   // 稳定Partial的确认时间
+    private var isWaitingForEarlyStop = false   // 是否正在等待提前停止
     
     // 协程作用域 - 使用可重新创建的作用域
     private var scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -796,6 +807,24 @@ class SenseVoiceInputDevice private constructor(
                         }
                         
                     } else if (speechDetected) {
+                        // 🆕 优先检查：是否满足提前结束条件
+                        if (isWaitingForEarlyStop && stablePartialConfirmTime > 0) {
+                            val confirmElapsed = currentTime - stablePartialConfirmTime
+                            if (confirmElapsed >= EARLY_STOP_CONFIRM_DELAY_MS) {
+                                // 确认等待时间到了，再次检查是否还有语音
+                                if (!hasRecentSpeech(EARLY_STOP_CONFIRM_DELAY_MS / 2)) {
+                                    Log.i(TAG, "⚡️ 确认提前结束: Partial='$lastStablePartialText', 确认延迟=${confirmElapsed}ms")
+                                    stopListeningAndProcess()
+                                    break
+                                } else {
+                                    // 用户还在说话，取消提前结束
+                                    Log.d(TAG, "⚠️ 取消提前结束: 用户还在说话")
+                                    isWaitingForEarlyStop = false
+                                    stablePartialConfirmTime = 0L
+                                }
+                            }
+                        }
+                        
                         // 检查是否静音超时
                         val silenceDuration = currentTime - lastSpeechTime
                         if (silenceDuration > SPEECH_TIMEOUT_MS) {
@@ -865,7 +894,7 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
-     * 执行部分识别（实时反馈）- 参考SherpaOnnxSimulateAsr优化
+     * 执行部分识别（实时反馈）- 参考SherpaOnnxSimulateAsr优化 + 高分提前结束
      */
     private suspend fun performPartialRecognition() {
         try {
@@ -898,11 +927,64 @@ class SenseVoiceInputDevice private constructor(
                 }
                 
                 Log.d(TAG, "🎯 部分识别更新: '$oldText' → '$partialText' (音频长度: ${audioData.size / SAMPLE_RATE.toFloat()}秒)")
+                
+                // 🆕 检查稳定性，重置计数
+                partialStableCount = 0
+                lastStablePartialText = newText
+                stablePartialConfirmTime = 0L
+                isWaitingForEarlyStop = false
+                
+            } else if (newText.isNotBlank() && newText == partialText) {
+                // 🆕 Partial文本稳定（连续相同）
+                if (newText == lastStablePartialText) {
+                    partialStableCount++
+                    Log.d(TAG, "📊 Partial稳定: '$newText' (稳定次数: $partialStableCount/$STABLE_COUNT_THRESHOLD)")
+                    
+                    // 检查是否满足提前结束条件
+                    if (shouldTriggerEarlyStop(newText)) {
+                        if (!isWaitingForEarlyStop) {
+                            // 首次达到条件，开始等待确认
+                            isWaitingForEarlyStop = true
+                            stablePartialConfirmTime = currentTime
+                            Log.i(TAG, "⚡️ Partial稳定且符合条件，开始${EARLY_STOP_CONFIRM_DELAY_MS}ms确认等待: '$newText'")
+                        }
+                    }
+                } else {
+                    // 文本变化，重置
+                    partialStableCount = 1
+                    lastStablePartialText = newText
+                    isWaitingForEarlyStop = false
+                }
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 部分识别异常", e)
         }
+    }
+    
+    /**
+     * 🆕 检查是否应该触发提前结束
+     */
+    private fun shouldTriggerEarlyStop(text: String): Boolean {
+        // 条件1: 文本长度至少3个字
+        if (text.length < MIN_TEXT_LENGTH_FOR_EARLY_STOP) {
+            return false
+        }
+        
+        // 条件2: Partial连续稳定次数达到阈值
+        if (partialStableCount < STABLE_COUNT_THRESHOLD) {
+            return false
+        }
+        
+        return true
+    }
+    
+    /**
+     * 🆕 检查最近是否有语音（用于确认用户说完了）
+     */
+    private fun hasRecentSpeech(thresholdMs: Long): Boolean {
+        val silenceDuration = System.currentTimeMillis() - lastSpeechTime
+        return silenceDuration < thresholdMs
     }
     
     /**
@@ -990,6 +1072,12 @@ class SenseVoiceInputDevice private constructor(
         }
         partialText = ""
         isPartialResultAdded = false // 重置结果管理标志
+        
+        // 🆕 重置高分提前结束相关状态
+        lastStablePartialText = ""
+        partialStableCount = 0
+        stablePartialConfirmTime = 0L
+        isWaitingForEarlyStop = false
         
         // 重置VAD状态
         try {
