@@ -81,6 +81,9 @@
     <string name="pref_input_method_text">Only text box</string>
     <string name="pref_input_method_sensevoice">SenseVoice multilingual ASR</string>
     <string name="pref_input_method_sensevoice_summary">High-accuracy offline multilingual speech recognition powered by SenseVoice</string>
+    <string name="pref_sensevoice_korean_mode_title">SenseVoice Korean mode</string>
+    <string name="pref_sensevoice_korean_mode_summary_off">Disabled - Multi-language auto-detection</string>
+    <string name="pref_sensevoice_korean_mode_summary_on">Enabled - Korean priority (filter Chinese characters)</string>
     <string name="pref_input_method_vosk">Vosk offline speech recognition</string>
     <string name="pref_input_method_vosk_summary">Downloads and runs a Vosk SpeechToText model offline inside Dicio</string>
     <string name="pref_input_method_external_popup">External SpeechToText popup</string>

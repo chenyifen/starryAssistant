@@ -54,6 +54,9 @@ class SenseVoiceInputDevice private constructor(
         private const val MIN_TEXT_LENGTH_FOR_EARLY_STOP = 3  // 至少3个字才考虑提前结束
         private const val STABLE_COUNT_THRESHOLD = 3          // Partial连续3次稳定
         private const val EARLY_STOP_CONFIRM_DELAY_MS = 500L  // 提前结束前等待500ms确认
+        
+        // 🆕 韩语模式参数
+        private const val KOREAN_MODE_DEFAULT = true  // 默认启用韩语模式
 
         // 单例实例
         @Volatile
@@ -163,8 +166,8 @@ class SenseVoiceInputDevice private constructor(
                 Log.w(TAG, "⚠️ VAD模型不可用，将使用简单能量检测")
             }
             
-            // 创建SenseVoice识别器
-            senseVoiceRecognizer = SenseVoiceRecognizer.create(appContext)
+            // 🆕 创建SenseVoice识别器（默认启用韩语模式）
+            senseVoiceRecognizer = SenseVoiceRecognizer.create(appContext, koreanMode = KOREAN_MODE_DEFAULT)
             if (senseVoiceRecognizer == null) {
                 Log.e(TAG, "❌ SenseVoice识别器创建失败")
                 _uiState.value = SttState.ErrorLoading(Exception("SenseVoice识别器创建失败"))

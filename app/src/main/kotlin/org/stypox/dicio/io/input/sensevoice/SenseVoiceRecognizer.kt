@@ -18,7 +18,8 @@ import org.stypox.dicio.util.DebugLogger
  */
 class SenseVoiceRecognizer private constructor(
     private val recognizer: OfflineRecognizer,
-    private val modelInfo: SenseVoiceModelManager.SenseVoiceModelPaths
+    private val modelInfo: SenseVoiceModelManager.SenseVoiceModelPaths,
+    private val koreanMode: Boolean  // 🆕 韩语模式标志
 ) {
     
     companion object {
@@ -29,8 +30,9 @@ class SenseVoiceRecognizer private constructor(
         
         /**
          * 创建SenseVoice识别器实例
+         * @param koreanMode 是否启用韩语模式（过滤中文字符）
          */
-        suspend fun create(context: Context): SenseVoiceRecognizer? {
+        suspend fun create(context: Context, koreanMode: Boolean = true): SenseVoiceRecognizer? {
             return withContext(Dispatchers.IO) {
                 try {
                     Log.d(TAG, "🔧 SenseVoiceRecognizer.create() 开始执行...")
@@ -58,11 +60,13 @@ class SenseVoiceRecognizer private constructor(
                     
                     // 按照HandsFree的正确方式创建SenseVoice配置
                     Log.d(TAG, "🔧 创建SenseVoice配置...")
+                    // 🆕 根据韩语模式选择语言
+                    val languageMode = if (koreanMode) "ko" else "auto"
                     val config = OfflineRecognizerConfig(
                         modelConfig = OfflineModelConfig(
                             senseVoice = OfflineSenseVoiceModelConfig(
                                 model = modelPaths.modelPath,
-                                language = "auto",  // 使用自动语言检测模式
+                                language = languageMode,  // 🆕 韩语模式或自动检测
                                 useInverseTextNormalization = true // 逆文本规范化 - 关键修复！
                             ),
                             tokens = modelPaths.tokensPath,
@@ -75,7 +79,8 @@ class SenseVoiceRecognizer private constructor(
                     )
                     Log.d(TAG, "   ✅ SenseVoice配置: model=${modelPaths.modelPath}")
                     Log.d(TAG, "   ✅ 配置: threads=2, provider=cpu, decodingMethod=greedy_search")
-                    Log.d(TAG, "   🌍 语言支持: SenseVoice自动多语言检测")
+                    Log.d(TAG, "   🌍 语言模式: ${if (koreanMode) "韩语模式 (ko)" else "自动检测 (auto)"}")
+                    Log.d(TAG, "   🚫 中文过滤: ${if (koreanMode) "启用" else "禁用"}")
                     Log.d(TAG, "   📝 逆文本规范化: 启用")
                     
                     // 根据模型来源创建识别器
@@ -92,7 +97,7 @@ class SenseVoiceRecognizer private constructor(
                     Log.d(TAG, "🎉 SenseVoice识别器初始化完成")
                     Log.d(TAG, "🔗 实例ID: ${recognizer.hashCode()}")
                     
-                    SenseVoiceRecognizer(recognizer, modelPaths)
+                    SenseVoiceRecognizer(recognizer, modelPaths, koreanMode)
                 } catch (e: Exception) {
                     Log.e(TAG, "❌ 创建SenseVoice识别器失败", e)
                     Log.e(TAG, "💡 错误详情: ${e.message}")
@@ -107,9 +112,39 @@ class SenseVoiceRecognizer private constructor(
     private val recognitionMutex = Mutex()
     
     /**
+     * 🆕 过滤中文字符，只保留韩语、英语、数字、标点
+     */
+    private fun filterToKorean(text: String): String {
+        if (!koreanMode) return text  // 非韩语模式，不过滤
+        
+        return text.filter { char ->
+            when {
+                // 韩语字符（Hangul Syllables: U+AC00 ~ U+D7A3）
+                char in '\uAC00'..'\uD7A3' -> true
+                // 韩语兼容字母（Hangul Jamo: U+3131 ~ U+318E）
+                char in '\u3131'..'\u318E' -> true
+                // 韩语兼容字母扩展（U+1100 ~ U+11FF）
+                char in '\u1100'..'\u11FF' -> true
+                // 英语字母
+                char in 'a'..'z' || char in 'A'..'Z' -> true
+                // 数字
+                char in '0'..'9' -> true
+                // 标点和空格（常用标点）
+                char.isWhitespace() || char in ".,!?;:()[]{}\"'`-–—" -> true
+                // 中文字符（CJK Unified Ideographs: U+4E00 ~ U+9FFF）- 过滤掉
+                char in '\u4E00'..'\u9FFF' -> false
+                // 中文标点（U+3000 ~ U+303F）- 过滤掉
+                char in '\u3000'..'\u303F' -> false
+                // 其他Unicode字符 - 保守保留
+                else -> char.code < 128 || char.code > 0x9FFF
+            }
+        }.trim()
+    }
+    
+    /**
      * 识别音频数据
      * @param audioData PCM 16kHz单声道音频数据
-     * @return 识别结果文本
+     * @return 识别结果文本（如果启用韩语模式，中文字符会被过滤）
      */
     suspend fun recognize(audioData: FloatArray): String {
         return withContext(Dispatchers.IO) {
@@ -165,10 +200,17 @@ class SenseVoiceRecognizer private constructor(
                             stream.release()
                             DebugLogger.logAudio(TAG, "stream资源已释放")
                             
-                            val resultText = result.text.trim()
-                            DebugLogger.logRecognition(TAG, "SenseVoice识别结果: \"$resultText\"")
+                            val rawText = result.text.trim()
+                            val filteredText = filterToKorean(rawText)  // 🆕 应用韩语过滤
                             
-                            resultText
+                            if (koreanMode && rawText != filteredText) {
+                                DebugLogger.logRecognition(TAG, "SenseVoice识别 (原始): \"$rawText\"")
+                                DebugLogger.logRecognition(TAG, "SenseVoice识别 (过滤): \"$filteredText\"")
+                            } else {
+                                DebugLogger.logRecognition(TAG, "SenseVoice识别结果: \"$filteredText\"")
+                            }
+                            
+                            filteredText
                         } catch (e: Exception) {
                             // 确保在异常情况下也释放stream
                             try {
