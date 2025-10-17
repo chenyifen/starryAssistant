@@ -1,6 +1,8 @@
 package com.ai.voice.ui.floating
 
 import android.Manifest
+import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -10,8 +12,7 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import com.ai.voice.R
 import com.ai.voice.util.PermissionHelper
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,7 +31,7 @@ import dagger.hilt.android.AndroidEntryPoint
  * - 悬浮窗权限
  */
 @AndroidEntryPoint
-class FloatingLauncherActivity : AppCompatActivity() {
+class FloatingLauncherActivity : ComponentActivity() {
     
     companion object {
         private const val TAG = "FloatingLauncher"
