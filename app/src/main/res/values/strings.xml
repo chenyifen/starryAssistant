@@ -296,4 +296,8 @@
     <string name="floating_text_initializing">Initializing…</string>
     <string name="floating_text_loading">Loading…</string>
     
+    <!-- Floating Launcher -->
+    <string name="floating_assistant_started">Voice assistant started</string>
+    <string name="overlay_permission_required">Overlay permission is required to display the floating assistant</string>
+    
 </resources>
