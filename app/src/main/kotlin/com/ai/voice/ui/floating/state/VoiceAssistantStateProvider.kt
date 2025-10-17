@@ -293,11 +293,7 @@ class VoiceAssistantStateProvider @Inject constructor(
                     SimpleResultBuilder.appAction("应用", "打开应用", success)
                 }
                 
-                // 电话技能 - 精确匹配
-                is com.ai.voice.skills.telephone.TelephoneOutput -> {
-                    val success = !speechText.contains("没有") && !speechText.contains("找不到")
-                    SimpleResultBuilder.appAction("电话", "拨打电话", success)
-                }
+                // 电话技能已移除
                 
                 // 其他技能使用模糊匹配
                 else -> {

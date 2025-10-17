@@ -18,9 +18,9 @@ import com.ai.voice.skills.lyrics.LyricsInfo
 import com.ai.voice.skills.media.MediaInfo
 import com.ai.voice.skills.navigation.NavigationInfo
 import com.ai.voice.skills.navigation.NavigationOutput
-import com.ai.voice.skills.telephone.ConfirmCallOutput
-import com.ai.voice.skills.telephone.ConfirmedCallOutput
-import com.ai.voice.skills.telephone.TelephoneInfo
+// import com.ai.voice.skills.telephone.ConfirmCallOutput  // 已移除电话功能
+// import com.ai.voice.skills.telephone.ConfirmedCallOutput
+// import com.ai.voice.skills.telephone.TelephoneInfo
 import com.ai.voice.skills.timer.TimerInfo
 import com.ai.voice.skills.timer.TimerOutput
 import com.ai.voice.skills.weather.WeatherInfo
@@ -41,7 +41,7 @@ class UserInputPreviews : CollectionPreviewParameterProvider<String>(listOf(
 class SkillInfoPreviews : CollectionPreviewParameterProvider<SkillInfo>(listOf(
     WeatherInfo,
     CalculatorInfo,
-    TelephoneInfo,
+    // TelephoneInfo,  // 已移除电话功能
     MediaInfo,
     object : SkillInfo("test") {
         override fun name(context: Context) = "Long name lorem ipsum dolor sit amet, consectetur"
@@ -101,20 +101,20 @@ class InteractionLogPreviews : CollectionPreviewParameterProvider<InteractionLog
             skillBeingEvaluated = null,
         ),
     ),
+    // 已移除电话功能的示例
     InteractionLog(
         listOf(
             Interaction(
-                skill = TelephoneInfo,
+                skill = LyricsInfo,
                 questionsAnswers = listOf(
-                    QuestionAnswer("call mom", ConfirmCallOutput("Mom", "1234567890")),
-                    QuestionAnswer("yes", ConfirmedCallOutput("1234567890")),
+                    QuestionAnswer("lyrics i'm working on a dream", TextFallbackOutput(askToRepeat = false)),
                 )
             )
         ),
         PendingQuestion(
-            userInput = "lyrics i'm working on a dream",
+            userInput = "what's the weather",
             continuesLastInteraction = false,
-            skillBeingEvaluated = LyricsInfo,
+            skillBeingEvaluated = WeatherInfo,
         ),
     ),
 ))
