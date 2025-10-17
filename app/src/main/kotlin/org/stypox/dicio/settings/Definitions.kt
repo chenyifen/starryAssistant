@@ -220,6 +220,14 @@ fun sttAutoFinish() = BooleanSetting(
 )
 
 @Composable
+fun senseVoiceKoreanMode() = BooleanSetting(
+    title = stringResource(R.string.pref_sensevoice_korean_mode_title),
+    icon = Icons.Default.Language,
+    descriptionOff = stringResource(R.string.pref_sensevoice_korean_mode_summary_off),
+    descriptionOn = stringResource(R.string.pref_sensevoice_korean_mode_summary_on),
+)
+
+@Composable
 fun sttPlaySound() = ListSetting(
     title = stringResource(R.string.pref_stt_play_sound_title),
     icon = Icons.Default.Campaign,
