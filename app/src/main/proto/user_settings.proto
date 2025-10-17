@@ -10,7 +10,7 @@ import "two_pass_settings.proto";
 import "audio_quality.proto";
 import "fallback_chain.proto";
 
-option java_package = "org.stypox.dicio.settings.datastore";
+option java_package = "com.ai.voice.settings.datastore";
 option java_multiple_files = true;
 
 message UserSettings {
