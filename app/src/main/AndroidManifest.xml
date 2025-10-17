@@ -52,22 +52,17 @@
         tools:ignore="GoogleAppIndexingWarning"
         android:dataExtractionRules="@xml/data_extraction_rules">
 
+        <!-- 悬浮球启动器 - 应用主入口 -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ui.floating.FloatingLauncherActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize"
-            android:launchMode="singleTop"
-            android:showOnLockScreen="true">
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.ASSIST" />
-                <action android:name="android.intent.action.VOICE_COMMAND" />
-                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
 
             <meta-data
@@ -77,6 +72,21 @@
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
+        </activity>
+
+        <!-- 主Activity - 仅用于语音助手和设置界面 -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:launchMode="singleTop"
+            android:showOnLockScreen="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
         <activity
