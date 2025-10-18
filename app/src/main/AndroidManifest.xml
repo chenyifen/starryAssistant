@@ -153,14 +153,11 @@
 
                 <activity
                     android:name=".ui.floating.FloatingAssistantTestActivity"
-                    android:enabled="true"
-                    android:exported="true"
+                    android:enabled="false"
+                    android:exported="false"
                     android:label="Floating Assistant Test"
                     android:theme="@style/AppTheme">
-                    <intent-filter>
-                        <action android:name="android.intent.action.MAIN" />
-                        <category android:name="android.intent.category.LAUNCHER" />
-                    </intent-filter>
+                    <!-- 测试Activity，不显示在启动器 -->
                 </activity>
 
                 <activity
