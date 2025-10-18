@@ -15,6 +15,7 @@ import com.ai.voice.util.checkPermissions
 // https://medium.com/p/924c91bafcac
 @HiltAndroidApp
 class App : Application() {
+    
     override fun onCreate() {
         super.onCreate()
         

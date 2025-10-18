@@ -139,10 +139,18 @@ class SenseVoiceInputDevice private constructor(
     
     init {
         Log.d(TAG, "🎤 SenseVoice输入设备正在初始化...")
+        Log.d(TAG, "⏳ 初始化将在后台异步进行，首次使用时可能需要等待...")
         
         // 异步初始化SenseVoice和VAD
         scope.launch {
+            val startTime = System.currentTimeMillis()
             initializeComponents()
+            val duration = System.currentTimeMillis() - startTime
+            if (isInitialized.get()) {
+                Log.d(TAG, "✅ SenseVoice初始化完成，耗时: ${duration}ms")
+            } else {
+                Log.e(TAG, "❌ SenseVoice初始化失败，耗时: ${duration}ms")
+            }
         }
     }
     
@@ -220,9 +228,39 @@ class SenseVoiceInputDevice private constructor(
             recreateScope()
         }
         
+        // 🆕 如果未初始化，等待初始化完成（最多3秒）
         if (!isInitialized.get()) {
-            Log.w(TAG, "⚠️ SenseVoice未初始化，无法开始监听")
-            return false
+            Log.w(TAG, "⚠️ SenseVoice未初始化，等待初始化完成...")
+            
+            // 使用runBlocking等待初始化，但设置超时
+            val initSuccess = try {
+                kotlinx.coroutines.runBlocking {
+                    kotlinx.coroutines.withTimeoutOrNull(3000L) {
+                        // 等待初始化完成
+                        var attempts = 0
+                        while (!isInitialized.get() && attempts < 30) {
+                            kotlinx.coroutines.delay(100L)
+                            attempts++
+                        }
+                        isInitialized.get()
+                    } ?: false
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 等待初始化异常: ${e.message}")
+                false
+            }
+            
+            if (!initSuccess) {
+                Log.e(TAG, "❌ SenseVoice初始化超时或失败，无法开始监听")
+                // 触发重新初始化
+                scope.launch {
+                    Log.d(TAG, "🔄 尝试重新初始化...")
+                    initializeComponents()
+                }
+                return false
+            }
+            
+            Log.d(TAG, "✅ SenseVoice初始化完成，继续开始监听")
         }
         
         if (isListening.get()) {
