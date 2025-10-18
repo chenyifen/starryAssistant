@@ -9,8 +9,10 @@ import java.io.OutputStream
 object UserSettingsSerializer : Serializer<UserSettings> {
     override val defaultValue: UserSettings = UserSettings.getDefaultInstance()
         .toBuilder()
+        .setLanguage(Language.LANGUAGE_KO) // 默认韩语
+        .setWakeDevice(WakeDevice.WAKE_DEVICE_HI_NUDGE_V8) // 默认V8唤醒
+        .setInputDevice(InputDevice.INPUT_DEVICE_SENSEVOICE) // 默认SenseVoice ASR
         .setAutoFinishSttPopup(true)
-        .setInputDevice(InputDevice.INPUT_DEVICE_SENSEVOICE)
         .setPauseWakeDuringAsr(true) // 默认启用：ASR时暂停唤醒服务
         .build()
 
