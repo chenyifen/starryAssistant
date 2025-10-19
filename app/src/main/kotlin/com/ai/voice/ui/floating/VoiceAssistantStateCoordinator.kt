@@ -82,11 +82,13 @@ class VoiceAssistantStateCoordinator @Inject constructor(
         }
         
         // 监听SkillEvaluator的状态变化
-        scope.launch {
-            skillEvaluator.state.collect { interactionLog ->
-                handleSkillEvaluatorState(interactionLog)
-            }
-        }
+        // 🔥 修复：禁用此监听器，与VoiceAssistantStateProvider冲突
+        // Provider已经处理技能输出和状态管理，这里不需要重复处理
+        // scope.launch {
+        //     skillEvaluator.state.collect { interactionLog ->
+        //         handleSkillEvaluatorState(interactionLog)
+        //     }
+        // }
     }
     
     /**
@@ -225,10 +227,15 @@ class VoiceAssistantStateCoordinator @Inject constructor(
             }
             
             // 没有待处理问题，回到待机状态
+            // 🔥 修复：不要在SPEAKING状态时强制转为IDLE，等待TTS完成回调
             pendingQuestion == null -> {
-                if (_uiState.value != VoiceAssistantUIState.IDLE) {
-                    DebugLogger.logUI(TAG, "🏠 Returning to idle state")
+                val currentState = _uiState.value
+                if (currentState != VoiceAssistantUIState.IDLE && 
+                    currentState != VoiceAssistantUIState.SPEAKING) {
+                    DebugLogger.logUI(TAG, "🏠 Returning to idle state from $currentState")
                     updateUIState(VoiceAssistantUIState.IDLE, "")
+                } else if (currentState == VoiceAssistantUIState.SPEAKING) {
+                    DebugLogger.logUI(TAG, "🎤 Still speaking, not forcing to IDLE")
                 }
             }
         }

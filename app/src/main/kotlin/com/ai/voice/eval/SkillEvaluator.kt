@@ -181,7 +181,12 @@ class SkillEvaluatorImpl(
                                 }
                                 
                                 if (shouldExecute) {
-                                    evaluateMatchingSkill(listOf(utterance))
+                                    // 🔥 修复：使用预匹配的技能，禁止fallback
+                                    evaluateMatchingSkill(
+                                        utterances = listOf(utterance),
+                                        preMatchedSkill = result,
+                                        allowFallback = false
+                                    )
                                 } else {
                                     Log.d(TAG, "⏭️ [Partial] 技能已被执行，跳过")
                                 }
@@ -199,23 +204,48 @@ class SkillEvaluatorImpl(
         }
     }
 
-    private suspend fun evaluateMatchingSkill(utterances: List<String>) {
+    /**
+     * 评估并执行匹配的技能
+     * 
+     * @param utterances 用户输入的文本列表
+     * @param preMatchedSkill 预匹配的技能结果（如果已经通过getBest()评估过）
+     * @param allowFallback 是否允许在无匹配时使用fallback技能（Final阶段为true，Partial阶段为false）
+     */
+    private suspend fun evaluateMatchingSkill(
+        utterances: List<String>,
+        preMatchedSkill: SkillWithResult<*>? = null,
+        allowFallback: Boolean = true
+    ) {
         val evalStartTime = System.currentTimeMillis()
         
         val (chosenInput, chosenSkill) = try {
-            utterances.firstNotNullOfOrNull { input: String ->
-                val inputRankStart = System.currentTimeMillis()
-                Log.d(TAG, "🔍 尝试匹配输入: '$input'")
-                val result = skillRanker.getBest(skillContext, input)
-                val inputRankTime = System.currentTimeMillis() - inputRankStart
-                if (result != null) {
-                    Log.d(TAG, "✅ 匹配技能: ${result.skill.correspondingSkillInfo.id}, 评分: ${result.score.scoreIn01Range()}")
+            // 🔥 如果提供了预匹配技能，直接使用，避免重复评估
+            if (preMatchedSkill != null) {
+                Log.d(TAG, "🎯 使用预匹配技能: ${preMatchedSkill.skill.correspondingSkillInfo.id}, 评分: ${preMatchedSkill.score.scoreIn01Range()}")
+                Pair(utterances[0], preMatchedSkill)
+            } else {
+                // 原有逻辑：尝试匹配技能
+                utterances.firstNotNullOfOrNull { input: String ->
+                    val inputRankStart = System.currentTimeMillis()
+                    Log.d(TAG, "🔍 尝试匹配输入: '$input'")
+                    val result = skillRanker.getBest(skillContext, input)
+                    val inputRankTime = System.currentTimeMillis() - inputRankStart
+                    if (result != null) {
+                        Log.d(TAG, "✅ 匹配技能: ${result.skill.correspondingSkillInfo.id}, 评分: ${result.score.scoreIn01Range()}")
+                    }
+                    result?.let { skillWithResult ->
+                        Pair(input, skillWithResult)
+                    }
+                } ?: run {
+                    // 🔥 只有允许fallback时才使用fallback技能
+                    if (allowFallback) {
+                        Log.d(TAG, "⚠️ 无匹配技能，使用fallback")
+                        Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
+                    } else {
+                        Log.d(TAG, "❌ [Partial] 无匹配技能且禁止fallback，跳过执行")
+                        return
+                    }
                 }
-                result?.let { skillWithResult ->
-                    Pair(input, skillWithResult)
-                }
-            } ?: run {
-                Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
             }
         } catch (throwable: Throwable) {
             Log.e(TAG, "❌ 技能匹配过程中发生错误", throwable)

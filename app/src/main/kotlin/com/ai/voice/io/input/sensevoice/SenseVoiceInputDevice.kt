@@ -48,10 +48,10 @@ class SenseVoiceInputDevice private constructor(
         
         // VAD和录制控制参数
         private const val VAD_FRAME_SIZE = 512 // VAD处理帧大小 (32ms @ 16kHz)
-        private const val SPEECH_TIMEOUT_MS = 2000L // 🔥 静音2秒后自动停止（给用户足够思考时间）
-        private const val MAX_RECORDING_DURATION_MS = 10000L // 🔥 最长录制时间10秒（从30秒改为10秒，避免超时）
+        private const val SPEECH_TIMEOUT_MS = 2000L // 🔥 静音3秒后自动停止（韩语命令需要更长思考时间）
+        private const val MAX_RECORDING_DURATION_MS = 30000L // 🔥 最长录制时间15秒（给复杂命令更多时间）
         private const val MIN_SPEECH_DURATION_MS = 500L // 最短有效语音时间
-        private const val INITIAL_GRACE_PERIOD_MS = 500L // 🆕 唤醒后初始缓冲期，避免唤醒词尾音误触发
+        private const val INITIAL_GRACE_PERIOD_MS = 800L // 🆕 唤醒后初始缓冲期，避免唤醒词尾音误触发（增加到800ms）
         
         // 🆕 高分提前结束参数（优化版：更快响应）
         private const val MIN_TEXT_LENGTH_FOR_EARLY_STOP = 3  // 至少3个字才考虑提前结束
@@ -1028,6 +1028,7 @@ class SenseVoiceInputDevice private constructor(
     /**
      * 🆕 动态获取静音超时时间
      * 根据是否有识别结果，动态调整超时时间
+     * 优化：韩语命令需要更长的超时时间
      */
     private fun getDynamicTimeout(): Long {
         val timeSinceStart = System.currentTimeMillis() - asrStartTime
@@ -1037,11 +1038,11 @@ class SenseVoiceInputDevice private constructor(
             return SPEECH_TIMEOUT_MS
         }
         
-        // 如果已经有有效的识别结果，使用短超时（快速响应）
+        // 如果已经有有效的识别结果，使用中等超时（给韩语足够时间完成）
         return if (partialText.length >= 3) {
-            1000L  // 有识别结果，1秒超时
+            1800L  // 有识别结果，1.8秒超时（从1秒增加到1.8秒）
         } else {
-            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（2秒）
+            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（3秒）
         }
     }
     
@@ -1157,6 +1158,17 @@ class SenseVoiceInputDevice private constructor(
         } finally {
             // 重置状态
             resetVadState()
+            
+            // 🔥 关键修复：释放麦克风资源
+            // 之前这里缺少释放逻辑，导致连续测试时麦克风持有者状态混乱
+            try {
+                runBlocking {
+                    AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
+                }
+                Log.d(TAG, "✅ 已释放麦克风资源（performFinalRecognition完成）")
+            } catch (e: Exception) {
+                Log.w(TAG, "⚠️ 释放麦克风资源失败", e)
+            }
         }
     }
     
@@ -1167,6 +1179,10 @@ class SenseVoiceInputDevice private constructor(
         speechDetected = false
         speechStartTime = 0L
         lastSpeechTime = 0L
+        
+        // 🔥 修复：重置Partial识别时间戳（多轮对话bug）
+        lastPartialRecognitionTime = 0L
+        
         synchronized(audioBuffer) {
             audioBuffer.clear()
             bufferOffset = 0
