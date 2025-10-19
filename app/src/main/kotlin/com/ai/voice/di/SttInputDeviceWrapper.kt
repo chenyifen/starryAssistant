@@ -97,9 +97,14 @@ class SttInputDeviceWrapperImpl(
 
         scope.launch {
             nextSettingsFlow.collect { (inputDevice, sttPlaySound) ->
+                Log.d(TAG, "📨 收到设置更新: inputDevice=$inputDevice, sttPlaySound=$sttPlaySound")
+                Log.d(TAG, "   当前设置: inputDeviceSetting=$inputDeviceSetting")
                 sttPlaySoundSetting = sttPlaySound
                 if (inputDeviceSetting != inputDevice) {
+                    Log.w(TAG, "⚠️ 检测到设备类型变化: $inputDeviceSetting → $inputDevice")
                     changeInputDeviceTo(inputDevice)
+                } else {
+                    Log.d(TAG, "✅ 设备类型未变化，跳过切换")
                 }
             }
         }
@@ -109,17 +114,25 @@ class SttInputDeviceWrapperImpl(
         Log.d(TAG, "🔄 切换输入设备: $setting")
         val prevSttInputDevice = sttInputDevice
         
-        // 🔧 修复时序：先销毁旧设备，释放VAD等资源
-        Log.d(TAG, "🧹 销毁旧设备...")
-        prevSttInputDevice?.destroy()
+        // 🔥 对于单例设备（如SenseVoice），不要调用destroy()，只停止监听
+        // 只有在切换到不同类型的设备时才需要销毁
+        val newDevice = buildInputDevice(setting)
         
-        // 等待一小段时间确保资源完全释放
-        kotlinx.coroutines.delay(100)
+        if (prevSttInputDevice != null && prevSttInputDevice !== newDevice) {
+            // 不同的设备实例，停止旧设备的监听
+            Log.d(TAG, "🛑 停止旧设备监听...")
+            prevSttInputDevice.stopListening()
+            
+            // 只有非单例设备才需要销毁
+            if (prevSttInputDevice !is SenseVoiceInputDevice) {
+                Log.d(TAG, "🧹 销毁非单例设备...")
+                prevSttInputDevice.destroy()
+            }
+        }
         
-        // 然后创建新设备
+        // 切换到新设备
         inputDeviceSetting = setting
-        Log.d(TAG, "🏗️ 创建新设备...")
-        sttInputDevice = buildInputDevice(setting)
+        sttInputDevice = newDevice
         
         Log.d(TAG, "✅ 设备切换完成")
         restartUiStateJob()

@@ -155,28 +155,19 @@ class SenseVoiceRecognizer private constructor(
                             return@withLock ""
                         }
                         
-                        // 验证recognizer和配置有效性
-                        DebugLogger.logAudio(TAG, "✅ Recognizer ID: ${recognizer.hashCode()}")
-                        DebugLogger.logAudio(TAG, "🔧 模型路径: ${modelInfo.modelPath}")
-                        DebugLogger.logAudio(TAG, "📄 Tokens路径: ${modelInfo.tokensPath}")
-                        DebugLogger.logAudio(TAG, "🗂️ 来源: ${if (modelInfo.isFromAssets) "Assets" else "文件系统"}")
-                        
-                        // 验证音频数据
-                        val durationSeconds = String.format("%.2f", audioData.size.toFloat() / SAMPLE_RATE)
-                        val audioMin = audioData.minOrNull() ?: 0f
-                        val audioMax = audioData.maxOrNull() ?: 0f
-                        DebugLogger.logAudio(TAG, "开始SenseVoice识别，音频长度: ${audioData.size} (${durationSeconds}秒)")
-                        DebugLogger.logAudio(TAG, "🎵 音频范围: [$audioMin, $audioMax]")
-                        
                         // 创建音频数据副本以确保数据完整性
                         val audioDataCopy = audioData.copyOf()
-                        DebugLogger.logAudio(TAG, "📋 音频数据已复制: ${audioDataCopy.size} samples")
                         
                         // 创建音频流 - 添加更多安全检查
-                        DebugLogger.logAudio(TAG, "准备创建stream...")
+                        // 🔥 检查recognizer是否仍然有效（防止在destroy过程中被释放）
+                        val currentRecognizer = recognizer
+                        if (currentRecognizer == null) {
+                            Log.w(TAG, "⚠️ Recognizer已被释放，跳过识别")
+                            return@withLock ""
+                        }
+                        
                         val stream = try {
-                            val createdStream = recognizer.createStream()
-                            DebugLogger.logAudio(TAG, "✅ Stream创建成功: ${createdStream.hashCode()}")
+                            val createdStream = currentRecognizer.createStream()
                             createdStream
                         } catch (e: Exception) {
                             Log.e(TAG, "❌ 创建stream失败", e)
@@ -185,20 +176,12 @@ class SenseVoiceRecognizer private constructor(
                         
                         try {
                             // 完全按照SherpaOnnxSimulateStreamingAsr官方示例的精确模式
-                            DebugLogger.logAudio(TAG, "向stream输入音频数据...")
                             stream.acceptWaveform(audioDataCopy, SAMPLE_RATE)
-                            DebugLogger.logAudio(TAG, "音频数据输入完成")
-                            
-                            DebugLogger.logAudio(TAG, "开始解码识别...")
-                            recognizer.decode(stream)
-                            DebugLogger.logAudio(TAG, "解码完成，准备获取结果...")
-                            
-                            DebugLogger.logAudio(TAG, "获取识别结果...")
-                            val result = recognizer.getResult(stream)
+                            currentRecognizer.decode(stream)
+                            val result = currentRecognizer.getResult(stream)
                             
                             // 立即释放stream资源 - 与官方示例保持一致
                             stream.release()
-                            DebugLogger.logAudio(TAG, "stream资源已释放")
                             
                             val rawText = result.text.trim()
                             val filteredText = filterToKorean(rawText)  // 🆕 应用韩语过滤
@@ -215,7 +198,6 @@ class SenseVoiceRecognizer private constructor(
                             // 确保在异常情况下也释放stream
                             try {
                                 stream.release()
-                                DebugLogger.logAudio(TAG, "异常情况下释放stream资源")
                             } catch (releaseException: Exception) {
                                 Log.e(TAG, "释放stream时发生异常", releaseException)
                             }

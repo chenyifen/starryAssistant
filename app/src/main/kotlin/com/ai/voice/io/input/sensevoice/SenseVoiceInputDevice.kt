@@ -17,6 +17,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import com.ai.voice.di.LocaleManager
 import com.ai.voice.io.input.InputEvent
 import com.ai.voice.io.input.SttInputDevice
@@ -46,14 +48,15 @@ class SenseVoiceInputDevice private constructor(
         
         // VAD和录制控制参数
         private const val VAD_FRAME_SIZE = 512 // VAD处理帧大小 (32ms @ 16kHz)
-        private const val SPEECH_TIMEOUT_MS = 3000L // 静音3秒后自动停止
-        private const val MAX_RECORDING_DURATION_MS = 30000L // 最长录制时间30秒
+        private const val SPEECH_TIMEOUT_MS = 2000L // 🔥 静音2秒后自动停止（给用户足够思考时间）
+        private const val MAX_RECORDING_DURATION_MS = 10000L // 🔥 最长录制时间10秒（从30秒改为10秒，避免超时）
         private const val MIN_SPEECH_DURATION_MS = 500L // 最短有效语音时间
+        private const val INITIAL_GRACE_PERIOD_MS = 500L // 🆕 唤醒后初始缓冲期，避免唤醒词尾音误触发
         
-        // 🆕 高分提前结束参数（方案1: 保守的高分提前结束）
+        // 🆕 高分提前结束参数（优化版：更快响应）
         private const val MIN_TEXT_LENGTH_FOR_EARLY_STOP = 3  // 至少3个字才考虑提前结束
-        private const val STABLE_COUNT_THRESHOLD = 3          // Partial连续3次稳定
-        private const val EARLY_STOP_CONFIRM_DELAY_MS = 500L  // 提前结束前等待500ms确认
+        private const val STABLE_COUNT_THRESHOLD = 3          // 🔥 Partial连续3次稳定即可（优化响应速度）
+        private const val EARLY_STOP_CONFIRM_DELAY_MS = 200L  // 🔥 提前结束前等待200ms确认（优化响应速度）
         
         // 🆕 韩语模式参数
         private const val KOREAN_MODE_DEFAULT = true  // 默认启用韩语模式
@@ -105,6 +108,9 @@ class SenseVoiceInputDevice private constructor(
     private val isListening = AtomicBoolean(false)
     private val isRecording = AtomicBoolean(false)
     
+    // 🔥 互斥锁保护recognizer的并发访问
+    private val recognizerMutex = Mutex()
+    
     // 音频录制相关
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
@@ -116,13 +122,14 @@ class SenseVoiceInputDevice private constructor(
     private var speechDetected = false
     private var speechStartTime = 0L
     private var lastSpeechTime = 0L
+    private var asrStartTime = 0L // 🆕 ASR启动时间，用于初始缓冲期
     // 参考SherpaOnnxSimulateAsr使用ArrayList进行高效缓冲管理
     private val audioBuffer = arrayListOf<Float>()
     private var bufferOffset = 0
     private val maxBufferSize = SAMPLE_RATE * 10 // 最多存储10秒音频
     private var partialText = ""
     private var lastPartialRecognitionTime = 0L
-    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 200L // 参考demo改为200ms触发间隔
+    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 300L // 🔥 300ms触发间隔（从150ms改为300ms，减少计算负担）
     private var isPartialResultAdded = false // 参考demo的结果管理策略
     
     // 🆕 高分提前结束优化（方案1）
@@ -138,8 +145,7 @@ class SenseVoiceInputDevice private constructor(
     private var ttsListener: ((Boolean) -> Unit)? = null
     
     init {
-        Log.d(TAG, "🎤 SenseVoice输入设备正在初始化...")
-        Log.d(TAG, "⏳ 初始化将在后台异步进行，首次使用时可能需要等待...")
+        Log.d(TAG, "🎤 SenseVoice输入设备初始化中...")
         
         // 异步初始化SenseVoice和VAD
         scope.launch {
@@ -158,7 +164,7 @@ class SenseVoiceInputDevice private constructor(
      * 初始化SenseVoice识别器和VAD
      */
     private suspend fun initializeComponents() {
-        Log.d(TAG, "🔧 开始初始化SenseVoice和VAD组件...")
+        // 初始化SenseVoice和VAD组件
         _uiState.value = SttState.Loading(thenStartListening = false)
         
         try {
@@ -209,11 +215,6 @@ class SenseVoiceInputDevice private constructor(
             isInitialized.set(true)
             _uiState.value = SttState.Loaded
             
-            val senseVoiceInfo = SenseVoiceModelManager.getModelInfo(appContext)
-            val vadInfo = VadModelManager.getVadModelInfo(appContext)
-            Log.d(TAG, "📊 $senseVoiceInfo")
-            Log.d(TAG, "📊 $vadInfo")
-            
         } catch (e: Exception) {
             Log.e(TAG, "❌ 初始化组件异常", e)
             _uiState.value = SttState.ErrorLoading(e)
@@ -228,18 +229,18 @@ class SenseVoiceInputDevice private constructor(
             recreateScope()
         }
         
-        // 🆕 如果未初始化，等待初始化完成（最多3秒）
+        // 🆕 如果未初始化，等待初始化完成（最多10秒，但快速轮询）
         if (!isInitialized.get()) {
             Log.w(TAG, "⚠️ SenseVoice未初始化，等待初始化完成...")
             
             // 使用runBlocking等待初始化，但设置超时
             val initSuccess = try {
                 kotlinx.coroutines.runBlocking {
-                    kotlinx.coroutines.withTimeoutOrNull(3000L) {
-                        // 等待初始化完成
+                    kotlinx.coroutines.withTimeoutOrNull(10000L) {
+                        // 🔥 快速轮询：每10ms检查一次，最多1000次
                         var attempts = 0
-                        while (!isInitialized.get() && attempts < 30) {
-                            kotlinx.coroutines.delay(100L)
+                        while (!isInitialized.get() && attempts < 1000) {
+                            kotlinx.coroutines.delay(10L)
                             attempts++
                         }
                         isInitialized.get()
@@ -338,6 +339,38 @@ class SenseVoiceInputDevice private constructor(
             // 停止所有活动（会自动释放资源）
             stopListening()
             
+            // 🔥 等待VAD任务完成（最多等待2秒）
+            vadJob?.let { job ->
+                try {
+                    withTimeoutOrNull(2000L) {
+                        job.join()
+                        Log.d(TAG, "✅ VAD任务已完成")
+                    } ?: run {
+                        Log.w(TAG, "⚠️ VAD任务等待超时，强制取消")
+                        job.cancel()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "等待VAD任务异常", e)
+                }
+            }
+            vadJob = null
+            
+            // 🔥 等待录制任务完成（最多等待1秒）
+            recordingJob?.let { job ->
+                try {
+                    withTimeoutOrNull(1000L) {
+                        job.join()
+                        Log.d(TAG, "✅ 录制任务已完成")
+                    } ?: run {
+                        Log.w(TAG, "⚠️ 录制任务等待超时，强制取消")
+                        job.cancel()
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "等待录制任务异常", e)
+                }
+            }
+            recordingJob = null
+            
             // 确保麦克风资源被释放
             try {
                 AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
@@ -356,9 +389,12 @@ class SenseVoiceInputDevice private constructor(
             // 关闭音频通道
             samplesChannel.close()
             
-            // 释放SenseVoice识别器
-            senseVoiceRecognizer?.release()
-            senseVoiceRecognizer = null
+            // 🔥 使用互斥锁保护recognizer释放（防止与识别任务并发冲突）
+            recognizerMutex.withLock {
+                senseVoiceRecognizer?.release()
+                senseVoiceRecognizer = null
+                Log.d(TAG, "✅ SenseVoice识别器已释放")
+            }
             
             // 释放VAD资源
             try {
@@ -414,12 +450,17 @@ class SenseVoiceInputDevice private constructor(
             return true
         }
         
+        // 🆕 记录ASR启动时间，用于初始缓冲期
+        asrStartTime = System.currentTimeMillis()
+        Log.d(TAG, "⏰ ASR启动时间记录: ${asrStartTime}ms (初始缓冲期: ${INITIAL_GRACE_PERIOD_MS}ms)")
+        
         // 确保协程作用域可用
         if (!scope.isActive) {
             recreateScope()
         }
         
         Log.d(TAG, "🎙️ 开始语音监听...")
+        com.ai.voice.util.AutoTestLogger.logAsrListeningStarted()
         
         // 请求麦克风资源
         scope.launch {
@@ -500,8 +541,6 @@ class SenseVoiceInputDevice private constructor(
             }
             
             // 单例模式下不需要资源锁
-            Log.d(TAG, "🎵 单例实例开始录制音频...")
-            
             // 确保先清理之前的资源
             cleanupAudioRecord()
             
@@ -518,8 +557,6 @@ class SenseVoiceInputDevice private constructor(
             
             // 使用更大的缓冲区以避免缓冲区溢出，至少是最小缓冲区的4倍
             val actualBufferSize = maxOf(minBufferSizeInBytes * 4, VAD_FRAME_SIZE * 2 * 4) // 4倍安全边界
-            
-            Log.d(TAG, "🔧 实例 ${this.hashCode()} 音频缓冲区配置: 最小=${minBufferSizeInBytes}字节, 实际=${actualBufferSize}字节")
             
             audioRecord = AudioRecord(
                 AUDIO_SOURCE,
@@ -551,8 +588,6 @@ class SenseVoiceInputDevice private constructor(
             }
             
             isRecording.set(true)
-            
-            Log.d(TAG, "🎵 实例 ${this.hashCode()} 开始录制音频，缓冲区大小: ${actualBufferSize}字节")
             
             // 启动音频采集协程 (使用IO调度器)
             recordingJob = scope.launch(Dispatchers.IO) {
@@ -608,7 +643,6 @@ class SenseVoiceInputDevice private constructor(
                     if (record.state == AudioRecord.STATE_INITIALIZED) {
                         when (record.recordingState) {
                             AudioRecord.RECORDSTATE_RECORDING -> {
-                                Log.d(TAG, "🛑 实例 ${this.hashCode()} 停止AudioRecord录制")
                                 record.stop()
                                 
                                 // 等待停止完成
@@ -623,7 +657,7 @@ class SenseVoiceInputDevice private constructor(
                                 }
                             }
                             AudioRecord.RECORDSTATE_STOPPED -> {
-                                Log.d(TAG, "✅ AudioRecord已停止")
+                                // Already stopped
                             }
                             else -> {
                                 Log.w(TAG, "⚠️ AudioRecord状态异常: ${record.recordingState}")
@@ -640,7 +674,6 @@ class SenseVoiceInputDevice private constructor(
                 
                 // 释放资源
                 try {
-                    Log.d(TAG, "🗑️ 实例 ${this.hashCode()} 释放AudioRecord资源")
                     record.release()
                 } catch (e: Exception) {
                     Log.w(TAG, "释放AudioRecord时出错", e)
@@ -648,8 +681,6 @@ class SenseVoiceInputDevice private constructor(
             }
             
             audioRecord = null
-            
-            Log.d(TAG, "✅ 单例实例 AudioRecord资源清理完成")
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 清理AudioRecord资源失败", e)
@@ -660,7 +691,7 @@ class SenseVoiceInputDevice private constructor(
      * 录制音频数据 (修复缓冲区管理和并发问题)
      */
     private suspend fun recordAudioData() {
-        Log.d(TAG, "🔄 开始音频数据录制...")
+        // 开始音频数据录制
         
         // 使用合适的缓冲区大小，确保不超过AudioRecord的缓冲区
         val bufferSize = VAD_FRAME_SIZE // 512 samples = 1024 bytes
@@ -797,7 +828,7 @@ class SenseVoiceInputDevice private constructor(
                 Log.w(TAG, "发送结束信号失败", e)
             }
             
-            Log.d(TAG, "🏁 音频数据录制结束")
+            // 音频数据录制结束
         }
     }
     
@@ -805,13 +836,12 @@ class SenseVoiceInputDevice private constructor(
      * 处理音频进行VAD检测和识别
      */
     private suspend fun processAudioForRecognition() {
-        Log.d(TAG, "🧠 开始音频处理和VAD检测...")
+        // 开始音频处理和VAD检测
         
         try {
             while (isListening.get()) {
                 for (samples in samplesChannel) {
                     if (samples.isEmpty()) {
-                        Log.d(TAG, "收到空音频数据，处理结束")
                         break
                     }
                     
@@ -866,10 +896,11 @@ class SenseVoiceInputDevice private constructor(
                             }
                         }
                         
-                        // 检查是否静音超时
+                        // 检查是否静音超时（使用动态超时）
                         val silenceDuration = currentTime - lastSpeechTime
-                        if (silenceDuration > SPEECH_TIMEOUT_MS) {
-                            Log.d(TAG, "🔇 检测到静音超时，停止监听")
+                        val timeoutMs = getDynamicTimeout()
+                        if (silenceDuration > timeoutMs) {
+                            Log.d(TAG, "🔇 检测到静音超时(${timeoutMs}ms)，停止监听 (partialText='$partialText')")
                             stopListeningAndProcess()
                             break
                         }
@@ -892,7 +923,7 @@ class SenseVoiceInputDevice private constructor(
             // 设置错误状态
             _uiState.value = SttState.ErrorLoading(e)
         } finally {
-            Log.d(TAG, "🏁 音频处理结束")
+            // 音频处理结束
         }
     }
     
@@ -939,8 +970,6 @@ class SenseVoiceInputDevice private constructor(
      */
     private suspend fun performPartialRecognition() {
         try {
-            val recognizer = senseVoiceRecognizer ?: return
-            
             val currentTime = System.currentTimeMillis()
             lastPartialRecognitionTime = currentTime
             
@@ -949,9 +978,24 @@ class SenseVoiceInputDevice private constructor(
                 if (audioBuffer.size < SAMPLE_RATE / 4) return // 至少0.25秒音频
                 audioBuffer.toFloatArray()
             }
-            val newText = recognizer.recognize(audioData)
             
-            if (newText.isNotBlank() && newText != partialText) {
+            // 🔥 使用互斥锁保护recognizer访问
+            val newText = recognizerMutex.withLock {
+                val recognizer = senseVoiceRecognizer
+                if (recognizer == null) {
+                    Log.d(TAG, "⏭️ Recognizer不可用，跳过Partial识别")
+                    return
+                }
+                recognizer.recognize(audioData)
+            }
+            
+            // 🔥 过滤无意义的识别结果
+            val isMeaningful = newText.isNotBlank() && 
+                               newText != "." && 
+                               newText.length > 1 &&
+                               !newText.matches(Regex("^[.。,，!！?？]+$"))
+            
+            if (isMeaningful && newText != partialText) {
                 val oldText = partialText
                 partialText = newText
                 
@@ -975,7 +1019,7 @@ class SenseVoiceInputDevice private constructor(
                 stablePartialConfirmTime = 0L
                 isWaitingForEarlyStop = false
                 
-            } else if (newText.isNotBlank() && newText == partialText) {
+            } else if (isMeaningful && newText == partialText) {
                 // 🆕 Partial文本稳定（连续相同）
                 if (newText == lastStablePartialText) {
                     partialStableCount++
@@ -996,10 +1040,33 @@ class SenseVoiceInputDevice private constructor(
                     lastStablePartialText = newText
                     isWaitingForEarlyStop = false
                 }
+            } else if (!isMeaningful && newText.isNotBlank()) {
+                // 过滤掉无意义输出，不发送事件
+                Log.d(TAG, "⏭️ 跳过无意义输出: '$newText'")
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 部分识别异常", e)
+        }
+    }
+    
+    /**
+     * 🆕 动态获取静音超时时间
+     * 根据是否有识别结果，动态调整超时时间
+     */
+    private fun getDynamicTimeout(): Long {
+        val timeSinceStart = System.currentTimeMillis() - asrStartTime
+        
+        // 如果还在初始缓冲期内，使用长超时
+        if (timeSinceStart < INITIAL_GRACE_PERIOD_MS) {
+            return SPEECH_TIMEOUT_MS
+        }
+        
+        // 如果已经有有效的识别结果，使用短超时（快速响应）
+        return if (partialText.length >= 3) {
+            1000L  // 有识别结果，1秒超时
+        } else {
+            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（2秒）
         }
     }
     
@@ -1044,8 +1111,6 @@ class SenseVoiceInputDevice private constructor(
      */
     private suspend fun performFinalRecognition() {
         try {
-            val recognizer = senseVoiceRecognizer ?: return
-            
             // 检查是否有足够的语音数据
             if (audioBuffer.isEmpty() || !speechDetected) {
                 withContext(Dispatchers.Main) {
@@ -1068,20 +1133,40 @@ class SenseVoiceInputDevice private constructor(
             
             Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioBuffer.size}样本，语音时长: ${speechDuration}ms")
             
-            // 安全地从队列中获取所有音频数据
-            val bufferList = audioBuffer.toList()
-            val audioData = bufferList.toFloatArray()
-            val finalText = recognizer.recognize(audioData)
+            // 安全地从队列中获取所有音频数据 - 直接转换避免null问题
+            val audioData = synchronized(audioBuffer) {
+                audioBuffer.toFloatArray()
+            }
+            
+            // 🔥 使用互斥锁保护recognizer访问
+            val finalText = recognizerMutex.withLock {
+                val recognizer = senseVoiceRecognizer
+                if (recognizer == null) {
+                    Log.w(TAG, "⚠️ Recognizer不可用，跳过Final识别")
+                    return
+                }
+                recognizer.recognize(audioData)
+            }
             
             DebugLogger.logRecognition(TAG, "最终识别结果: \"$finalText\"")
             Log.d(TAG, "🔍 识别结果详情: 长度=${finalText.length}, 是否空白=${finalText.isBlank()}")
             
+            // 🔥 过滤无意义的最终识别结果
+            val isMeaningful = finalText.isNotBlank() && 
+                               finalText != "." && 
+                               finalText.length > 1 &&
+                               !finalText.matches(Regex("^[.。,，!！?？]+$"))
+            
             withContext(Dispatchers.Main) {
-                if (finalText.isNotBlank()) {
+                if (isMeaningful) {
                     Log.d(TAG, "✅ 发送Final事件: \"$finalText\"")
                     eventListener?.invoke(InputEvent.Final(listOf(Pair(finalText, 1.0f))))
                 } else {
-                    Log.d(TAG, "⚠️ 识别结果为空，发送None事件")
+                    if (finalText.isNotBlank()) {
+                        Log.d(TAG, "⏭️ 跳过无意义的最终结果: \"$finalText\"，发送None事件")
+                    } else {
+                        Log.d(TAG, "⚠️ 识别结果为空，发送None事件")
+                    }
                     eventListener?.invoke(InputEvent.None)
                 }
             }

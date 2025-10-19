@@ -68,6 +68,8 @@ class WakeService : Service() {
     lateinit var wakeDevice: WakeDeviceWrapper
     @Inject
     lateinit var dataStore: DataStore<UserSettings>
+    @Inject
+    lateinit var speechOutputDevice: com.ai.voice.di.SpeechOutputDeviceWrapper
 
     private val handler = Handler(Looper.getMainLooper())
     private val releaseSttResourcesRunnable = Runnable {
@@ -123,6 +125,8 @@ class WakeService : Service() {
         if (intent?.action == ACTION_STOP_WAKE_SERVICE) {
             DebugLogger.logWakeWord(TAG, "🛑 Received explicit stop command")
             listening.set(false)
+            // AutoTest日志：退出唤醒监听状态
+            com.ai.voice.util.AutoTestLogger.logWakeListeningStopped()
             return START_NOT_STICKY
         }
 
@@ -159,6 +163,9 @@ class WakeService : Service() {
         
         // 通知回调：开始监听
         WakeWordCallbackManager.notifyListeningStarted()
+        
+        // AutoTest日志：进入唤醒监听状态
+        com.ai.voice.util.AutoTestLogger.logWakeListeningStarted()
         
         // 主动触发模型加载
         if (wakeDevice.state.value == WakeState.NotLoaded) {
@@ -217,6 +224,9 @@ class WakeService : Service() {
         
         // 通知回调：停止监听
         WakeWordCallbackManager.notifyListeningStopped()
+        
+        // AutoTest日志：退出唤醒监听状态
+        com.ai.voice.util.AutoTestLogger.logWakeListeningStopped()
         
         // 释放麦克风资源
         scope.launch {
@@ -498,6 +508,7 @@ class WakeService : Service() {
                         if (wakeWordDetected) {
                             if (now > nextWakeWordAllowed) {
                                 DebugLogger.logWakeWord(TAG, "🎯 WAKE WORD DETECTED! Frame #$frameCount")
+                                com.ai.voice.util.AutoTestLogger.logWakeupDetected()
                                 nextWakeWordAllowed = now.plusMillis(WAKE_WORD_BACKOFF_MILLIS)
                                 onWakeWordDetected()
                             } else {
@@ -553,7 +564,18 @@ class WakeService : Service() {
         
         // 通知所有注册的回调
         WakeWordCallbackManager.notifyWakeWordDetected()
+        
+        // ⚠️ 注意：用户唤醒时不播放TTS
+        // 原因：
+        // 1. 唤醒状态会播放提示音
+        // 2. 马上要进入ASR状态，不应该被TTS打断
+        // 3. 只有在ASR识别过程中检测到唤醒词时才播放TTS
+        DebugLogger.logWakeWord(TAG, "⏭️ 跳过TTS播放（用户唤醒不需要TTS回复）")
 
+        // 检查悬浮球服务是否正在运行
+        val isFloatingServiceRunning = isServiceRunning(com.ai.voice.ui.floating.EnhancedFloatingWindowService::class.java)
+        DebugLogger.logWakeWord(TAG, "🔍 悬浮球服务运行状态: $isFloatingServiceRunning")
+        
         val intent = Intent(this, MainActivity::class.java)
         intent.setAction(ACTION_WAKE_WORD)
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
@@ -583,19 +605,15 @@ class WakeService : Service() {
             pauseAudioRecordForASR()
         }
 
-        // 🔧 保持原有的资源释放机制作为备用，并在STT完成后恢复WakeService
+        // 🔧 ASR完成后恢复WakeService，但不释放STT资源（保持设备状态）
         handler.removeCallbacks(releaseSttResourcesRunnable)
         val resumeWakeServiceRunnable = Runnable {
-            if (MainActivity.isCreated <= 0) {
-                // if the main activity is neither visible nor in the background,
-                // then unload the STT after a while because it would be using resources uselessly
-                sttInputDevice.reinitializeToReleaseResources()
-            }
-            // 恢复WakeService的AudioRecord
+            // 只恢复WakeService的AudioRecord，不释放STT资源
+            DebugLogger.logVoiceRecognition(TAG, "📱 保持STT设备状态，只恢复WakeService")
             resumeAudioRecordAfterASR()
         }
         handler.postDelayed(resumeWakeServiceRunnable, RELEASE_STT_RESOURCES_MILLIS)
-        DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled STT resource release and WakeService resume in ${RELEASE_STT_RESOURCES_MILLIS}ms")
+        DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled WakeService resume in ${RELEASE_STT_RESOURCES_MILLIS}ms (不释放STT资源)")
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0) {
             // start the activity directly on versions prior to Android 10,
@@ -603,38 +621,61 @@ class WakeService : Service() {
             startActivity(intent)
 
         } else {
-            // Android 10+ does not allow starting activities from the background,
-            // so show a full-screen notification instead, which does actually result in starting
-            // the activity from the background if the phone is off and Do Not Disturb is not active
-            // Maybe we could also use the "Display over other apps" permission?
+            // Android 10+ does not allow starting activities from the background
+            // 如果悬浮球已经打开，就不显示通知，直接启动ASR
+            if (isFloatingServiceRunning) {
+                DebugLogger.logWakeWord(TAG, "✅ 悬浮球已打开，跳过通知，直接启动ASR")
+                // ASR已经在上面启动了，这里不需要额外操作
+            } else {
+                // 悬浮球未打开，显示通知让用户点击打开
+                DebugLogger.logWakeWord(TAG, "📱 悬浮球未打开，显示通知")
+                
+                // 修改intent的目标为启动悬浮球服务
+                val floatingIntent = Intent(this, com.ai.voice.ui.floating.EnhancedFloatingWindowService::class.java)
+                
+                val channel = NotificationChannel(
+                    TRIGGERED_NOTIFICATION_CHANNEL_ID,
+                    getString(R.string.wake_service_triggered_notification),
+                    NotificationManager.IMPORTANCE_HIGH
+                )
+                channel.description = getString(R.string.wake_service_triggered_notification_summary)
+                notificationManager.createNotificationChannel(channel)
 
-            val channel = NotificationChannel(
-                TRIGGERED_NOTIFICATION_CHANNEL_ID,
-                getString(R.string.wake_service_triggered_notification),
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            channel.description = getString(R.string.wake_service_triggered_notification_summary)
-            notificationManager.createNotificationChannel(channel)
+                val pendingIntent = PendingIntent.getService(
+                    this,
+                    0,
+                    floatingIntent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                )
 
-            val pendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-            )
+                val notification = NotificationCompat.Builder(this, TRIGGERED_NOTIFICATION_CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_hearing_white)
+                    .setContentTitle(getString(R.string.wake_service_triggered_notification))
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(
+                        getString(R.string.wake_service_triggered_notification_summary)))
+                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                    .setContentIntent(pendingIntent)
+                    .setAutoCancel(true)
+                    .build()
 
-            val notification = NotificationCompat.Builder(this, TRIGGERED_NOTIFICATION_CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_hearing_white)
-                .setContentTitle(getString(R.string.wake_service_triggered_notification))
-                .setStyle(NotificationCompat.BigTextStyle().bigText(
-                    getString(R.string.wake_service_triggered_notification_summary)))
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setFullScreenIntent(pendingIntent, true)
-                .build()
-
-            notificationManager.cancel(TRIGGERED_NOTIFICATION_ID)
-            notificationManager.notify(TRIGGERED_NOTIFICATION_ID, notification)
+                notificationManager.cancel(TRIGGERED_NOTIFICATION_ID)
+                notificationManager.notify(TRIGGERED_NOTIFICATION_ID, notification)
+            }
         }
+    }
+    
+    /**
+     * 检查指定服务是否正在运行
+     */
+    private fun isServiceRunning(serviceClass: Class<*>): Boolean {
+        val manager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        @Suppress("DEPRECATION")
+        for (service in manager.getRunningServices(Int.MAX_VALUE)) {
+            if (serviceClass.name == service.service.className) {
+                return true
+            }
+        }
+        return false
     }
     
     /**

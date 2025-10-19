@@ -105,8 +105,6 @@ class DraggableFloatingOrb(
         
         // 初始化配置
         FloatingOrbConfig.initialize(context)
-        DebugLogger.logUI(TAG, "🎈 Showing floating orb")
-        DebugLogger.logUI(TAG, FloatingOrbConfig.getDebugInfo())
         
         try {
             val composeView = ComposeView(context)
@@ -127,16 +125,13 @@ class DraggableFloatingOrb(
                 var isFullyInitialized by remember { mutableStateOf(false) }
                 
                 LaunchedEffect(Unit) {
-                    Log.d(TAG, "⏳ [COMPOSE] 延迟初始化Compose UI")
                     // 延迟100ms，让主线程有时间处理其他任务
                     kotlinx.coroutines.delay(100)
-                    Log.d(TAG, "✅ [COMPOSE] Compose UI延迟初始化完成")
                     isFullyInitialized = true
                 }
                 
                 if (!isFullyInitialized) {
                     // 简单占位符 - 快速渲染
-                    Log.d(TAG, "📦 [COMPOSE] 显示占位符")
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
@@ -196,8 +191,6 @@ class DraggableFloatingOrb(
             // 设置VoiceAssistantStateProvider监听
             setupStateProviderListener()
             
-            DebugLogger.logUI(TAG, "✅ Floating orb shown successfully")
-            
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Error showing floating orb: ${e.message}")
         }
@@ -209,15 +202,12 @@ class DraggableFloatingOrb(
     fun hide() {
         if (!isShowing) return
         
-        DebugLogger.logUI(TAG, "🎈 Hiding floating orb")
-        
         try {
             // 保存当前位置
             floatingView?.let { view ->
                 val layoutParams = view.layoutParams as WindowManager.LayoutParams
                 savedX = layoutParams.x
                 savedY = layoutParams.y
-                DebugLogger.logUI(TAG, "💾 Position saved: x=$savedX, y=$savedY")
             }
             
             // 清理状态监听
@@ -321,19 +311,13 @@ class DraggableFloatingOrb(
      * 处理悬浮球点击
      */
     private fun handleOrbClick() {
-        Log.d(TAG, "🎯 [CLICK] DraggableFloatingOrb handleOrbClick 开始")
-        DebugLogger.logUI(TAG, "👆 Orb clicked")
-        Log.d(TAG, "🔄 [CLICK] 调用 onOrbClick 回调")
         onOrbClick?.invoke()
-        Log.d(TAG, "✅ [CLICK] DraggableFloatingOrb handleOrbClick 完成")
     }
     
     /**
      * 处理悬浮球长按
      */
     private fun handleOrbLongPress() {
-        DebugLogger.logUI(TAG, "👆 Orb long pressed - entering drag mode")
-        
         // 添加震动反馈
         addHapticFeedback()
         
@@ -348,8 +332,6 @@ class DraggableFloatingOrb(
      * 处理拖动开始
      */
     private fun handleDragStart() {
-        DebugLogger.logUI(TAG, "🤏 Drag started")
-        
         // 拖拽时不改变动画状态，保持当前状态
         
         // 添加震动反馈
@@ -363,8 +345,6 @@ class DraggableFloatingOrb(
      * 处理拖动结束
      */
     private fun handleDragEnd() {
-        DebugLogger.logUI(TAG, "🤏 Drag ended")
-        
         // 拖拽结束后恢复原来的动画状态（不强制设为待机）
         
         // 添加震动反馈
@@ -392,22 +372,18 @@ class DraggableFloatingOrb(
             distanceToLeft -> {
                 // 吸附到左边缘
                 layoutParams.x = 0
-                DebugLogger.logUI(TAG, "🧲 Snapped to left edge")
             }
             distanceToRight -> {
                 // 吸附到右边缘
                 layoutParams.x = screenWidth - calculateWindowWidth()
-                DebugLogger.logUI(TAG, "🧲 Snapped to right edge")
             }
             distanceToTop -> {
                 // 吸附到顶部边缘
                 layoutParams.y = 0
-                DebugLogger.logUI(TAG, "🧲 Snapped to top edge")
             }
             distanceToBottom -> {
                 // 吸附到底部边缘
                 layoutParams.y = screenHeight - calculateWindowHeight()
-                DebugLogger.logUI(TAG, "🧲 Snapped to bottom edge")
             }
         }
         
@@ -448,7 +424,6 @@ class DraggableFloatingOrb(
             // 同时更新保存的位置
             savedX = x
             savedY = y
-            DebugLogger.logUI(TAG, "📍 Position updated and saved: x=$x, y=$y")
         }
     }
     
@@ -458,7 +433,6 @@ class DraggableFloatingOrb(
     fun setEdgeState(atEdge: Boolean) {
         if (isAtEdge != atEdge) {
             isAtEdge = atEdge
-            DebugLogger.logUI(TAG, "🧲 Edge state changed: $atEdge")
             
             // 更新窗口布局参数以适应新的尺寸
             if (isShowing) {
@@ -474,7 +448,6 @@ class DraggableFloatingOrb(
                     
                     try {
                         windowManager.updateViewLayout(currentView, layoutParams)
-                        DebugLogger.logUI(TAG, "🔄 Window layout updated for edge state: $atEdge, height: ${layoutParams.height}")
                     } catch (e: Exception) {
                         DebugLogger.logUI(TAG, "❌ Failed to update window layout: ${e.message}")
                         // 如果更新失败，回退到重新创建视图
@@ -503,7 +476,6 @@ class DraggableFloatingOrb(
             }
             stateListener?.let { listener ->
                 stateProvider?.addListener(listener)
-                DebugLogger.logUI(TAG, "📡 VoiceAssistantStateProvider listener registered")
             }
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Failed to setup VoiceAssistantStateProvider listener: ${e.message}")
@@ -517,7 +489,6 @@ class DraggableFloatingOrb(
         try {
             stateListener?.let { listener ->
                 stateProvider?.removeListener(listener)
-                DebugLogger.logUI(TAG, "📡 VoiceAssistantStateProvider listener removed")
             }
             stateProvider = null
             stateListener = null
@@ -530,8 +501,6 @@ class DraggableFloatingOrb(
      * 处理语音助手状态变化
      */
     private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
-        DebugLogger.logUI(TAG, "🔄 Voice assistant state changed: ${state.uiState}, display: '${state.displayText}'")
-        
         // 性能优化：检测变化类型
         val asrTextChanged = currentAsrText.value != state.asrText
         val ttsTextChanged = currentTtsText.value != state.ttsText
@@ -544,27 +513,17 @@ class DraggableFloatingOrb(
         val shouldUpdateTts = ttsTextChanged && !(state.ttsText.isEmpty() && currentTtsText.value.isEmpty())
         
         if (shouldUpdateAsr) {
-            val updateTime = System.currentTimeMillis()
             currentAsrText.value = state.asrText
-            DebugLogger.logRecognition(TAG, "🖼️ UI文本状态更新 (ASR) - 时间戳: $updateTime, 长度: ${state.asrText.length}")
-            DebugLogger.logRecognition(TAG, "   内容: '${state.asrText}'")
-        } else if (asrTextChanged && !shouldUpdateAsr) {
-            DebugLogger.logRecognition(TAG, "⏭️ 跳过空文本ASR更新")
         }
         
         if (shouldUpdateTts) {
-            val updateTime = System.currentTimeMillis()
             currentTtsText.value = state.ttsText
-            DebugLogger.logRecognition(TAG, "🖼️ UI文本状态更新 (TTS) - 时间戳: $updateTime, 长度: ${state.ttsText.length}")
-        } else if (ttsTextChanged && !shouldUpdateTts) {
-            DebugLogger.logRecognition(TAG, "⏭️ 跳过空文本TTS更新")
         }
         
         // 性能优化：智能更新策略
         when {
             // 情况1：仅文本变化 - 使用文本就地更新，避免refreshUI()
             (shouldUpdateAsr || shouldUpdateTts) && !uiStateChanged && !displayTextChanged -> {
-                DebugLogger.logUI(TAG, "⚡ Text-only update, skipping UI rebuild")
                 updateTextOnly()
             }
             
@@ -575,16 +534,6 @@ class DraggableFloatingOrb(
                     updateTextOnly()
                 }
             }
-            
-            // 情况3：无变化 - 跳过更新
-            else -> {
-                DebugLogger.logUI(TAG, "⏭️ No significant changes, skipping update")
-            }
-        }
-        
-        // 记录技能结果
-        state.result?.let { result ->
-            DebugLogger.logUI(TAG, "🎯 Skill result: ${result.title} - ${result.content}")
         }
     }
     
@@ -592,20 +541,11 @@ class DraggableFloatingOrb(
      * 性能优化：文本就地更新 - 避免refreshUI()
      */
     private fun updateTextOnly() {
-        val recomposeTime = System.currentTimeMillis()
-        
         // Compose会自动检测状态变化并重组相关组件
         // 无需调用refreshUI()，大幅提升性能
-        DebugLogger.logRecognition(TAG, "🔄 触发Compose重组 - 时间戳: $recomposeTime")
-        DebugLogger.logRecognition(TAG, "   ASR: '${currentAsrText.value}' (${currentAsrText.value.length}字)")
-        DebugLogger.logRecognition(TAG, "   TTS: '${currentTtsText.value}' (${currentTtsText.value.length}字)")
         
         // 文本变化时需要更新窗口高度，但保持位置不变
-        val heightUpdateStart = System.currentTimeMillis()
         updateWindowHeightOnly()
-        val heightUpdateDuration = System.currentTimeMillis() - heightUpdateStart
-        
-        DebugLogger.logRecognition(TAG, "📐 窗口高度更新完成 - 耗时: ${heightUpdateDuration}ms")
     }
     
     /**
@@ -657,23 +597,18 @@ class DraggableFloatingOrb(
             }
             VoiceAssistantUIState.LISTENING -> {
                 animationStateManager.setActive("LISTENING")
-                DebugLogger.logUI(TAG, "👂 LISTENING state activated")
             }
             VoiceAssistantUIState.THINKING -> {
                 animationStateManager.setLoading()
-                DebugLogger.logUI(TAG, "🤔 THINKING state activated")
             }
             VoiceAssistantUIState.SPEAKING -> {
                 animationStateManager.setActive("SPEAKING")
-                DebugLogger.logUI(TAG, "🎵 SPEAKING state activated")
             }
             VoiceAssistantUIState.ERROR -> {
                 val displayText = state.displayText.ifBlank { "ERROR" }
                 animationStateManager.setActive(displayText)
             }
         }
-        
-        DebugLogger.logUI(TAG, "🎨 UI state updated: ${state.uiState}")
     }
     
     /**
@@ -683,8 +618,6 @@ class DraggableFloatingOrb(
         if (isDragging.value != dragging || isLongPressing.value != longPressing) {
             isDragging.value = dragging
             isLongPressing.value = longPressing
-            
-            DebugLogger.logUI(TAG, "🎨 Drag state updated: dragging=$dragging, longPressing=$longPressing")
             
             // Compose会自动检测MutableState变化并重组，无需手动刷新
         }

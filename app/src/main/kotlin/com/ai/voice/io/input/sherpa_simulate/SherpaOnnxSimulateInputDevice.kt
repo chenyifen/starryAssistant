@@ -65,9 +65,7 @@ class SherpaOnnxSimulateInputDevice(
         private const val AUTO_TEST_TAG = "AutoTest"
         
         // 自动化测试广播
-        const val ACTION_AUTO_TEST_START = "org.stypox.dicio.AUTO_TEST_START"
-        const val ACTION_AUTO_TEST_RESULT = "org.stypox.dicio.AUTO_TEST_RESULT"
-        const val EXTRA_RESULT_TEXT = "result_text"
+        const val ACTION_AUTO_TEST_START = "com.ai.voice.AUTO_TEST_START"
         
         // 音频配置 (与官方demo一致)
         private const val SAMPLE_RATE = 16000
