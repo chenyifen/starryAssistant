@@ -45,48 +45,15 @@ class SherpaOnnxTtsSpeechDevice(
     private val locale: Locale = mapToSherpaCompatibleLocale(inputLocale)
     
     init {
-        Log.d(TAG, "🔊 SherpaOnnxTtsSpeechDevice - 初始化:")
-        Log.d(TAG, "  📥 输入语言: $inputLocale (language=${inputLocale.language}, country=${inputLocale.country})")
-        Log.d(TAG, "  🔄 映射后语言: $locale (language=${locale.language}, country=${locale.country})")
-        
+        Log.d(TAG, "初始化TTS: $locale")
         initializeTts()
     }
 
     private fun initializeTts() {
-        // 添加详细的路径检查
-        Log.d(TAG, "  🔍 开始检查TTS模型可用性...")
-        
-        // 检查外部存储路径
-        val externalTtsPath = TtsModelManager.getExternalTtsModelsPath(context)
-        Log.d(TAG, "  📁 外部存储TTS路径: $externalTtsPath")
-        
-        val externalDir = java.io.File(externalTtsPath)
-        Log.d(TAG, "  📂 外部存储目录状态:")
-        Log.d(TAG, "    - 存在: ${externalDir.exists()}")
-        Log.d(TAG, "    - 可读: ${externalDir.canRead()}")
-        Log.d(TAG, "    - 是目录: ${externalDir.isDirectory}")
-        
-        if (externalDir.exists()) {
-            val subDirs = externalDir.listFiles()
-            Log.d(TAG, "    - 子目录数量: ${subDirs?.size ?: 0}")
-            subDirs?.forEach { subDir ->
-                Log.d(TAG, "      * ${subDir.name} (${if (subDir.isDirectory) "目录" else "文件"})")
-            }
-        }
-        
         try {
             val modelConfig = TtsModelManager.getTtsModelConfig(context, locale)
             if (modelConfig != null) {
-                Log.d(TAG, "  📦 加载TTS模型: ${modelConfig.modelDir}")
-                Log.d(TAG, "  🔧 使用模式: ${if (modelConfig.useAssets) "Assets" else "外部存储"}")
-                
-                // 验证模型文件是否真实存在
-                val modelFile = java.io.File(modelConfig.modelDir, modelConfig.modelName)
-                Log.d(TAG, "  📄 模型文件路径: ${modelFile.absolutePath}")
-                Log.d(TAG, "  📄 模型文件状态:")
-                Log.d(TAG, "    - 存在: ${modelFile.exists()}")
-                Log.d(TAG, "    - 可读: ${modelFile.canRead()}")
-                Log.d(TAG, "    - 大小: ${if (modelFile.exists()) "${modelFile.length() / 1024 / 1024}MB" else "N/A"}")
+                Log.d(TAG, "加载TTS模型: ${if (modelConfig.useAssets) "Assets" else "外部存储"}")
                 
                 // 处理dataDir和dictDir，需要复制到外部存储（参考demo代码）
                 var processedDataDir = modelConfig.dataDir
@@ -96,63 +63,37 @@ class SherpaOnnxTtsSpeechDevice(
                 if (modelConfig.useAssets) {
                     // 从Assets加载，TtsModelManager已经返回了完整的assets路径，但某些文件仍需要复制到外部存储
                     if (modelConfig.dataDir.isNotEmpty()) {
-                        // dataDir已经是完整的assets路径，如: "models/tts/vits-zh-hf-fanchen-C/espeak-ng-data"
                         val externalFilesDir = context.getExternalFilesDir(null)!!.absolutePath
                         val externalDataPath = "$externalFilesDir/${modelConfig.dataDir}"
                         
-                        if (File(externalDataPath).exists()) {
-                            Log.d(TAG, "  📁 数据目录已存在，直接使用: $externalDataPath")
-                            processedDataDir = externalDataPath
-                        } else {
-                            Log.d(TAG, "  📁 数据目录不存在，开始复制: ${modelConfig.dataDir}")
-                            // 直接使用TtsModelManager返回的完整assets路径
+                        if (!File(externalDataPath).exists()) {
                             copyAssetsToExternal(modelConfig.dataDir)
-                            processedDataDir = "$externalFilesDir/${modelConfig.dataDir}"
-                            Log.d(TAG, "  📁 数据目录已复制: $processedDataDir")
                         }
+                        processedDataDir = externalDataPath
                     }
                     
                     if (modelConfig.dictDir.isNotEmpty()) {
-                        // dictDir已经是完整的assets路径，如: "models/tts/vits-zh-hf-fanchen-C/dict"
                         val externalFilesDir = context.getExternalFilesDir(null)!!.absolutePath
                         val externalDictPath = "$externalFilesDir/${modelConfig.dictDir}"
                         
-                        if (File(externalDictPath).exists()) {
-                            Log.d(TAG, "  📚 字典目录已存在，直接使用: $externalDictPath")
-                            processedDictDir = externalDictPath
-                            
-                            // 根据demo代码，当有dictDir时自动设置ruleFsts
-                            if (modelConfig.ruleFsts.isEmpty()) {
-                                // 使用 ModelPathManager 获取正确的 TTS 路径
-                                val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
-                                val modelDirName = modelConfig.modelDir.substringAfterLast("/")
-                                processedRuleFsts = "$ttsBasePath/$modelDirName/phone.fst,$ttsBasePath/$modelDirName/date.fst,$ttsBasePath/$modelDirName/number.fst"
-                            }
-                        } else {
-                            Log.d(TAG, "  📚 字典目录不存在，开始复制: ${modelConfig.dictDir}")
-                            // 直接使用TtsModelManager返回的完整assets路径
+                        if (!File(externalDictPath).exists()) {
                             copyAssetsToExternal(modelConfig.dictDir)
-                            processedDictDir = "$externalFilesDir/${modelConfig.dictDir}"
-                            
-                            // 根据demo代码，当有dictDir时自动设置ruleFsts
-                            if (modelConfig.ruleFsts.isEmpty()) {
-                                // 使用 ModelPathManager 获取正确的 TTS 路径
-                                val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
-                                val modelDirName = modelConfig.modelDir.substringAfterLast("/")
-                                processedRuleFsts = "$ttsBasePath/$modelDirName/phone.fst,$ttsBasePath/$modelDirName/date.fst,$ttsBasePath/$modelDirName/number.fst"
-                            }
-                            Log.d(TAG, "  📚 字典目录已复制: $processedDictDir")
                         }
-                        Log.d(TAG, "  📝 规则FSTs: $processedRuleFsts")
+                        processedDictDir = externalDictPath
+                        
+                        // 根据demo代码，当有dictDir时自动设置ruleFsts
+                        if (modelConfig.ruleFsts.isEmpty()) {
+                            val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
+                            val modelDirName = modelConfig.modelDir.substringAfterLast("/")
+                            processedRuleFsts = "$ttsBasePath/$modelDirName/phone.fst,$ttsBasePath/$modelDirName/date.fst,$ttsBasePath/$modelDirName/number.fst"
+                        }
                     }
                 }
                 
-                // TODO: 修复AAR版本的API差异
                 // 确保使用正确的modelDir路径
                 val processedModelDir = if (modelConfig.useAssets) {
-                    modelConfig.modelDir // assets路径保持不变
+                    modelConfig.modelDir
                 } else {
-                    // 外部存储：使用 ModelPathManager 获取正确的 TTS 路径
                     val ttsBasePath = TtsModelManager.getExternalTtsModelsPath(context)
                     val modelDirName = modelConfig.modelDir.substringAfterLast("/")
                     "$ttsBasePath/$modelDirName"
@@ -165,53 +106,37 @@ class SherpaOnnxTtsSpeechDevice(
                     dictDir = processedDictDir,
                     ruleFsts = processedRuleFsts,
                     ruleFars = modelConfig.ruleFars,
-                    acousticModelName = "", // AAR版本新增参数
-                    vocoder = "", // AAR版本新增参数
-                    voices = "" // AAR版本新增参数
+                    acousticModelName = "",
+                    vocoder = "",
+                    voices = ""
                 )
                 
-                // 根据模型来源选择初始化方式（参考SherpaOnnxWakeDevice的实现）
+                // 根据模型来源选择初始化方式
                 try {
                     // 验证关键文件是否存在
                     if (!modelConfig.useAssets) {
                         val modelFile = File(processedModelDir, modelConfig.modelName)
                         if (!modelFile.exists()) {
-                            Log.e(TAG, "  ❌ 模型文件不存在: ${modelFile.absolutePath}")
+                            Log.e(TAG, "模型文件不存在: ${modelFile.absolutePath}")
                             throw Exception("模型文件不存在: ${modelFile.absolutePath}")
                         }
-                        Log.d(TAG, "  ✅ 模型文件验证通过: ${modelFile.absolutePath}")
                     }
                     
-                    Log.d(TAG, "  🔧 TTS配置详情:")
-                    Log.d(TAG, "    - modelDir: $processedModelDir")
-                    Log.d(TAG, "    - modelName: ${modelConfig.modelName}")
-                    Log.d(TAG, "    - dataDir: $processedDataDir")
-                    Log.d(TAG, "    - dictDir: $processedDictDir")
-                    Log.d(TAG, "    - ruleFsts: $processedRuleFsts")
-                    Log.d(TAG, "    - useAssets: ${modelConfig.useAssets}")
-                    
                     tts = if (modelConfig.useAssets) {
-                        Log.d(TAG, "  📱 从Assets加载TTS模型")
                         OfflineTts(assetManager = context.assets, config = config)
                     } else {
-                        Log.d(TAG, "  💾 从外部存储加载TTS模型")
                         OfflineTts(assetManager = null, config = config)
                     }
                     
                     initializedCorrectly = true
-                    
-                    Log.d(TAG, "  ✅ SherpaOnnx TTS初始化成功")
-                    Log.d(TAG, "  🎵 采样率: ${tts?.sampleRate()}")
-                    Log.d(TAG, "  🎤 说话人数量: ${tts?.numSpeakers()}")
+                    Log.d(TAG, "TTS初始化成功 (采样率: ${tts?.sampleRate()})")
                     
                 } catch (e: Exception) {
-                    Log.e(TAG, "  ❌ SherpaOnnx OfflineTts创建失败: ${e.message}", e)
-                    Log.e(TAG, "  📋 配置信息: modelDir=$processedModelDir, useAssets=${modelConfig.useAssets}")
-                    Log.e(TAG, "  📋 处理后路径: dataDir=$processedDataDir, dictDir=$processedDictDir, ruleFsts=$processedRuleFsts")
+                    Log.e(TAG, "TTS创建失败: ${e.message}", e)
                     
-                    // 尝试不使用ruleFsts重新初始化（可能是ruleFsts导致的崩溃）
+                    // 尝试不使用ruleFsts重新初始化
                     if (processedRuleFsts.isNotEmpty()) {
-                        Log.w(TAG, "  🔄 尝试不使用ruleFsts重新初始化TTS...")
+                        Log.w(TAG, "尝试不使用ruleFsts重新初始化TTS")
                         try {
                             val fallbackConfig = getOfflineTtsConfig(
                                 modelDir = processedModelDir,
@@ -219,7 +144,7 @@ class SherpaOnnxTtsSpeechDevice(
                                 lexicon = modelConfig.lexicon,
                                 dataDir = processedDataDir,
                                 dictDir = processedDictDir,
-                                ruleFsts = "", // 清空ruleFsts
+                                ruleFsts = "",
                                 ruleFars = modelConfig.ruleFars,
                                 acousticModelName = "",
                                 vocoder = "",
@@ -233,13 +158,11 @@ class SherpaOnnxTtsSpeechDevice(
                             }
                             
                             initializedCorrectly = true
-                            Log.w(TAG, "  ⚠️ TTS初始化成功（已禁用ruleFsts）")
-                            Log.d(TAG, "  🎵 采样率: ${tts?.sampleRate()}")
-                            Log.d(TAG, "  🎤 说话人数量: ${tts?.numSpeakers()}")
+                            Log.w(TAG, "TTS初始化成功（已禁用ruleFsts）")
                             return
                             
                         } catch (fallbackException: Exception) {
-                            Log.e(TAG, "  ❌ 回退初始化也失败: ${fallbackException.message}", fallbackException)
+                            Log.e(TAG, "回退初始化失败: ${fallbackException.message}", fallbackException)
                         }
                     }
                     
@@ -250,12 +173,11 @@ class SherpaOnnxTtsSpeechDevice(
                 }
                 
             } else {
-                Log.e(TAG, "  ❌ 未找到TTS模型: $locale")
-                Log.e(TAG, "  💡 请确保已下载对应语言的TTS模型")
+                Log.e(TAG, "未找到TTS模型: $locale")
                 handleInitializationError(R.string.android_tts_unsupported_language)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "  ❌ SherpaOnnx TTS初始化失败: ${e.message}", e)
+            Log.e(TAG, "TTS初始化失败: ${e.message}", e)
             handleInitializationError(R.string.android_tts_error)
         }
     }
@@ -267,44 +189,31 @@ class SherpaOnnxTtsSpeechDevice(
             return
         }
 
-        // 取消当前播放
         stopSpeaking()
-        
-        Log.d(TAG, "🗣️ 开始TTS合成: '$speechOutput'")
         isSpeakingFlag.set(true)
         
         currentJob = scope.launch {
             try {
-                // 生成音频
                 val audio = tts?.generate(
                     text = speechOutput,
-                    sid = 0, // 使用默认说话人
+                    sid = 0,
                     speed = 1.0f
                 )
                 
                 if (audio != null && audio.samples.isNotEmpty()) {
-                    Log.d(TAG, "  ✅ 音频生成成功，样本数: ${audio.samples.size}")
-                    
-                    // 播放音频
                     withContext(Dispatchers.Main) {
                         playAudio(audio)
                     }
                 } else {
-                    Log.e(TAG, "  ❌ 音频生成失败")
+                    Log.e(TAG, "音频生成失败")
                     withContext(Dispatchers.Main) {
                         onSpeakingFinished()
                     }
                 }
             } catch (e: Exception) {
-                // 区分取消异常和真正的错误
-                if (e is kotlinx.coroutines.CancellationException || 
-                    e.cause is kotlinx.coroutines.CancellationException ||
-                    e.message?.contains("was cancelled", ignoreCase = true) == true) {
-                    // 协程被取消是正常的（新的TTS请求到来时会取消旧的）
-                    Log.d(TAG, "⚠️ TTS合成被取消（正常）: 新的TTS请求到达")
-                } else {
-                    // 真正的错误才记录ERROR
-                    Log.e(TAG, "❌ TTS合成失败: ${e.message}", e)
+                if (e !is kotlinx.coroutines.CancellationException && 
+                    e.cause !is kotlinx.coroutines.CancellationException) {
+                    Log.e(TAG, "TTS合成失败: ${e.message}", e)
                 }
                 withContext(Dispatchers.Main) {
                     onSpeakingFinished()
@@ -314,13 +223,11 @@ class SherpaOnnxTtsSpeechDevice(
     }
 
     private fun playAudio(audio: GeneratedAudio) {
-        // 通知AudioResourceManager: TTS播放开始
         scope.launch {
             try {
                 AudioResourceManager.notifyTtsStart()
-                Log.d(TAG, "  📢 已通知AudioResourceManager: TTS播放开始")
             } catch (e: Exception) {
-                Log.e(TAG, "  ❌ 通知TTS开始失败", e)
+                Log.e(TAG, "通知TTS开始失败", e)
             }
         }
         
@@ -363,22 +270,16 @@ class SherpaOnnxTtsSpeechDevice(
                 .build()
             
             audioTrack?.play()
-            
-            // 写入音频数据
-            val bytesWritten = audioTrack?.write(shortArray, 0, shortArray.size)
-            Log.d(TAG, "  🎵 音频播放中，写入字节数: $bytesWritten")
+            audioTrack?.write(shortArray, 0, shortArray.size)
             
             // 等待播放完成
             audioTrack?.setNotificationMarkerPosition(shortArray.size)
             audioTrack?.setPlaybackPositionUpdateListener(object : AudioTrack.OnPlaybackPositionUpdateListener {
                 override fun onMarkerReached(track: AudioTrack?) {
-                    Log.d(TAG, "  ✅ 音频播放完成")
                     onSpeakingFinished()
                 }
                 
-                override fun onPeriodicNotification(track: AudioTrack?) {
-                    // 不需要处理
-                }
+                override fun onPeriodicNotification(track: AudioTrack?) {}
             })
             
         } catch (e: Exception) {
@@ -393,23 +294,18 @@ class SherpaOnnxTtsSpeechDevice(
         audioTrack?.release()
         audioTrack = null
         
-        // 通知AudioResourceManager: TTS播放结束
         scope.launch {
             try {
                 AudioResourceManager.notifyTtsEnd()
-                Log.d(TAG, "  📢 已通知AudioResourceManager: TTS播放结束")
             } catch (e: Exception) {
-                Log.e(TAG, "  ❌ 通知TTS结束失败", e)
+                Log.e(TAG, "通知TTS结束失败", e)
             }
         }
         
-        // 执行完成回调
         for (runnable in runnablesWhenFinished) {
             runnable.run()
         }
         runnablesWhenFinished.clear()
-        
-        Log.d(TAG, "  🏁 TTS播放完成")
     }
 
     override fun stopSpeaking() {
@@ -422,19 +318,15 @@ class SherpaOnnxTtsSpeechDevice(
         audioTrack?.release()
         audioTrack = null
         
-        // 如果之前正在播放，通知AudioResourceManager
         if (wasSpeaking) {
             scope.launch {
                 try {
                     AudioResourceManager.notifyTtsEnd()
-                    Log.d(TAG, "  📢 已通知AudioResourceManager: TTS停止")
                 } catch (e: Exception) {
-                    Log.e(TAG, "  ❌ 通知TTS停止失败", e)
+                    Log.e(TAG, "通知TTS停止失败", e)
                 }
             }
         }
-        
-        Log.d(TAG, "  ⏹️ TTS播放停止")
     }
 
     override val isSpeaking: Boolean
@@ -452,7 +344,6 @@ class SherpaOnnxTtsSpeechDevice(
         stopSpeaking()
         tts?.release()
         tts = null
-        Log.d(TAG, "  🧹 SherpaOnnx TTS清理完成")
     }
 
     private fun handleInitializationError(@StringRes errorString: Int) {
@@ -488,7 +379,7 @@ class SherpaOnnxTtsSpeechDevice(
     }
     
     /**
-     * 复制单个Asset文件到外部存储（参考demo代码）
+     * 复制单个Asset文件到外部存储
      */
     private fun copyAssetFile(assetPath: String) {
         try {
@@ -504,7 +395,6 @@ class SherpaOnnxTtsSpeechDevice(
                     }
                 }
             }
-            Log.d(TAG, "文件复制成功: $assetPath")
         } catch (e: Exception) {
             Log.e(TAG, "文件复制失败: $assetPath", e)
         }
@@ -515,18 +405,9 @@ class SherpaOnnxTtsSpeechDevice(
      */
     private fun mapToSherpaCompatibleLocale(inputLocale: Locale): Locale {
         return when (inputLocale.language) {
-            "cn" -> {
-                Log.d(TAG, "  🔄 映射cn -> zh (中文)")
-                Locale.CHINESE
-            }
-            "ko" -> {
-                Log.d(TAG, "  🔄 映射ko -> ko (韩语)")
-                Locale.KOREAN
-            }
-            else -> {
-                Log.d(TAG, "  ✅ 保持原始Locale: $inputLocale")
-                inputLocale
-            }
+            "cn" -> Locale.CHINESE
+            "ko" -> Locale.KOREAN
+            else -> inputLocale
         }
     }
 
