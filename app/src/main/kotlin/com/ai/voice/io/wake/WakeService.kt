@@ -546,6 +546,15 @@ class WakeService : Service() {
     private fun onWakeWordDetected() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
         
+        // 🔧 取消之前的恢复任务，避免重复唤醒导致状态混乱
+        handler.removeCallbacks(releaseSttResourcesRunnable)
+        
+        // 🔧 重置audioRecordPaused标志，确保状态一致
+        if (audioRecordPaused.get()) {
+            DebugLogger.logWakeWord(TAG, "⚠️ 检测到audioRecordPaused=true，重置为false")
+            audioRecordPaused.set(false)
+        }
+        
         // 通知所有注册的回调
         WakeWordCallbackManager.notifyWakeWordDetected()
         
@@ -565,8 +574,8 @@ class WakeService : Service() {
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
         DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
 
-        // 释放麦克风资源，让ASR使用
-        scope.launch {
+        // 🔧 改为同步释放麦克风资源，确保释放完成后再启动ASR
+        runBlocking {
             try {
                 AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
                 DebugLogger.logWakeWord(TAG, "✅ 已释放麦克风资源，让ASR使用")
@@ -590,7 +599,6 @@ class WakeService : Service() {
         }
 
         // 🔧 ASR完成后恢复WakeService，但不释放STT资源（保持设备状态）
-        handler.removeCallbacks(releaseSttResourcesRunnable)
         val resumeWakeServiceRunnable = Runnable {
             // 只恢复WakeService的AudioRecord，不释放STT资源
             DebugLogger.logVoiceRecognition(TAG, "📱 保持STT设备状态，只恢复WakeService")
@@ -676,7 +684,14 @@ class WakeService : Service() {
             return
         }
         
+        // 🔧 添加状态检查，避免重复暂停
+        if (audioRecordPaused.get()) {
+            DebugLogger.logWakeWord(TAG, "⚠️ WakeService已经处于暂停状态，跳过重复暂停")
+            return
+        }
+        
         DebugLogger.logWakeWord(TAG, "⏸️ Pausing WakeService AudioRecord for ASR")
+        DebugLogger.logWakeWord(TAG, "📊 当前状态: listening=${listening.get()}, audioRecordPaused=${audioRecordPaused.get()}")
         audioRecordPaused.set(true)
         
         // 给AudioRecord一些时间停止
@@ -687,10 +702,14 @@ class WakeService : Service() {
                     if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                         ar.stop()
                         DebugLogger.logWakeWord(TAG, "🛑 WakeService AudioRecord stopped for ASR")
+                    } else {
+                        DebugLogger.logWakeWord(TAG, "📊 AudioRecord已经停止，状态: ${ar.recordingState}")
                     }
                 } catch (e: Exception) {
                     DebugLogger.logWakeWordError(TAG, "❌ Error stopping AudioRecord for ASR", e)
                 }
+            } ?: run {
+                DebugLogger.logWakeWord(TAG, "⚠️ currentAudioRecord为null，无法停止")
             }
         }
     }
@@ -709,7 +728,14 @@ class WakeService : Service() {
             return
         }
         
+        // 🔧 添加状态检查，避免不必要的恢复
+        if (!audioRecordPaused.get()) {
+            DebugLogger.logWakeWord(TAG, "⚠️ WakeService未处于暂停状态，跳过恢复")
+            return
+        }
+        
         DebugLogger.logWakeWord(TAG, "▶️ Resuming WakeService AudioRecord after ASR")
+        DebugLogger.logWakeWord(TAG, "📊 当前状态: listening=${listening.get()}, audioRecordPaused=${audioRecordPaused.get()}")
         audioRecordPaused.set(false)
         
         // 尝试重新启动AudioRecord（如果它被停止了）
@@ -720,10 +746,14 @@ class WakeService : Service() {
                     if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING && listening.get()) {
                         ar.startRecording()
                         DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR completion")
+                    } else {
+                        DebugLogger.logWakeWord(TAG, "📊 AudioRecord状态: ${ar.recordingState}, listening: ${listening.get()}")
                     }
                 } catch (e: Exception) {
                     DebugLogger.logWakeWordError(TAG, "❌ Error restarting AudioRecord after ASR", e)
                 }
+            } ?: run {
+                DebugLogger.logWakeWord(TAG, "⚠️ currentAudioRecord为null，无法重新启动")
             }
         }
         
