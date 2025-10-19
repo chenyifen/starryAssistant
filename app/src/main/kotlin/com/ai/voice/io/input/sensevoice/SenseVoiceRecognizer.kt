@@ -170,7 +170,9 @@ class SenseVoiceRecognizer private constructor(
                             val createdStream = currentRecognizer.createStream()
                             createdStream
                         } catch (e: Exception) {
-                            Log.e(TAG, "❌ 创建stream失败", e)
+                            Log.e(TAG, "❌ 创建stream失败 (多轮对话后可能资源泄漏)", e)
+                            Log.e(TAG, "   音频数据长度: ${audioDataCopy.size}")
+                            e.printStackTrace()
                             return@withLock ""
                         }
                         
@@ -204,7 +206,10 @@ class SenseVoiceRecognizer private constructor(
                             throw e // 重新抛出原始异常
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "SenseVoice识别过程异常", e)
+                        Log.e(TAG, "❌ SenseVoice识别过程异常", e)
+                        Log.e(TAG, "   音频数据长度: ${audioData.size}")
+                        Log.e(TAG, "   Recognizer状态: ${recognizer != null}")
+                        e.printStackTrace()
                         ""
                     }
                 }
