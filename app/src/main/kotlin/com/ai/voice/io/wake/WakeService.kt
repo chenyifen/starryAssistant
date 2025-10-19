@@ -58,7 +58,7 @@ class WakeService : Service() {
     private val listening = AtomicBoolean(false)
     private val audioRecordPaused = AtomicBoolean(false) // 用于暂停AudioRecord以避免与ASR冲突
     private var currentAudioRecord: AudioRecord? = null // 当前的AudioRecord实例
-    private var ttsListener: ((Boolean) -> Unit)? = null // TTS状态监听器
+    // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
@@ -101,18 +101,7 @@ class WakeService : Service() {
             }
         }
         
-        // 注册TTS状态监听器
-        ttsListener = { isPlaying ->
-            if (isPlaying) {
-                DebugLogger.logWakeWord(TAG, "⏸️ TTS播放开始，暂停唤醒词监听")
-                // TTS播放时，listenForWakeWord中的canRecord()会返回false，自动暂停
-            } else {
-                DebugLogger.logWakeWord(TAG, "▶️ TTS播放结束，恢复唤醒词监听")
-                // canRecord()返回true，自动恢复
-            }
-        }
-        AudioResourceManager.addTtsListener(ttsListener!!)
-        DebugLogger.logWakeWord(TAG, "✅ 已注册TTS状态监听器")
+        // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
         
         // 启动时清理旧的音频调试文件
         if (DebugLogger.isAudioSaveEnabled()) {
@@ -238,12 +227,7 @@ class WakeService : Service() {
             }
         }
         
-        // 注销TTS监听器
-        ttsListener?.let {
-            AudioResourceManager.removeTtsListener(it)
-            DebugLogger.logWakeWord(TAG, "✅ 已注销TTS监听器")
-        }
-        ttsListener = null
+        // TTS状态通过canRecord()自动处理，无需监听器
         
         job.cancel()
         wakeDevice.reinitializeToReleaseResources()

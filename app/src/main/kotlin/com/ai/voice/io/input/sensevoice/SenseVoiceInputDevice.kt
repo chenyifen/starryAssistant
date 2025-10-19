@@ -141,8 +141,7 @@ class SenseVoiceInputDevice private constructor(
     // 协程作用域 - 使用可重新创建的作用域
     private var scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     
-    // TTS监听器
-    private var ttsListener: ((Boolean) -> Unit)? = null
+    // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
     
     init {
         Log.d(TAG, "🎤 SenseVoice输入设备初始化中...")
@@ -312,12 +311,7 @@ class SenseVoiceInputDevice private constructor(
             }
         }
         
-        // 注销TTS监听器
-        ttsListener?.let { 
-            AudioResourceManager.removeTtsListener(it)
-            Log.d(TAG, "✅ 已注销TTS监听器")
-        }
-        ttsListener = null
+        // TTS状态通过canRecord()自动处理，无需监听器
         
         _uiState.value = SttState.Loaded
     }
@@ -379,12 +373,7 @@ class SenseVoiceInputDevice private constructor(
                 Log.w(TAG, "释放麦克风资源异常", e)
             }
             
-            // 确保TTS监听器被注销
-            ttsListener?.let { 
-                AudioResourceManager.removeTtsListener(it)
-                Log.d(TAG, "✅ 确保TTS监听器已注销")
-            }
-            ttsListener = null
+            // TTS状态通过canRecord()自动处理，无需监听器
             
             // 关闭音频通道
             samplesChannel.close()
@@ -478,18 +467,6 @@ class SenseVoiceInputDevice private constructor(
             
             Log.d(TAG, "✅ 成功获取麦克风资源")
             
-            // 注册TTS监听器
-            ttsListener = { isPlaying ->
-                if (isPlaying) {
-                    Log.d(TAG, "⏸️ TTS播放开始，暂停录音")
-                    // TTS播放时，recordAudioData中的canRecord()会返回false，自动暂停
-                } else {
-                    Log.d(TAG, "▶️ TTS播放结束，恢复录音")
-                    // canRecord()返回true，自动恢复
-                }
-            }
-            AudioResourceManager.addTtsListener(ttsListener!!)
-            
             isListening.set(true)
             
             // 重置VAD和音频状态
@@ -518,8 +495,6 @@ class SenseVoiceInputDevice private constructor(
                 
                 // 释放资源
                 AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.ASR_DEVICE)
-                ttsListener?.let { AudioResourceManager.removeTtsListener(it) }
-                ttsListener = null
                 
                 withContext(Dispatchers.Main) {
                     _uiState.value = SttState.ErrorLoading(Exception("启动录制失败"))
