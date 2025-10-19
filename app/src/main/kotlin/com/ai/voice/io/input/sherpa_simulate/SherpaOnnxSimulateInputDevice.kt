@@ -111,8 +111,7 @@ class SherpaOnnxSimulateInputDevice(
     private var recordingStartTime = 0L
     private var speechDetectedTime = 0L
     
-    // ========== TTS监听器 ==========
-    private var ttsListener: ((Boolean) -> Unit)? = null
+    // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
 
     init {
         Log.d(TAG, "🏗️ SherpaOnnxSimulateInputDevice 初始化")
@@ -203,16 +202,6 @@ class SherpaOnnxSimulateInputDevice(
             
             Log.d(TAG, "✅ 成功获取麦克风资源")
             
-            // 注册TTS监听器
-            ttsListener = { isPlaying ->
-                if (isPlaying) {
-                    Log.d(TAG, "⏸️ TTS播放开始，暂停录音")
-                } else {
-                    Log.d(TAG, "▶️ TTS播放结束，恢复录音")
-                }
-            }
-            AudioResourceManager.addTtsListener(ttsListener!!)
-            
             this@SherpaOnnxSimulateInputDevice.eventListener = thenStartListeningEventListener
             resetRecordingState()
             
@@ -293,12 +282,7 @@ class SherpaOnnxSimulateInputDevice(
             }
         }
         
-        // 注销TTS监听器
-        ttsListener?.let {
-            AudioResourceManager.removeTtsListener(it)
-            Log.d(TAG, "✅ 已注销TTS监听器")
-        }
-        ttsListener = null
+        // TTS状态通过canRecord()自动处理，无需监听器
     }
     
     /**
@@ -318,12 +302,7 @@ class SherpaOnnxSimulateInputDevice(
                 Log.w(TAG, "释放麦克风资源异常", e)
             }
             
-            // 确保TTS监听器被注销
-            ttsListener?.let {
-                AudioResourceManager.removeTtsListener(it)
-                Log.d(TAG, "✅ 确保TTS监听器已注销")
-            }
-            ttsListener = null
+            // TTS状态通过canRecord()自动处理，无需监听器
             
             samplesChannel.close()
             
