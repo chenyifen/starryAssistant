@@ -151,6 +151,16 @@
             android:exported="false"
             android:label="Enhanced Floating Assistant" />
 
+        <!-- 自动化测试广播接收器 -->
+        <receiver
+            android:name=".ui.floating.AutoTestBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.ai.voice.AUTO_TEST_START" />
+            </intent-filter>
+        </receiver>
+
                 <activity
                     android:name=".ui.floating.FloatingAssistantTestActivity"
                     android:enabled="false"

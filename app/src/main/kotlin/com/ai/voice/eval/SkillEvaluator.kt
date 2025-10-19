@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.dicio.skill.skill.InteractionPlan
 import org.dicio.skill.skill.Permission
 import org.dicio.skill.skill.SkillOutput
@@ -61,6 +63,10 @@ class SkillEvaluatorImpl(
 
     // must be kept up to date even when the activity is recreated, for this reason it is `var`
     override var permissionRequester: suspend (List<Permission>) -> Boolean = { false }
+    
+    // 🆕 标记Partial是否已执行技能（使用Mutex保证线程安全）
+    private var partialSkillExecuted = false
+    private val partialExecutionMutex = Mutex()
 
     override fun processInputEvent(event: InputEvent) {
         // 发送事件到SharedFlow，让UI组件可以监听
@@ -88,11 +94,30 @@ class SkillEvaluatorImpl(
                 if (firstUtterance.isEmpty()) {
                     Log.d(TAG, "⏭️ ASR文本为空，跳过技能排序")
                     _state.value = _state.value.copy(pendingQuestion = null)
+                    // 重置标记（线程安全）
+                    partialExecutionMutex.withLock {
+                        partialSkillExecuted = false
+                    }
                     return
                 }
                 
                 // 自动化测试：打印识别结果
                 Log.i("AutoTest", "ASR结果: $firstUtterance")
+                
+                // 🆕 检查Partial是否已执行（线程安全）
+                val shouldSkip = partialExecutionMutex.withLock {
+                    val skip = partialSkillExecuted
+                    if (skip) {
+                        partialSkillExecuted = false  // 重置标记
+                    }
+                    skip
+                }
+                
+                if (shouldSkip) {
+                    Log.i(TAG, "⏭️ [Final] Partial已执行技能，跳过重复执行")
+                    _state.value = _state.value.copy(pendingQuestion = null)
+                    return
+                }
                 
                 val updateStateStart = System.currentTimeMillis()
                 _state.value = _state.value.copy(
@@ -109,30 +134,74 @@ class SkillEvaluatorImpl(
                 
                 val totalTime = System.currentTimeMillis() - startTime
                 Log.d(TAG, "⏱️ [性能] processInputEvent总耗时: ${totalTime}ms")
+                
+                // 重置标记（线程安全）
+                partialExecutionMutex.withLock {
+                    partialSkillExecuted = false
+                }
             }
             InputEvent.None -> {
                 _state.value = _state.value.copy(pendingQuestion = null)
             }
             is InputEvent.Partial -> {
+                val utterance = event.utterance.trim()
+                
+                // 更新pending状态
                 _state.value = _state.value.copy(
                     pendingQuestion = PendingQuestion(
-                        userInput = event.utterance,
-                        // the next input can be a continuation of the last interaction only if the
-                        // last skill invocation provided some skill batches (which are the only way
-                        // to continue an interaction/conversation)
+                        userInput = utterance,
                         continuesLastInteraction = skillRanker.hasAnyBatches(),
                         skillBeingEvaluated = null,
                     )
                 )
+                
+                // 🆕 Partial识别优化：尝试匹配技能
+                if (utterance.isNotEmpty()) {
+                    Log.d(TAG, "🔍 [Partial] 尝试匹配技能: '$utterance'")
+                    
+                    try {
+                        val result = skillRanker.getBest(skillContext, utterance)
+                        
+                        if (result != null) {
+                            val score = result.score.scoreIn01Range()
+                            Log.d(TAG, "🎯 [Partial] 找到匹配: ${result.skill.correspondingSkillInfo.id}, 分数: $score")
+                            
+                            // 只有高分匹配(≥0.5)才立即执行
+                            if (score >= 0.5f) {
+                                Log.i(TAG, "✅ [Partial] 高分匹配(${score})，立即执行技能")
+                                
+                                // 🔥 原子操作：检查并设置标记，然后执行技能（防止竞态条件）
+                                val shouldExecute = partialExecutionMutex.withLock {
+                                    if (!partialSkillExecuted) {
+                                        partialSkillExecuted = true
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                }
+                                
+                                if (shouldExecute) {
+                                    evaluateMatchingSkill(listOf(utterance))
+                                } else {
+                                    Log.d(TAG, "⏭️ [Partial] 技能已被执行，跳过")
+                                }
+                            } else {
+                                Log.d(TAG, "⏸️ [Partial] 分数较低($score < 0.5)，等待Final结果")
+                            }
+                        } else {
+                            Log.d(TAG, "⏸️ [Partial] 无匹配，等待Final结果")
+                        }
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ [Partial] 技能匹配异常: ${e.message}")
+                    }
+                }
             }
         }
     }
 
     private suspend fun evaluateMatchingSkill(utterances: List<String>) {
         val evalStartTime = System.currentTimeMillis()
-        Log.d(TAG, "🎯 开始技能匹配评估，输入语句: $utterances")
         
-        val rankingStartTime = System.currentTimeMillis()
         val (chosenInput, chosenSkill) = try {
             utterances.firstNotNullOfOrNull { input: String ->
                 val inputRankStart = System.currentTimeMillis()
@@ -140,28 +209,19 @@ class SkillEvaluatorImpl(
                 val result = skillRanker.getBest(skillContext, input)
                 val inputRankTime = System.currentTimeMillis() - inputRankStart
                 if (result != null) {
-                    Log.d(TAG, "✅ 找到匹配技能: ${result.skill.correspondingSkillInfo.id}, 评分: ${result.score.scoreIn01Range()}, 耗时: ${inputRankTime}ms")
-                } else {
-                    Log.d(TAG, "❌ 没有找到匹配的技能, 耗时: ${inputRankTime}ms")
+                    Log.d(TAG, "✅ 匹配技能: ${result.skill.correspondingSkillInfo.id}, 评分: ${result.score.scoreIn01Range()}")
                 }
                 result?.let { skillWithResult ->
                     Pair(input, skillWithResult)
                 }
             } ?: run {
-                val fallbackStart = System.currentTimeMillis()
-                Log.d(TAG, "🔄 使用fallback技能")
-                val result = Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
-                val fallbackTime = System.currentTimeMillis() - fallbackStart
-                Log.d(TAG, "⏱️ [性能] Fallback技能耗时: ${fallbackTime}ms")
-                result
+                Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
             }
         } catch (throwable: Throwable) {
             Log.e(TAG, "❌ 技能匹配过程中发生错误", throwable)
             addErrorInteractionFromPending(throwable)
             return
         }
-        val rankingTime = System.currentTimeMillis() - rankingStartTime
-        Log.d(TAG, "⏱️ [性能] 技能排序耗时: ${rankingTime}ms")
         
         val skillInfo = chosenSkill.skill.correspondingSkillInfo
 
@@ -177,52 +237,34 @@ class SkillEvaluatorImpl(
         )
 
         try {
-            val permissionCheckStart = System.currentTimeMillis()
             val permissions = skillInfo.neededPermissions
             if (permissions.isNotEmpty() && !permissionRequester(permissions)) {
                 // permissions were not granted, show message
                 addInteractionFromPending(MissingPermissionsSkillOutput(skillInfo))
                 return
             }
-            val permissionCheckTime = System.currentTimeMillis() - permissionCheckStart
-            Log.d(TAG, "⏱️ [性能] 权限检查耗时: ${permissionCheckTime}ms")
 
-            val outputGenStart = System.currentTimeMillis()
             skillContext.previousOutput =
                 _state.value.interactions.lastOrNull()?.questionsAnswers?.lastOrNull()?.answer
             val output = chosenSkill.generateOutput(skillContext)
-            val outputGenTime = System.currentTimeMillis() - outputGenStart
-            Log.d(TAG, "⏱️ [性能] 技能输出生成耗时: ${outputGenTime}ms")
+            
+            // 记录技能执行结果（用于自动化测试）
+            val speechResult = output.getSpeechOutput(skillContext)
+            com.ai.voice.util.AutoTestLogger.logSkillExecuted(skillInfo.id, speechResult)
 
-            val interactionPlanStart = System.currentTimeMillis()
             val interactionPlan = output.getInteractionPlan(skillContext)
             addInteractionFromPending(output)
-            val interactionPlanTime = System.currentTimeMillis() - interactionPlanStart
-            Log.d(TAG, "⏱️ [性能] 交互计划处理耗时: ${interactionPlanTime}ms")
             
-            val speechOutputStart = System.currentTimeMillis()
             val speechOutput = output.getSpeechOutput(skillContext)
-            val speechOutputTime = System.currentTimeMillis() - speechOutputStart
-            Log.d(TAG, "⏱️ [性能] 语音输出获取耗时: ${speechOutputTime}ms")
-            Log.d(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
-            Log.d(TAG, "🗣️ [DEBUG] speechOutput.isNotBlank(): ${speechOutput.isNotBlank()}")
             
             if (speechOutput.isNotBlank()) {
-                val ttsStart = System.currentTimeMillis()
                 withContext (Dispatchers.Main) {
-                    Log.d(TAG, "🗣️ [DEBUG] 即将调用 speechOutputDevice.speak()")
                     skillContext.speechOutputDevice.speak(speechOutput)
-                    val ttsTime = System.currentTimeMillis() - ttsStart
-                    Log.d(TAG, "⏱️ [性能] TTS调用耗时: ${ttsTime}ms")
-                    Log.d(TAG, "🗣️ [DEBUG] speechOutputDevice.speak() 调用完成")
                 }
-            } else {
-                Log.w(TAG, "⚠️ [DEBUG] speechOutput 为空，跳过TTS播放")
             }
             
             val totalEvalTime = System.currentTimeMillis() - evalStartTime
-            Log.d(TAG, "⏱️ [性能] ========== 意图识别与执行总耗时: ${totalEvalTime}ms ==========")
-            Log.d(TAG, "⏱️ [性能] 其中 - 排序: ${rankingTime}ms, 生成输出: ${outputGenTime}ms, 语音: ${speechOutputTime}ms")
+            Log.d(TAG, "⏱️ [性能] 意图识别与执行总耗时: ${totalEvalTime}ms")
 
             when (interactionPlan) {
                 InteractionPlan.FinishInteraction -> {

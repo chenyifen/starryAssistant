@@ -145,3 +145,6 @@ skills:
       - id: screenshot
       - id: finder
       - id: go_back
+      - id: note_mode
+      - id: window_mode
+      - id: wifi_connect

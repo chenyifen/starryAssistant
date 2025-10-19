@@ -115,9 +115,6 @@ class EnhancedFloatingWindowService : Service(),
         // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
         
-        // 运行配置测试
-        FloatingOrbConfigTest.runAllTests(applicationContext)
-        
         // 启动WakeService（现在由悬浮球服务管理）
         startWakeService()
         
@@ -491,6 +488,8 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun handleAutoTestStart() {
         Log.i(AUTO_TEST_TAG, "开始自动化测试 - 模拟点击悬浮球")
+        com.ai.voice.util.AutoTestLogger.logTestStarted()
+        com.ai.voice.util.AutoTestLogger.logOrbClicked()
         
         // 模拟点击悬浮球，触发语音识别
         handleOrbClick()
@@ -501,7 +500,7 @@ class EnhancedFloatingWindowService : Service(),
         private const val NOTIFICATION_ID = 1001
         
         // 自动化测试常量
-        const val ACTION_AUTO_TEST_START = "org.stypox.dicio.AUTO_TEST_START"
+        const val ACTION_AUTO_TEST_START = "com.ai.voice.AUTO_TEST_START"
         private const val AUTO_TEST_TAG = "AutoTest"
         
         /**

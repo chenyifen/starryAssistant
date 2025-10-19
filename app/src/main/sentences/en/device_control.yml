@@ -343,3 +343,38 @@ go_back:
   - previous screen
   - return to previous
 
+note_mode:
+  - switch to note mode
+  - change to note mode
+  - note mode
+  - go to note mode
+  - enter note mode
+  - enable note mode
+  - activate note mode
+  - turn on note mode
+  - writing mode
+  - annotation mode
+
+window_mode:
+  - switch to window mode
+  - change to window mode
+  - window mode
+  - go to window mode
+  - enter window mode
+  - enable window mode
+  - activate window mode
+  - turn on window mode
+  - windowed mode
+
+wifi_connect:
+  - connect to wifi
+  - connect wifi
+  - open wifi settings
+  - wifi settings
+  - connect to wireless
+  - turn on wifi
+  - enable wifi
+  - wifi connection
+  - connect to wireless network
+  - open wifi
+
