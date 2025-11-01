@@ -60,8 +60,8 @@ class SenseVoiceRecognizer private constructor(
                     
                     // 按照HandsFree的正确方式创建SenseVoice配置
                     Log.d(TAG, "🔧 创建SenseVoice配置...")
-                    // 🆕 根据韩语模式选择语言
-                    val languageMode = if (koreanMode) "ko" else "auto"
+                    // 🆕 使用自动检测模式，支持英语和韩语双语优先
+                    val languageMode = "auto"  // 始终使用auto模式，通过后处理过滤
                     val config = OfflineRecognizerConfig(
                         modelConfig = OfflineModelConfig(
                             senseVoice = OfflineSenseVoiceModelConfig(
@@ -79,8 +79,8 @@ class SenseVoiceRecognizer private constructor(
                     )
                     Log.d(TAG, "   ✅ SenseVoice配置: model=${modelPaths.modelPath}")
                     Log.d(TAG, "   ✅ 配置: threads=2, provider=cpu, decodingMethod=greedy_search")
-                    Log.d(TAG, "   🌍 语言模式: ${if (koreanMode) "韩语模式 (ko)" else "自动检测 (auto)"}")
-                    Log.d(TAG, "   🚫 中文过滤: ${if (koreanMode) "启用" else "禁用"}")
+                    Log.d(TAG, "   🌍 语言模式: 英语韩语双语优先 (auto)")
+                    Log.d(TAG, "   🚫 语言过滤: 英语优先，韩语次之，过滤中文/日语等其他语言")
                     Log.d(TAG, "   📝 逆文本规范化: 启用")
                     
                     // 根据模型来源创建识别器
@@ -112,31 +112,36 @@ class SenseVoiceRecognizer private constructor(
     private val recognitionMutex = Mutex()
     
     /**
-     * 🆕 过滤中文字符，只保留韩语、英语、数字、标点
+     * 🆕 过滤非英语韩语字符，优先保留英语和韩语，过滤其他语言
+     * 英语优先，韩语次之，过滤中文等其他语言
      */
-    private fun filterToKorean(text: String): String {
+    private fun filterToEnglishKorean(text: String): String {
         if (!koreanMode) return text  // 非韩语模式，不过滤
         
         return text.filter { char ->
             when {
+                // 英语字母（最高优先级）
+                char in 'a'..'z' || char in 'A'..'Z' -> true
                 // 韩语字符（Hangul Syllables: U+AC00 ~ U+D7A3）
                 char in '\uAC00'..'\uD7A3' -> true
                 // 韩语兼容字母（Hangul Jamo: U+3131 ~ U+318E）
                 char in '\u3131'..'\u318E' -> true
                 // 韩语兼容字母扩展（U+1100 ~ U+11FF）
                 char in '\u1100'..'\u11FF' -> true
-                // 英语字母
-                char in 'a'..'z' || char in 'A'..'Z' -> true
-                // 数字
+                // 数字（通用）
                 char in '0'..'9' -> true
-                // 标点和空格（常用标点）
+                // 标点和空格（通用）
                 char.isWhitespace() || char in ".,!?;:()[]{}\"'`-–—" -> true
                 // 中文字符（CJK Unified Ideographs: U+4E00 ~ U+9FFF）- 过滤掉
                 char in '\u4E00'..'\u9FFF' -> false
                 // 中文标点（U+3000 ~ U+303F）- 过滤掉
                 char in '\u3000'..'\u303F' -> false
-                // 其他Unicode字符 - 保守保留
-                else -> char.code < 128 || char.code > 0x9FFF
+                // 日语平假名（U+3040 ~ U+309F）- 过滤掉
+                char in '\u3040'..'\u309F' -> false
+                // 日语片假名（U+30A0 ~ U+30FF）- 过滤掉
+                char in '\u30A0'..'\u30FF' -> false
+                // 其他Unicode字符 - 保守保留ASCII范围
+                else -> char.code < 128
             }
         }.trim()
     }
@@ -186,11 +191,11 @@ class SenseVoiceRecognizer private constructor(
                             stream.release()
                             
                             val rawText = result.text.trim()
-                            val filteredText = filterToKorean(rawText)  // 🆕 应用韩语过滤
+                            val filteredText = filterToEnglishKorean(rawText)  // 🆕 应用英语韩语双语过滤
                             
                             if (koreanMode && rawText != filteredText) {
                                 DebugLogger.logRecognition(TAG, "SenseVoice识别 (原始): \"$rawText\"")
-                                DebugLogger.logRecognition(TAG, "SenseVoice识别 (过滤): \"$filteredText\"")
+                                DebugLogger.logRecognition(TAG, "SenseVoice识别 (英韩过滤): \"$filteredText\"")
                             } else {
                                 DebugLogger.logRecognition(TAG, "SenseVoice识别结果: \"$filteredText\"")
                             }

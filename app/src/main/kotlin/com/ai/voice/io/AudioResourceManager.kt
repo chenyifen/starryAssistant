@@ -334,30 +334,34 @@ object AudioResourceManager {
      * 验证状态转换是否合法
      * 
      * 状态转换矩阵：
-     * IDLE              → IDLE, WAKE_LISTENING, ASR_RECORDING
-     * WAKE_LISTENING    → IDLE, WAKE_LISTENING, ASR_RECORDING
+     * IDLE              → IDLE, WAKE_LISTENING, ASR_RECORDING, TTS_PLAYING
+     * WAKE_LISTENING    → IDLE, WAKE_LISTENING, ASR_RECORDING, TTS_PLAYING
      * ASR_RECORDING     → IDLE, ASR_RECORDING, TTS_PLAYING
      * TTS_PLAYING       → IDLE, WAKE_LISTENING, ASR_RECORDING, TTS_PLAYING
      * 
      * 使用场景说明：
      * 1. IDLE → ASR_RECORDING: 用户点击悬浮球手动启动录音
-     * 2. WAKE_LISTENING → ASR_RECORDING: 唤醒词触发后进入录音
-     * 3. TTS_PLAYING → ASR_RECORDING: TTS播放完成后，需要用户进一步澄清
+     * 2. IDLE → TTS_PLAYING: ASR快速完成识别并释放麦克风后，TTS直接从IDLE开始播放
+     * 3. WAKE_LISTENING → ASR_RECORDING: 唤醒词触发后进入录音
+     * 4. WAKE_LISTENING → TTS_PLAYING: 唤醒后快速识别并播放回复
+     * 5. TTS_PLAYING → ASR_RECORDING: TTS播放完成后，需要用户进一步澄清
      *    例如：系统问"您要打开哪个应用？" → 用户回答 → 再次进入ASR
-     * 4. ASR_RECORDING → TTS_PLAYING: ASR识别完成，系统回复
+     * 6. ASR_RECORDING → TTS_PLAYING: ASR识别完成，系统回复
      */
     private fun isValidTransition(from: AudioState, to: AudioState): Boolean {
         return when (from) {
             AudioState.IDLE -> to in setOf(
                 AudioState.IDLE,
                 AudioState.WAKE_LISTENING,
-                AudioState.ASR_RECORDING  // 用户手动启动录音
+                AudioState.ASR_RECORDING,  // 用户手动启动录音
+                AudioState.TTS_PLAYING     // 🆕 ASR快速完成后直接播放TTS
             )
             
             AudioState.WAKE_LISTENING -> to in setOf(
                 AudioState.IDLE,
                 AudioState.WAKE_LISTENING,
-                AudioState.ASR_RECORDING  // 唤醒词触发后进入录音
+                AudioState.ASR_RECORDING,  // 唤醒词触发后进入录音
+                AudioState.TTS_PLAYING     // 🆕 唤醒后快速识别并播放
             )
             
             AudioState.ASR_RECORDING -> to in setOf(

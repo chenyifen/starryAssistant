@@ -10,9 +10,9 @@ import com.ai.voice.di.SttInputDeviceWrapper
 import com.ai.voice.di.SkillContextInternal
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.io.input.InputEvent
+import com.ai.voice.io.input.SttState
 import com.ai.voice.io.wake.WakeWordCallback
 import com.ai.voice.io.wake.WakeWordCallbackManager
-import com.ai.voice.ui.floating.VoiceAssistantStateCoordinator
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.home.InteractionLog
 import com.ai.voice.util.DebugLogger
@@ -20,17 +20,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * 语音助手状态提供者 - 极简版
+ * 语音助手状态提供者 - 统一状态管理中心
  * 
  * 核心职责：
  * 1. 统一管理语音助手的完整状态
  * 2. 提供全局访问点，任何UI组件都可以获取当前状态
  * 3. 支持状态监听，UI组件可以响应状态变化
- * 4. 与现有的VoiceAssistantStateCoordinator集成
+ * 4. 直接监听底层服务（STT、SkillEvaluator、WakeWord）
  */
 @Singleton
 class VoiceAssistantStateProvider @Inject constructor(
-    private val stateCoordinator: VoiceAssistantStateCoordinator,
     private val sttInputDeviceWrapper: SttInputDeviceWrapper,
     private val skillEvaluator: SkillEvaluator,
     private val speechOutputDeviceWrapper: SpeechOutputDeviceWrapper,
@@ -91,39 +90,97 @@ class VoiceAssistantStateProvider @Inject constructor(
         // 注册唤醒词回调
         WakeWordCallbackManager.registerCallback(this)
         
-        // 监听状态协调器的状态变化
-        observeStateCoordinator()
+        // 直接监听底层服务
+        observeServices()
     }
     
     /**
-     * 监听状态协调器的状态变化
+     * 直接监听底层服务
      */
-    private fun observeStateCoordinator() {
-        // 监听UI状态变化
+    private fun observeServices() {
+        // 1. 监听STT状态变化
         scope.launch {
-            stateCoordinator.uiState.collect { uiState ->
-                updateState(uiState = uiState)
+            sttInputDeviceWrapper.uiState.collect { sttState ->
+                handleSttStateChange(sttState)
             }
         }
         
-        // 监听显示文本变化
-        scope.launch {
-            stateCoordinator.displayText.collect { displayText ->
-                updateState(displayText = displayText)
-            }
-        }
-        
-        // 监听SkillEvaluator的InputEvent来获取ASR实时文本
+        // 2. 监听SkillEvaluator的InputEvent来获取ASR实时文本
         scope.launch {
             skillEvaluator.inputEvents.collect { inputEvent ->
                 handleInputEvent(inputEvent)
             }
         }
         
-        // 监听SkillEvaluator的状态变化来获取技能结果
+        // 3. 监听SkillEvaluator的状态变化来获取技能结果
         scope.launch {
             skillEvaluator.state.collect { interactionLog ->
                 handleSkillEvaluatorState(interactionLog)
+            }
+        }
+    }
+    
+    /**
+     * 处理STT状态变化
+     */
+    private fun handleSttStateChange(sttState: SttState?) {
+        when (sttState) {
+            is SttState.Loaded -> {
+                DebugLogger.logUI(TAG, "😴 STT device loaded and ready")
+                if (_currentState.uiState != VoiceAssistantUIState.IDLE) {
+                    updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+                }
+            }
+            
+            is SttState.Listening -> {
+                DebugLogger.logUI(TAG, "🎧 STT device listening")
+                updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
+            }
+            
+            is SttState.Loading -> {
+                DebugLogger.logUI(TAG, "⏳ STT device loading")
+                updateState(uiState = VoiceAssistantUIState.THINKING, displayText = "")
+            }
+            
+            is SttState.NotAvailable -> {
+                DebugLogger.logUI(TAG, "❌ STT device not available")
+                updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
+            }
+            
+            is SttState.ErrorLoading -> {
+                val errorMessage = sttState.throwable.message ?: ""
+                if (errorMessage.contains("was cancelled", ignoreCase = true)) {
+                    DebugLogger.logUI(TAG, "⚠️ STT device loading cancelled (normal), returning to IDLE")
+                    updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+                } else {
+                    DebugLogger.logUI(TAG, "❌ STT device loading error: $errorMessage")
+                    updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
+                }
+            }
+            
+            is SttState.ErrorDownloading -> {
+                DebugLogger.logUI(TAG, "❌ STT device download error: ${sttState.throwable.message}")
+                updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
+            }
+            
+            is SttState.ErrorUnzipping -> {
+                DebugLogger.logUI(TAG, "❌ STT device unzip error: ${sttState.throwable.message}")
+                updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
+            }
+            
+            is SttState.WaitingForResult -> {
+                DebugLogger.logUI(TAG, "⏳ STT waiting for external result")
+                updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
+            }
+            
+            null -> {
+                DebugLogger.logUI(TAG, "🚫 STT device disabled")
+                // STT设备被禁用，保持当前状态
+            }
+            
+            else -> {
+                DebugLogger.logUI(TAG, "🔄 STT device state: $sttState")
+                // 其他状态暂时不处理
             }
         }
     }
@@ -180,7 +237,13 @@ class VoiceAssistantStateProvider @Inject constructor(
             
             InputEvent.None -> {
                 DebugLogger.logUI(TAG, "🔇 No speech detected")
+                // 由状态机接管：收到None说明本轮无语音，主动停止STT，回到待唤醒
                 updateState(asrText = "")
+                try {
+                    sttInputDeviceWrapper.stopListening()
+                } catch (e: Exception) {
+                    DebugLogger.logUI(TAG, "⚠️ 停止STT失败: ${e.message}")
+                }
             }
         }
     }
@@ -511,9 +574,11 @@ class VoiceAssistantStateProvider @Inject constructor(
         
         // 🔥 修复：防止在SPEAKING状态时被意外覆盖成IDLE
         // 如果当前是SPEAKING状态，且新状态想要切换到IDLE，但TTS文本还在，则忽略此次更新
+        // 但是如果明确要清空ttsText（ttsText参数为""），则允许更新（这是TTS播放完成的正常流程）
         if (_currentState.uiState == VoiceAssistantUIState.SPEAKING && 
             uiState == VoiceAssistantUIState.IDLE &&
-            _currentState.ttsText.isNotBlank()) {
+            _currentState.ttsText.isNotBlank() &&
+            ttsText != "") {  // 新增：如果明确要清空ttsText，则允许更新
             DebugLogger.logUI(TAG, "🛡️ 防止状态覆盖：当前SPEAKING状态且TTS文本存在，忽略转到IDLE的请求")
             return
         }
