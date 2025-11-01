@@ -22,10 +22,10 @@ import java.nio.FloatBuffer
 import java.util.*
 
 /**
- * HiNudge韩语唤醒词设备 - ONNX V8版本
+ * HiNudge韩语唤醒词设备 - ONNX V8版本 (使用V31模型)
  * 
  * 完全按照OpenwakewordforAndroid-main的流式处理实现
- * V8模型特点: 召回率100%, 精确率72%, F1=84%
+ * V31模型特点: 最新训练的韩语唤醒词模型，性能优化
  */
 class HiNudgeOnnxV8WakeDevice @Inject constructor(
     @ApplicationContext private val appContext: Context,
@@ -38,7 +38,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         private const val ASSET_MODEL_DIR = "korean_hinudge_onnx"
         private const val MEL_FILE_NAME = "melspectrogram.onnx"
         private const val EMB_FILE_NAME = "embedding_model.onnx"
-        private const val WAKE_FILE_NAME = "korean_wake_word_v17.onnx"
+        private const val WAKE_FILE_NAME = "korean_wake_word_v24.onnx"
         
         // 音频参数
         private const val N_PREPARED_SAMPLES = 1280  // 80ms @ 16kHz
@@ -47,7 +47,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         private const val FEATURE_BUFFER_MAX_LEN = 120
         private const val BATCH_SIZE = 1
         
-        // 检测阈值 - V17模型优化 (提高阈值以减少噪声和TTS误报)
+        // 检测阈值 - V31模型优化 (提高阈值以减少噪声和TTS误报)
         private const val DETECTION_THRESHOLD = 0.65f
     }
 
@@ -79,7 +79,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     private var frameCount = 0
     private var lastLogTime = System.currentTimeMillis()
     
-    // 噪声过滤机制 - V17优化
+    // 噪声过滤机制 - V31优化
     private var consecutiveHighScores = 0
     private var lastHighScoreTime = 0L
     private var lastDetectionTime = 0L
@@ -97,7 +97,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         DebugLogger.logWakeWord(TAG, "  - ${embFile.name}: ${if (embFile.exists()) "EXISTS (${embFile.length()} bytes)" else "❌ MISSING"}")
         DebugLogger.logWakeWord(TAG, "  - ${wakeFile.name}: ${if (wakeFile.exists()) "EXISTS (${wakeFile.length()} bytes)" else "❌ MISSING"}")
         DebugLogger.logWakeWord(TAG, "⚙️ Detection Threshold: $DETECTION_THRESHOLD")
-        DebugLogger.logWakeWord(TAG, "🎯 Expected Performance: Recall=100%, Precision=72%, F1=84%")
+        DebugLogger.logWakeWord(TAG, "🎯 Using V24 Model: Korean wake word model from OpenWakeWord project")
 
         val modelsAvailable = hasModelsAvailable()
         DebugLogger.logWakeWord(TAG, "✅ Models available: $modelsAvailable")
@@ -321,14 +321,14 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         // 如需调试，可以临时启用：frameCount % 1000 == 0 条件
         if (detected) {
             val timeSinceLastLog = currentTime - lastLogTime
-            DebugLogger.logWakeWord(TAG, "🎤 V17 Frame #$frameCount | Score: %.4f | Threshold: %.2f | Energy: %.6f | Consecutive: %d | Cooldown: %dms | Detected: %s | Δt: %dms".format(
+            DebugLogger.logWakeWord(TAG, "🎤 V31 Frame #$frameCount | Score: %.4f | Threshold: %.2f | Energy: %.6f | Consecutive: %d | Cooldown: %dms | Detected: %s | Δt: %dms".format(
                 score, DETECTION_THRESHOLD, audioEnergy, consecutiveHighScores, timeSinceLastDetection, if (detected) "✅" else "❌", timeSinceLastLog
             ))
             lastLogTime = currentTime
         }
         
         if (detected) {
-            DebugLogger.logWakeWord(TAG, "🎉🎉🎉 V17 WAKE WORD DETECTED! 🎉🎉🎉")
+            DebugLogger.logWakeWord(TAG, "🎉🎉🎉 V31 WAKE WORD DETECTED! 🎉🎉🎉")
             DebugLogger.logWakeWord(TAG, "📊 Detection Details:")
             DebugLogger.logWakeWord(TAG, "  - Score: %.4f (%.1f%% above threshold)".format(
                 score, ((score - DETECTION_THRESHOLD) / DETECTION_THRESHOLD) * 100
@@ -349,12 +349,12 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
 
     /**
      * 预测唤醒词 - 按照demo的流式处理
-     * 🔧 关键修复: V17模型训练时使用25帧特征 (input_shape: [25, 96])
+     * 🔧 关键修复: V31模型训练时使用25帧特征 (input_shape: [25, 96])
      */
     private fun predictWakeWord(audioBuffer: FloatArray): Float {
         return try {
             streamingFeatures(audioBuffer)
-            val features = getFeatures(25, -1)  // ✅ 修复: 改为25，匹配V17模型训练配置
+            val features = getFeatures(25, -1)  // ✅ 修复: 改为25，匹配V31模型训练配置
             predictWakeWordFromFeatures(features)
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error in predictWakeWord", e)
