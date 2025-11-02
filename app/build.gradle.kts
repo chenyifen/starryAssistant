@@ -30,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId = "com.ai.voice"
-        minSdk = 21
+        minSdk = 26
         targetSdk = 36
         versionCode = 16
         versionName = "3.2"
@@ -66,6 +66,13 @@ android {
     flavorDimensions += "models"
     
     productFlavors {
+        create("hyundaiit"){
+            dimension = "models"
+            versionNameSuffix = "-hyundaiit"
+            // 包含所有模型文件（默认行为，无需额外配置）
+            buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "true")
+        }
+
         create("withModels") {
             dimension = "models"
             versionNameSuffix = "-with-models"
@@ -206,6 +213,10 @@ dependencies {
     
     // Hyundai IT API AAR (设备控制接口)
     implementation(files("libs/hyundaiit-api-v0.1-2025-10-14-16-release.aar"))
+    
+    // Gson - required by Hyundai IT API
+    implementation(libs.gson)
+    androidTestImplementation(libs.gson)
     
     // LiteRT / Tensorflow Lite
     implementation(libs.litert)
