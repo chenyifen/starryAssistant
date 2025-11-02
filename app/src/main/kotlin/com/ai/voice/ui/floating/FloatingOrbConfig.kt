@@ -4,33 +4,34 @@ import android.content.Context
 import android.content.res.Resources
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.ai.voice.R
 
 /**
  * 悬浮球配置管理器
  * 
- * 统一管理悬浮球的尺寸、样式等配置，支持动态适配不同屏幕尺寸
+ * 统一管理悬浮球的尺寸、样式等配置，支持从dimens.xml读取可定制的配置
  */
 object FloatingOrbConfig {
     
-    // 基础配置
-    private const val BASE_ORB_SIZE_DP = 80f
-    private const val BASE_ANIMATION_SIZE_DP = 64f
-    
-    // 缩放因子 - 可以根据需要调整
-    private var scaleFactor: Float = 3.0f
-    
-    // 边缘吸附时的缩放因子
-    private const val EDGE_SCALE_FACTOR = 0.6f
+    // 上下文引用，用于读取资源
+    private var context: Context? = null
     
     // 屏幕适配相关
     private var screenDensity: Float = 1.0f
     private var screenWidthPx: Int = 1080
     private var screenHeightPx: Int = 1920
     
+    // 缓存的尺寸值（避免重复读取资源）
+    private var cachedOrbSizeDp: Dp? = null
+    private var cachedAnimationSizeDp: Dp? = null
+    private var cachedEdgeOrbSizeDp: Dp? = null
+    private var cachedEdgeAnimationSizeDp: Dp? = null
+    
     /**
      * 初始化配置
      */
     fun initialize(context: Context) {
+        this.context = context
         val resources = context.resources
         val displayMetrics = resources.displayMetrics
         
@@ -38,89 +39,84 @@ object FloatingOrbConfig {
         screenWidthPx = displayMetrics.widthPixels
         screenHeightPx = displayMetrics.heightPixels
         
-        // 根据屏幕尺寸自动调整缩放因子
-        autoAdjustScaleFactor()
+        // 清除缓存，强制重新读取资源
+        clearCache()
     }
     
     /**
-     * 根据屏幕尺寸自动调整缩放因子
+     * 清除缓存的尺寸值
      */
-    private fun autoAdjustScaleFactor() {
-        val screenWidthDp = screenWidthPx / screenDensity
-        val screenHeightDp = screenHeightPx / screenDensity
-        
-        // 根据屏幕尺寸调整缩放因子
-        scaleFactor = when {
-            // 小屏设备 (< 360dp width)
-            screenWidthDp < 360 -> 2.0f
-            // 中等屏幕 (360-600dp width)  
-            screenWidthDp < 600 -> 2.5f
-            // 大屏设备 (600-900dp width)
-            screenWidthDp < 900 -> 3.0f
-            // 超大屏设备 (> 900dp width)
-            else -> 3.5f
-        }
+    private fun clearCache() {
+        cachedOrbSizeDp = null
+        cachedAnimationSizeDp = null
+        cachedEdgeOrbSizeDp = null
+        cachedEdgeAnimationSizeDp = null
     }
     
     /**
-     * 手动设置缩放因子
+     * 从资源文件读取尺寸值
      */
-    fun setScaleFactor(factor: Float) {
-        scaleFactor = factor.coerceIn(1.0f, 5.0f) // 限制在合理范围内
+    private fun getDimensionDp(resId: Int): Dp {
+        val ctx = context ?: throw IllegalStateException("FloatingOrbConfig not initialized. Call initialize(context) first.")
+        val px = ctx.resources.getDimension(resId)
+        return (px / screenDensity).dp
     }
     
     /**
-     * 获取当前缩放因子
+     * 从资源文件读取尺寸值（像素）
      */
-    fun getScaleFactor(): Float = scaleFactor
+    private fun getDimensionPx(resId: Int): Int {
+        val ctx = context ?: throw IllegalStateException("FloatingOrbConfig not initialized. Call initialize(context) first.")
+        return ctx.resources.getDimension(resId).toInt()
+    }
     
     /**
      * 悬浮球容器尺寸 (Compose Dp)
      */
     val orbSizeDp: Dp
-        get() = (BASE_ORB_SIZE_DP * scaleFactor).dp
+        get() = cachedOrbSizeDp ?: getDimensionDp(R.dimen.floating_orb_size).also { cachedOrbSizeDp = it }
     
     /**
      * Lottie动画尺寸 (Compose Dp)
      */
     val animationSizeDp: Dp
-        get() = (BASE_ANIMATION_SIZE_DP * scaleFactor).dp
+        get() = cachedAnimationSizeDp ?: getDimensionDp(R.dimen.floating_orb_animation_size).also { cachedAnimationSizeDp = it }
     
     /**
      * 悬浮球尺寸 (像素值，用于WindowManager)
      */
     val orbSizePx: Int
-        get() = (BASE_ORB_SIZE_DP * scaleFactor * screenDensity).toInt()
+        get() = getDimensionPx(R.dimen.floating_orb_size)
     
     /**
      * Lottie动画尺寸 (整数值，用于LottieAnimationController)
      */
     val animationSizeInt: Int
-        get() = (BASE_ANIMATION_SIZE_DP * scaleFactor).toInt()
+        get() = (animationSizeDp.value).toInt()
     
     /**
      * 边缘吸附时的悬浮球尺寸 (Compose Dp)
      */
     val edgeOrbSizeDp: Dp
-        get() = (BASE_ORB_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR).dp
+        get() = cachedEdgeOrbSizeDp ?: getDimensionDp(R.dimen.floating_orb_edge_size).also { cachedEdgeOrbSizeDp = it }
     
     /**
      * 边缘吸附时的动画尺寸 (Compose Dp)
      */
     val edgeAnimationSizeDp: Dp
-        get() = (BASE_ANIMATION_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR).dp
+        get() = cachedEdgeAnimationSizeDp ?: getDimensionDp(R.dimen.floating_orb_edge_animation_size).also { cachedEdgeAnimationSizeDp = it }
     
     /**
      * 边缘吸附时的悬浮球尺寸 (像素值)
      */
     val edgeOrbSizePx: Int
-        get() = (BASE_ORB_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR * screenDensity).toInt()
+        get() = getDimensionPx(R.dimen.floating_orb_edge_size)
     
     /**
      * 边缘吸附时的动画尺寸 (整数值)
      */
     val edgeAnimationSizeInt: Int
-        get() = (BASE_ANIMATION_SIZE_DP * scaleFactor * EDGE_SCALE_FACTOR).toInt()
+        get() = (edgeAnimationSizeDp.value).toInt()
     
     /**
      * 拖拽相关配置
@@ -129,15 +125,20 @@ object FloatingOrbConfig {
         // 长按检测时间 (毫秒)
         const val LONG_PRESS_TIMEOUT = 500L
         
-        // 点击移动阈值 (像素)
-        const val CLICK_THRESHOLD = 10f
+        // 点击移动阈值 (从dimens.xml读取)
+        val CLICK_THRESHOLD: Float
+            get() = context?.resources?.getDimension(R.dimen.floating_orb_click_threshold) ?: 10f
         
-        // 边缘吸附阈值 (像素)
-        const val EDGE_SNAP_THRESHOLD = 100
+        // 边缘吸附阈值 (从dimens.xml读取)
+        val EDGE_SNAP_THRESHOLD: Int
+            get() = context?.resources?.getDimension(R.dimen.floating_orb_edge_snap_threshold)?.toInt() ?: 100
         
-        // 默认位置
-        const val DEFAULT_X = 100
-        const val DEFAULT_Y = 200
+        // 默认位置 (从dimens.xml读取)
+        val DEFAULT_X: Int
+            get() = context?.resources?.getDimension(R.dimen.floating_orb_default_x)?.toInt() ?: 100
+            
+        val DEFAULT_Y: Int
+            get() = context?.resources?.getDimension(R.dimen.floating_orb_default_y)?.toInt() ?: 200
     }
     
     /**
@@ -231,10 +232,20 @@ object FloatingOrbConfig {
     fun getDebugInfo(): String {
         return """
             FloatingOrbConfig Debug Info:
-            - Scale Factor: $scaleFactor
             - Screen: ${screenWidthPx}x${screenHeightPx}px (density: $screenDensity)
             - Orb Size: ${orbSizeDp} (${orbSizePx}px)
             - Animation Size: ${animationSizeDp} (${animationSizeInt})
+            - Edge Orb Size: ${edgeOrbSizeDp} (${edgeOrbSizePx}px)
+            - Click Threshold: ${Drag.CLICK_THRESHOLD}px
+            - Edge Snap Threshold: ${Drag.EDGE_SNAP_THRESHOLD}px
+            - Default Position: (${Drag.DEFAULT_X}, ${Drag.DEFAULT_Y})
         """.trimIndent()
+    }
+    
+    /**
+     * 重新加载配置（当dimens.xml发生变化时调用）
+     */
+    fun reloadConfig() {
+        clearCache()
     }
 }

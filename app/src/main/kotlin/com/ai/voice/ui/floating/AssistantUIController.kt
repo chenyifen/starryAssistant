@@ -30,10 +30,6 @@ class AssistantUIController(
         private const val EXPAND_ANIMATION_DURATION = 300L
         private const val CONTRACT_ANIMATION_DURATION = 250L
         private const val AUTO_DISMISS_DELAY = 5000L // 5秒后自动收起
-        
-        // 悬浮球配置
-        private const val ORB_SIZE_DP = 60
-        private const val ORB_EXPANDED_SIZE_DP = 80
     }
     
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
