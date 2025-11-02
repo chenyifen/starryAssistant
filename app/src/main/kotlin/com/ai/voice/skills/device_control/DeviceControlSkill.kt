@@ -150,12 +150,18 @@ class DeviceControlSkill(
      * 音量增加
      */
     private fun executeVolumeUp(ctx: SkillContext): SkillOutput {
+        Log.i(TAG, "🚀 executeVolumeUp 开始执行")
         return try {
+            Log.i(TAG, "🚀 调用 AudioHelper.getInstance().volumeUp()")
             AudioHelper.getInstance().volumeUp()
-            Log.d(TAG, "✅ Volume increased")
-            DeviceControlOutput("volume_up", true, getSuccessMessage(ctx, "volume_up"))
+            Log.i(TAG, "✅ Volume increased - AudioHelper调用成功")
+            val result = DeviceControlOutput("volume_up", true, getSuccessMessage(ctx, "volume_up"))
+            Log.i(TAG, "✅ executeVolumeUp 执行完成，返回结果: success=${result.success}")
+            return result
         } catch (e: Exception) {
             Log.e(TAG, "❌ Failed to increase volume", e)
+            Log.e(TAG, "❌ executeVolumeUp 异常: ${e.javaClass.simpleName}: ${e.message}")
+            e.printStackTrace()
             DeviceControlOutput("volume_up", false, "Failed to increase volume: ${e.message}")
         }
     }
