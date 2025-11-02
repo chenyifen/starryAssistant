@@ -1,0 +1,161 @@
+# DeviceControl 单个测试用例执行命令汇总
+# 使用方法：复制对应的命令到终端执行
+# 确保设备已连接: adb devices
+# 确保测试APK已安装
+
+# ============================================
+# 基础命令格式
+# ============================================
+# adb shell am instrument -w \
+#   -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#<测试方法名> \
+#   com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 音频控制测试用例
+# ============================================
+
+# 1. 音量增加
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testVolumeUp com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 2. 音量减小
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testVolumeDown com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 3. 静音/取消静音
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testMute com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 电源控制测试用例
+# ============================================
+
+# 4. 关机 (注意：此测试用例已被 @Ignore 注解跳过，默认不执行)
+# 如需执行，请先移除测试代码中的 @Ignore 注解
+# adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testPowerOff com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 5. 开机
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testPowerOn com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 输入源切换测试用例
+# ============================================
+
+# 6. 打开输入源窗口
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testInputSource com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 7. 切换到HDMI 1
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHdmiOne com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 8. 切换到HDMI 2
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHdmiTwo com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 9. 切换到DP端口
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testDpPort com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 10. 切换到前置HDMI
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testFrontHdmi com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 11. 切换到前置USB-C
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testFrontUsbC com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 12. 切换到OPS
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testOps com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 应用启动测试用例
+# ============================================
+
+# 13. 回到主屏幕
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHomeScreen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 14. 打开Google
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testGoogle com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 15. 打开浏览器
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBrowser com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 16. 打开应用商店
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testPlayStore com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 17. 打开YouTube
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testYoutube com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 18. 打开设置
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testSettings com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 19. 打开录音机
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testRecorder com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 20. 打开传屏
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testEshare com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 21. 打开相机
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testCamera com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 22. 打开文件管理器
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testFinder com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 系统操作测试用例
+# ============================================
+
+# 23. 截图
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testScreenshot com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 24. 返回
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testGoBack com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 模式切换测试用例
+# ============================================
+
+# 25. 笔记模式
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testNoteMode com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 26. 窗口模式
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWindowMode com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 网络设置测试用例
+# ============================================
+
+# 27. WiFi连接
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWifiConnect com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 批量执行命令（可选）
+# ============================================
+
+# 执行所有音频控制测试用例
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testVolumeUp,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testVolumeDown,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testMute com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 执行所有输入源切换测试用例
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testInputSource,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHdmiOne,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHdmiTwo,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testDpPort com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 执行所有应用启动测试用例
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHomeScreen,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testGoogle,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBrowser,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testPlayStore,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testYoutube com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
+# 使用 Gradle 命令执行（替代方案）
+# ============================================
+
+# 执行单个测试用例（使用Gradle）
+# ./gradlew connectedNoModelsDebugAndroidTest --tests com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testVolumeUp
+
+# 执行所有测试用例（使用Gradle）
+# ./gradlew connectedNoModelsDebugAndroidTest --tests com.ai.voice.skills.device_control.DeviceControlInstrumentationTest
+
+# ============================================
+# 使用便捷脚本执行（推荐）
+# ============================================
+
+# 执行单个测试用例（使用脚本）
+# ./run_single_test.sh testVolumeUp
+
+# ============================================
+# 注意事项
+# ============================================
+# 1. 执行前确保设备已连接: adb devices
+# 2. 确保测试APK已安装
+# 3. 每个测试用例执行后会有2秒延迟
+# 4. 测试过程中会显示Toast提示
+# 5. testPowerOff 命令会关闭设备，请谨慎使用
+
