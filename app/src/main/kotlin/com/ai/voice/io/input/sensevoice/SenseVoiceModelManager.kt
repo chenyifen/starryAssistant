@@ -21,6 +21,10 @@ object SenseVoiceModelManager {
     private const val MODEL_INT8_FILE = "model.int8.onnx" 
     private const val TOKENS_FILE = "tokens.txt"
     
+    // hyundaiit变体模型文件名（根目录）
+    private const val HYUNDAIIT_MODEL_FILE = "asr.onnx"
+    private const val HYUNDAIIT_TOKENS_FILE = "asr_tokens.txt"
+    
     // 模型目录路径
     private const val ASSETS_MODEL_PATH = "models/asr/sensevoice"
     
@@ -53,22 +57,29 @@ object SenseVoiceModelManager {
     
     /**
      * 获取SenseVoice模型路径
-     * 优先级: 外部存储 > Assets
+     * 优先级: hyundaiit/assets根目录 > 外部存储 > Assets传统路径
      */
     suspend fun getModelPaths(context: Context): SenseVoiceModelPaths? {
         return withContext(Dispatchers.IO) {
             try {
-                // 1. 检查外部存储 (noModel渠道)
+                // 1. 优先检查hyundaiit/assets根目录下的模型（asr.onnx和asr_tokens.txt）
+                val hyundaiitPaths = checkHyundaiitAssetsModel(context)
+                if (hyundaiitPaths != null) {
+                    DebugLogger.logModelManagement(TAG, "✅ 使用hyundaiit/assets根目录中的SenseVoice模型: ${hyundaiitPaths.modelPath}")
+                    return@withContext hyundaiitPaths
+                }
+                
+                // 2. 检查外部存储 (noModel渠道)
                 val externalPaths = checkExternalStorage(context)
                 if (externalPaths != null) {
                     DebugLogger.logModelManagement(TAG, "✅ 使用外部存储SenseVoice模型: ${externalPaths.modelPath}")
                     return@withContext externalPaths
                 }
                 
-                // 2. 检查Assets模型 (withModel渠道，直接使用)
+                // 3. 检查Assets传统路径模型 (withModel渠道，直接使用)
                 val assetsPaths = checkAssetsModel(context)
                 if (assetsPaths != null) {
-                    DebugLogger.logModelManagement(TAG, "✅ 使用Assets中的SenseVoice模型: ${assetsPaths.modelPath}")
+                    DebugLogger.logModelManagement(TAG, "✅ 使用Assets传统路径中的SenseVoice模型: ${assetsPaths.modelPath}")
                     return@withContext assetsPaths
                 }
                 
@@ -129,6 +140,35 @@ object SenseVoiceModelManager {
     }
     
     
+    
+    /**
+     * 检查hyundaiit/assets根目录下的模型（asr.onnx和asr_tokens.txt）
+     */
+    private fun checkHyundaiitAssetsModel(context: Context): SenseVoiceModelPaths? {
+        return try {
+            // 检查根目录下的文件
+            val rootAssets = context.assets.list("") ?: return null
+            val rootAssetsList = rootAssets.toSet()
+            
+            val hasModel = rootAssetsList.contains(HYUNDAIIT_MODEL_FILE)
+            val hasTokens = rootAssetsList.contains(HYUNDAIIT_TOKENS_FILE)
+            
+            if (hasModel && hasTokens) {
+                DebugLogger.logModelManagement(TAG, "找到hyundaiit/assets根目录下的SenseVoice模型")
+                SenseVoiceModelPaths(
+                    modelPath = HYUNDAIIT_MODEL_FILE,
+                    tokensPath = HYUNDAIIT_TOKENS_FILE,
+                    isQuantized = false, // hyundaiit变体使用普通模型
+                    isFromAssets = true
+                )
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "检查hyundaiit/assets根目录SenseVoice模型失败", e)
+            null
+        }
+    }
     
     /**
      * 检查Assets模型（直接使用，不复制）
