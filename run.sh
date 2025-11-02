@@ -32,8 +32,8 @@ echo "✅ 检测到 $device_count 个设备"
 
 # 构建应用
 echo ""
-echo "🔨 3. 构建noModels变体..."
-./gradlew assembleNoModelsDebug
+echo "🔨 3. 构建hyundaiit变体..."
+./gradlew assembleHyundaiitDebug
 
 if [ $? -ne 0 ]; then
     echo "❌ 构建失败"
@@ -43,7 +43,7 @@ fi
 echo "✅ 构建成功"
 
 # 检查APK文件是否存在
-apk_path="app/build/outputs/apk/noModels/debug/app-noModels-debug.apk"
+apk_path="app/build/outputs/apk/hyundaiit/debug/app-hyundaiit-debug.apk"
 if [ ! -f "$apk_path" ]; then
     echo "❌ APK文件不存在: $apk_path"
     exit 1
