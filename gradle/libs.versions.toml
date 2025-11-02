@@ -1,7 +1,7 @@
 [versions]
 accompanist = "0.36.0"
 activityCompose = "1.10.0"
-androidGradlePlugin = "8.8.1"
+androidGradlePlugin = "8.7.3"
 androidxTest = "1.6.1" # if Android Studio suggests it, 1.6.2 does not exist
 androidxTestUiAutomator = "2.3.0"
 appcompat = "1.7.0"
@@ -31,6 +31,7 @@ unbescape = "1.1.6.RELEASE"
 voskAndroid = "0.3.32"
 litert = "1.1.2"
 permissionFlow = "2.0.0"
+gson = "2.10.1"
 # sherpaOnnx = "1.10.30" # Maven版本不可用，使用源文件集成
 
 [libraries]
@@ -84,11 +85,12 @@ vosk-android = { module = "com.alphacephei:vosk-android", version.ref = "voskAnd
 litert = { module = "com.google.ai.edge.litert:litert", version.ref = "litert" }
 permission-flow-android = { module = "dev.shreyaspatil.permission-flow:permission-flow-android", version.ref = "permissionFlow" }
 permission-flow-compose = { module = "dev.shreyaspatil.permission-flow:permission-flow-compose", version.ref = "permissionFlow" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 # sherpa-onnx = { module = "com.k2fsa.sherpa.onnx:sherpa-onnx", version.ref = "sherpaOnnx" } # Maven版本不可用
 
 [plugins]
-com-android-application = { id = "com.android.application", version.ref = "gradle" }
-com-android-library = { id = "com.android.library", version.ref = "gradle" }
+com-android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+com-android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
 org-jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 org-jetbrains-kotlin-plugin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 org-jetbrains-kotlin-plugin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
