@@ -36,6 +36,10 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         
         // 资源路径
         private const val ASSET_MODEL_DIR = "korean_hinudge_onnx"
+        // hyundaiit变体模型文件（根目录）
+        private const val HYUNDAIIT_MEL_FILE = "melspectrogram.onnx"
+        private const val HYUNDAIIT_EMB_FILE = "embedding_model.onnx"
+        private const val HYUNDAIIT_WAKE_FILE = "korean_wake_word_v24.onnx"
         private const val MEL_FILE_NAME = "melspectrogram.onnx"
         private const val EMB_FILE_NAME = "embedding_model.onnx"
         private const val WAKE_FILE_NAME = "korean_wake_word_v24.onnx"
@@ -154,6 +158,18 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
 
     private fun hasModelsInAssets(): Boolean {
         return try {
+            // 优先检查hyundaiit/assets根目录下的模型
+            val rootFiles = appContext.assets.list("")
+            val hasHyundaiitModels = rootFiles?.contains(HYUNDAIIT_MEL_FILE) == true &&
+                    rootFiles.contains(HYUNDAIIT_EMB_FILE) &&
+                    rootFiles.contains(HYUNDAIIT_WAKE_FILE)
+            
+            if (hasHyundaiitModels) {
+                DebugLogger.logModelManagement(TAG, "✅ 找到hyundaiit/assets根目录下的唤醒模型")
+                return true
+            }
+            
+            // 检查传统路径
             val files = appContext.assets.list(ASSET_MODEL_DIR)
             files?.contains(MEL_FILE_NAME) == true &&
             files.contains(EMB_FILE_NAME) &&
@@ -168,16 +184,39 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         return try {
             modelFolder.mkdirs()
             
-            appContext.assets.open("$ASSET_MODEL_DIR/$MEL_FILE_NAME").use { input ->
-                melFile.outputStream().use { output -> input.copyTo(output) }
-            }
+            // 优先使用hyundaiit/assets根目录下的模型
+            val rootFiles = appContext.assets.list("")
+            val useHyundaiitModels = rootFiles?.contains(HYUNDAIIT_MEL_FILE) == true &&
+                    rootFiles.contains(HYUNDAIIT_EMB_FILE) &&
+                    rootFiles.contains(HYUNDAIIT_WAKE_FILE)
             
-            appContext.assets.open("$ASSET_MODEL_DIR/$EMB_FILE_NAME").use { input ->
-                embFile.outputStream().use { output -> input.copyTo(output) }
-            }
-            
-            appContext.assets.open("$ASSET_MODEL_DIR/$WAKE_FILE_NAME").use { input ->
-                wakeFile.outputStream().use { output -> input.copyTo(output) }
+            if (useHyundaiitModels) {
+                DebugLogger.logModelManagement(TAG, "📥 Copying V8 models from hyundaiit/assets root...")
+                appContext.assets.open(HYUNDAIIT_MEL_FILE).use { input ->
+                    melFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                
+                appContext.assets.open(HYUNDAIIT_EMB_FILE).use { input ->
+                    embFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                
+                appContext.assets.open(HYUNDAIIT_WAKE_FILE).use { input ->
+                    wakeFile.outputStream().use { output -> input.copyTo(output) }
+                }
+            } else {
+                // 使用传统路径
+                DebugLogger.logModelManagement(TAG, "📥 Copying V8 models from $ASSET_MODEL_DIR...")
+                appContext.assets.open("$ASSET_MODEL_DIR/$MEL_FILE_NAME").use { input ->
+                    melFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                
+                appContext.assets.open("$ASSET_MODEL_DIR/$EMB_FILE_NAME").use { input ->
+                    embFile.outputStream().use { output -> input.copyTo(output) }
+                }
+                
+                appContext.assets.open("$ASSET_MODEL_DIR/$WAKE_FILE_NAME").use { input ->
+                    wakeFile.outputStream().use { output -> input.copyTo(output) }
+                }
             }
             
             DebugLogger.logModelManagement(TAG, "✅ Copied all V8 models:")

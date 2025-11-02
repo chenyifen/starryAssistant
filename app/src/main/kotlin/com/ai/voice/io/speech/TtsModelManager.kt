@@ -23,6 +23,10 @@ object TtsModelManager {
     // Assets中的TTS模型路径
     private const val ASSETS_TTS_MODELS_PATH = "models/tts"
     
+    // hyundaiit变体TTS模型路径（根目录）
+    private const val HYUNDAIIT_TTS_KO_PATH = "tts-ko"
+    private const val HYUNDAIIT_TTS_EN_PATH = "tts-en"
+    
     /**
      * TTS模型配置数据类
      */
@@ -38,10 +42,47 @@ object TtsModelManager {
     )
     
     /**
+     * 检查hyundaiit/assets下的TTS模型是否可用
+     */
+    private fun hasHyundaiitTtsModelInAssets(context: Context, languageCode: String): Boolean {
+        return try {
+            val hyundaiitPath = when (languageCode) {
+                "ko" -> HYUNDAIIT_TTS_KO_PATH
+                "en" -> HYUNDAIIT_TTS_EN_PATH
+                else -> null
+            } ?: return false
+            
+            val modelFiles = context.assets.list(hyundaiitPath) ?: return false
+            val hyundaiitModelName = when (languageCode) {
+                "ko" -> "ko_KO-kss_low.onnx"
+                "en" -> "en_US-amy-low.onnx"
+                else -> null
+            } ?: return false
+            
+            val hasModel = modelFiles.contains(hyundaiitModelName)
+            Log.d(TAG, "检查hyundaiit/assets中的TTS模型 $languageCode: $hasModel")
+            Log.d(TAG, "  路径: $hyundaiitPath")
+            Log.d(TAG, "  模型文件: $hyundaiitModelName")
+            
+            hasModel
+        } catch (e: Exception) {
+            Log.w(TAG, "检查hyundaiit/assets TTS模型失败: ${e.message}")
+            false
+        }
+    }
+    
+    /**
      * 检查TTS模型是否在assets中可用
+     * 优先级: hyundaiit/assets > 传统assets路径
      */
     fun hasTtsModelInAssets(context: Context, languageCode: String): Boolean {
         return try {
+            // 优先检查hyundaiit/assets
+            if (hasHyundaiitTtsModelInAssets(context, languageCode)) {
+                return true
+            }
+            
+            // 检查传统路径
             val modelConfig = getModelConfigForLanguage(languageCode) ?: return false
             val assetPath = "$ASSETS_TTS_MODELS_PATH/${modelConfig.modelDir}"
             
@@ -171,9 +212,40 @@ object TtsModelManager {
             }
         }
         
-        // 优先检查assets（withModels变体）
+        // 优先检查hyundaiit/assets路径
+        if (hasHyundaiitTtsModelInAssets(context, actualLanguageCode)) {
+            val hyundaiitPath = when (actualLanguageCode) {
+                "ko" -> HYUNDAIIT_TTS_KO_PATH
+                "en" -> HYUNDAIIT_TTS_EN_PATH
+                else -> null
+            }
+            
+            if (hyundaiitPath != null) {
+                val hyundaiitModelName = when (actualLanguageCode) {
+                    "ko" -> "ko_KO-kss_low.onnx"
+                    "en" -> "en_US-amy-low.onnx"
+                    else -> baseConfig.modelName
+                }
+                
+                Log.d(TAG, "✅ 使用hyundaiit/assets TTS模型: $actualLanguageCode")
+                return TtsModelConfig(
+                    modelDir = hyundaiitPath,
+                    modelName = hyundaiitModelName,
+                    lexicon = baseConfig.lexicon,
+                    dataDir = if (baseConfig.dataDir.isNotEmpty()) 
+                        "$hyundaiitPath/${baseConfig.dataDir}" 
+                        else "",
+                    dictDir = if (baseConfig.dictDir.isNotEmpty()) 
+                        "$hyundaiitPath/${baseConfig.dictDir}" 
+                        else "",
+                    useAssets = true
+                )
+            }
+        }
+        
+        // 检查传统assets路径（withModels变体）
         if (hasTtsModelInAssets(context, actualLanguageCode)) {
-            Log.d(TAG, "✅ 使用assets TTS模型: $actualLanguageCode")
+            Log.d(TAG, "✅ 使用传统assets TTS模型: $actualLanguageCode")
             return baseConfig.copy(
                 modelDir = "$ASSETS_TTS_MODELS_PATH/${baseConfig.modelDir}",
                 dataDir = if (baseConfig.dataDir.isNotEmpty()) 
