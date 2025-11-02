@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 悬浮球尺寸配置 (hyundaiit 渠道定制) -->
+    
+    <!-- 悬浮球实际显示大小 (可直接修改此值来调整悬浮球大小) -->
+    <dimen name="floating_orb_size">120dp</dimen>
+    
+    <!-- 悬浮球动画实际大小 -->
+    <dimen name="floating_orb_animation_size">96dp</dimen>
+    
+    <!-- 悬浮球边缘吸附时的大小 (通常比正常大小小一些) -->
+    <dimen name="floating_orb_edge_size">72dp</dimen>
+    
+    <!-- 悬浮球边缘吸附时的动画大小 -->
+    <dimen name="floating_orb_edge_animation_size">57dp</dimen>
+    
+    <!-- 悬浮球拖拽相关配置 -->
+    
+    <!-- 点击阈值 (超过此距离视为拖拽而非点击) -->
+    <dimen name="floating_orb_click_threshold">5dp</dimen>
+    
+    <!-- 边缘吸附阈值 (距离屏幕边缘多近时自动吸附) -->
+    <dimen name="floating_orb_edge_snap_threshold">50dp</dimen>
+    
+    <!-- 悬浮球默认位置 -->
+    <dimen name="floating_orb_default_x">100dp</dimen>
+    <dimen name="floating_orb_default_y">200dp</dimen>
+    
+    <!-- 悬浮球文本显示相关 -->
+    
+    <!-- 悬浮球下方文本与悬浮球的间距 -->
+    <dimen name="floating_orb_text_margin_top">16dp</dimen>
+    
+    <!-- 悬浮球文本大小 -->
+    <dimen name="floating_orb_text_size">14sp</dimen>
+    
+    <!-- 悬浮球状态文本大小 -->
+    <dimen name="floating_orb_status_text_size">12sp</dimen>
+
+    <!-- 快捷命令按钮大小 -->
+    <dimen name="quick_command_button_size">48dp</dimen>
+    
+    <!-- 快捷命令按钮间距 -->
+    <dimen name="quick_command_button_spacing">12dp</dimen>
+</resources>
