@@ -35,7 +35,7 @@
     <string name="error_crash_log_headline">충돌 로그:</string>
     <string name="error_copy_formatted">형식화된 신고 복사</string>
     <string name="error_report_github">GitHub에서 신고</string>
-    <string name="error_report_notification_title">Dicio에서 오류가 발생했습니다. 탭하여 신고하세요</string>
+    <string name="error_report_notification_title">HeyNudge에서 오류가 발생했습니다. 탭하여 신고하세요</string>
     <string name="error_report_notification_toast">오류가 발생했습니다. 알림을 확인하세요</string>
     <string name="error_report_channel_name">오류 신고 알림</string>
     <string name="error_report_channel_description">오류를 신고하는 알림</string>
@@ -49,14 +49,14 @@
     <string name="pref_language">언어</string>
     <string name="pref_language_system">시스템 언어 사용</string>
     <string name="pref_input_method">입력 방법</string>
-    <string name="pref_input_method_summary">음성 또는 텍스트로 Dicio와 상호작용하는 방법 선택</string>
+    <string name="pref_input_method_summary">음성 또는 텍스트로 HeyNudge와 상호작용하는 방법 선택</string>
     <string name="pref_input_method_speech_to_text">음성을 텍스트로</string>
     <string name="pref_input_method_text">텍스트만</string>
     <string name="pref_speech_to_text_engine">음성 인식 엔진</string>
     <string name="pref_speech_to_text_engine_summary">음성을 텍스트로 변환하는 데 사용할 엔진 선택</string>
     <string name="pref_speech_to_text_engine_vosk">Vosk (오프라인)</string>
     <string name="pref_speech_output_method">음성 출력 방법</string>
-    <string name="pref_speech_output_method_summary">Dicio가 응답을 말하는 방법 선택</string>
+    <string name="pref_speech_output_method_summary">HeyNudge가 응답을 말하는 방법 선택</string>
     <string name="pref_speech_output_method_android_tts">Android 텍스트 음성 변환</string>
     <string name="pref_speech_output_method_sherpa_onnx">SherpaOnnx TTS</string>
     <string name="pref_speech_output_method_nothing">음성 출력 없음</string>
@@ -72,7 +72,7 @@
     <string name="eval_missing_permissions">\"%1$s\" 기능이 작동하려면 다음 권한이 필요합니다: %2$s</string>
     <string name="eval_fatal_error">요청을 처리할 수 없습니다</string>
     <string name="eval_network_error">네트워크 오류</string>
-    <string name="eval_network_error_description">Dicio가 인터넷에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="eval_network_error_description">HeyNudge가 인터넷에 연결할 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
     <string name="eval_no_match">이해하지 못했습니다</string>
     <string name="eval_no_match_repeat">다시 말씀해 주시겠어요?</string>
     <string name="stt_say_something">무언가 말해보세요…</string>
@@ -111,14 +111,14 @@
     <string name="floating_text_loading">로딩 중…</string>
     
     <!-- 웨이크 서비스 통지 -->
-    <string name="wake_service_label">Dicio 웨이크 워드 서비스</string>
-    <string name="wake_service_foreground_notification">\"Hey Dicio\" 웨이크 워드 대기 중</string>
+    <string name="wake_service_label">HeyNudge 웨이크 워드 서비스</string>
+    <string name="wake_service_foreground_notification">\"Hey HeyNudge\" 웨이크 워드 대기 중</string>
     <string name="wake_custom_service_foreground_notification">사용자 정의 웨이크 워드 대기 중</string>
-    <string name="wake_service_foreground_notification_summary">이 알림을 통해 Dicio가 백그라운드에서 마이크를 듣고 웨이크 워드를 감지할 수 있습니다</string>
-    <string name="wake_service_start_notification">탭하여 Dicio 웨이크 워드 서비스 시작</string>
-    <string name="wake_service_start_notification_summary">Android 11+ 에서는 사용자의 수동 조작 없이 Dicio가 서비스를 시작할 수 없습니다.</string>
-    <string name="wake_service_triggered_notification">Dicio 웨이크 워드 감지됨, 탭하여 열기</string>
-    <string name="wake_service_triggered_notification_summary">Android 10+ 에서는 웨이크 워드가 감지되었을 때 알림 없이 Dicio를 시작할 수 없습니다.</string>
+    <string name="wake_service_foreground_notification_summary">이 알림을 통해 HeyNudge가 백그라운드에서 마이크를 듣고 웨이크 워드를 감지할 수 있습니다</string>
+    <string name="wake_service_start_notification">탭하여 HeyNudge 웨이크 워드 서비스 시작</string>
+    <string name="wake_service_start_notification_summary">Android 11+ 에서는 사용자의 수동 조작 없이 HeyNudge가 서비스를 시작할 수 없습니다.</string>
+    <string name="wake_service_triggered_notification">HeyNudge 웨이크 워드 감지됨, 탭하여 열기</string>
+    <string name="wake_service_triggered_notification_summary">Android 10+ 에서는 웨이크 워드가 감지되었을 때 알림 없이 HeyNudge를 시작할 수 없습니다.</string>
     <string name="stop">중지</string>
     
 </resources>

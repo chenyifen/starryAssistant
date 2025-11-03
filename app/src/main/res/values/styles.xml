@@ -12,7 +12,7 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 
-    <style name="Theme.Dicio.Transparent" parent="android:Theme.Translucent.NoTitleBar.Fullscreen">
+    <style name="Theme.HeyNudge.Transparent" parent="android:Theme.Translucent.NoTitleBar.Fullscreen">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:colorBackgroundCacheHint">@null</item>
         <item name="android:windowIsTranslucent">true</item>

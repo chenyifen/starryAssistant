@@ -181,7 +181,7 @@
                     android:enabled="true"
                     android:exported="false"
                     android:label="Half Screen Assistant"
-                    android:theme="@style/Theme.Dicio.Transparent"
+                    android:theme="@style/Theme.HeyNudge.Transparent"
                     android:launchMode="singleTop"
                     android:excludeFromRecents="true"
                     android:taskAffinity=""
