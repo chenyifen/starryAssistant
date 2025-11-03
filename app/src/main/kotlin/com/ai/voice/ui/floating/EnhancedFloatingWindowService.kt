@@ -32,16 +32,18 @@ import org.dicio.skill.context.SkillContext
 import com.ai.voice.di.WakeDeviceWrapper
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.io.wake.WakeService
-import com.ai.voice.io.wake.WakeWordCallback
+// 移除WakeWordCallback相关导入 - UI层不再直接处理唤醒回调
+// import com.ai.voice.io.wake.WakeWordCallback
+// import com.ai.voice.io.wake.WakeWordCallbackManager
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
-import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.ui.floating.components.DraggableFloatingOrb
 import com.ai.voice.ui.floating.components.LottieAnimationState
 import com.ai.voice.ui.floating.components.LottieAnimationTexts
 import com.ai.voice.ui.floating.state.VoiceAssistantFullState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
+import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.settings.datastore.UserSettings
 import androidx.datastore.core.DataStore
@@ -78,8 +80,9 @@ enum class VoiceAssistantState {
 class EnhancedFloatingWindowService : Service(), 
     LifecycleOwner, 
     ViewModelStoreOwner, 
-    SavedStateRegistryOwner,
-    WakeWordCallback {  // 实现唤醒词回调接口
+    SavedStateRegistryOwner {
+    // 移除WakeWordCallback实现 - UI层不应该直接处理业务逻辑
+    // 改为监听VoiceAssistantStateProvider的状态变化
     
     private val TAG = "EnhancedFloatingWindowService"
     
@@ -117,15 +120,11 @@ class EnhancedFloatingWindowService : Service(),
         // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
         
-        // 注册唤醒词回调（接收WakeService的唤醒通知）
-        WakeWordCallbackManager.registerCallback(this)
-        DebugLogger.logUI(TAG, "✅ Registered wake word callback")
-        
         // 启动WakeService（现在由悬浮球服务管理）
         startWakeService()
         
-        // 注意：不在Service层监听状态变化，让DraggableFloatingOrb自己处理
-        // 避免重复监听导致的状态更新循环
+        // 监听VoiceAssistantStateProvider的状态变化（UI层正确做法）
+        observeAssistantState()
         
         // 初始化生命周期
         savedStateRegistryController.performRestore(null)
@@ -160,10 +159,6 @@ class EnhancedFloatingWindowService : Service(),
     
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
-        
-        // 取消注册唤醒词回调
-        WakeWordCallbackManager.unregisterCallback(this)
-        DebugLogger.logUI(TAG, "✅ Unregistered wake word callback")
         
         // 取消注册自动化测试接收器
         unregisterAutoTestReceiver()
@@ -337,45 +332,62 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     // ========================================
-    // WakeWordCallback 接口实现
+    // 状态监听 - 正确的架构实现
     // ========================================
     
     /**
-     * 当检测到唤醒词时调用（WakeWordCallback接口）
+     * 监听VoiceAssistantStateProvider的状态变化
+     * UI层只负责根据状态更新UI，不处理业务逻辑
      */
-    override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
-        DebugLogger.logUI(TAG, "🎯 Wake word detected: '$wakeWord' (confidence: $confidence)")
-        handleVoiceWakeUp()
-    }
-    
-    override fun onWakeWordListeningStarted() {
-        DebugLogger.logUI(TAG, "👂 Wake word listening started")
-    }
-    
-    override fun onWakeWordListeningStopped() {
-        DebugLogger.logUI(TAG, "🛑 Wake word listening stopped")
-    }
-    
-    override fun onWakeWordError(error: Throwable) {
-        DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
+    private fun observeAssistantState() {
+        serviceScope.launch {
+            voiceAssistantStateProvider.state.collect { state ->
+                handleStateChange(state)
+            }
+        }
     }
     
     /**
-     * 处理语音唤醒
-     * Hyundai IT版本：显示悬浮球并保持IDLE动画，开始ASR监听
+     * 处理状态变化 - UI层的职责：根据状态更新UI
      */
-    private fun handleVoiceWakeUp() {
-        DebugLogger.logUI(TAG, "🎤 Voice wake up detected - 显示悬浮球并开始ASR")
+    private fun handleStateChange(state: VoiceAssistantFullState) {
+        DebugLogger.logUI(TAG, "📊 State changed: ${state.uiState}")
         
-        // 显示悬浮球（如果尚未显示）
-        floatingOrb?.show()
-        
-        // 设置为IDLE动画状态（简化版本，不再使用WAKE_WORD动画）
-        floatingOrb?.getAnimationStateManager()?.setIdle()
-        DebugLogger.logUI(TAG, "🎭 Animation set to IDLE state (simplified)")
-        
-        // 启动ASR监听（不展开半屏）
-        startVoiceRecognition()
+        when (state.uiState) {
+            VoiceAssistantUIState.IDLE -> {
+                // 空闲状态 - 隐藏悬浮球（Hyundai IT版本）
+                if (floatingOrb != null) {
+                    DebugLogger.logUI(TAG, "💤 IDLE state - hiding floating orb")
+                    hideFloatingOrb()
+                }
+            }
+            
+            VoiceAssistantUIState.LISTENING -> {
+                // 监听状态 - 显示悬浮球并设置IDLE动画
+                DebugLogger.logUI(TAG, "🎤 LISTENING state - showing floating orb")
+                floatingOrb?.show()
+                floatingOrb?.getAnimationStateManager()?.setIdle()
+            }
+            
+            VoiceAssistantUIState.THINKING -> {
+                // 思考状态 - 保持悬浮球显示
+                DebugLogger.logUI(TAG, "🤔 THINKING state - keeping orb visible")
+            }
+            
+            VoiceAssistantUIState.SPEAKING -> {
+                // 说话状态 - 保持悬浮球显示
+                DebugLogger.logUI(TAG, "🗣️ SPEAKING state - keeping orb visible")
+            }
+            
+            VoiceAssistantUIState.ERROR -> {
+                // 错误状态 - 短暂显示后隐藏
+                DebugLogger.logUI(TAG, "❌ ERROR state")
+                serviceScope.launch {
+                    kotlinx.coroutines.delay(2000)
+                    hideFloatingOrb()
+                }
+            }
+        }
     }
     
     
