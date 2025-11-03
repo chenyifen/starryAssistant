@@ -6,9 +6,13 @@
 package com.ai.voice.io.input.sensevoice
 
 import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import android.util.Log
 import com.k2fsa.sherpa.onnx.Vad
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -118,19 +122,25 @@ class SenseVoiceInputDevice private constructor(
     private var eventListener: ((InputEvent) -> Unit)? = null
     private var samplesChannel = Channel<FloatArray>(capacity = Channel.UNLIMITED)
     
+    // 音频焦点管理（Android 15+ 必需）
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus = AtomicBoolean(false)
+    
     // VAD和语音检测状态
     private var speechDetected = false
     private var speechStartTime = 0L
     private var lastSpeechTime = 0L
     private var asrStartTime = 0L // 🆕 ASR启动时间，用于初始缓冲期
-    // 参考SherpaOnnxSimulateAsr使用ArrayList进行高效缓冲管理
-    private val audioBuffer = arrayListOf<Float>()
-    private var bufferOffset = 0
-    private val maxBufferSize = SAMPLE_RATE * 10 // 最多存储10秒音频
+    // 🚀 使用高效的循环缓冲区，避免ArrayList的装箱开销和频繁GC
+    private val audioBuffer = AudioBuffer(sampleRate = SAMPLE_RATE, maxDurationSeconds = 10.0f)
     private var partialText = ""
     private var lastPartialRecognitionTime = 0L
-    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 300L // 🔥 300ms触发间隔（从150ms改为300ms，减少计算负担）
+    private val PARTIAL_RECOGNITION_COOLDOWN_MS = 400L // 🔥 400ms触发间隔（平衡响应速度和准确率）
+    private val PARTIAL_FIRST_MIN_AUDIO_DURATION_SEC = 0.5f // 🆕 首次识别：0.5秒（快速响应）
+    private val PARTIAL_NORMAL_MIN_AUDIO_DURATION_SEC = 0.7f // 🆕 后续识别：0.7秒（提高准确率）
     private var isPartialResultAdded = false // 参考demo的结果管理策略
+    private var partialRecognitionCount = 0 // 识别次数计数
     
     // 🆕 高分提前结束优化（方案1）
     private var lastStablePartialText = ""      // 上一次稳定的Partial文本
@@ -147,6 +157,9 @@ class SenseVoiceInputDevice private constructor(
     
     init {
         Log.d(TAG, "🎤 SenseVoice输入设备初始化中...")
+        
+        // 初始化 AudioManager（Android 15 音频焦点必需）
+        audioManager = appContext.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
         
         // 异步初始化SenseVoice和VAD
         scope.launch {
@@ -508,6 +521,80 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
+     * 请求音频焦点（Android 15+ 必需）
+     */
+    private fun requestAudioFocus(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return true
+        }
+        
+        val manager = audioManager ?: run {
+            Log.e(TAG, "❌ AudioManager not initialized")
+            return false
+        }
+        
+        try {
+            // 🔥 重要：ASR 使用 AUDIOFOCUS_GAIN（持续录音），不是 TRANSIENT（短暂）
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            
+            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(audioAttributes)
+                .setAcceptsDelayedFocusGain(false)
+                .setWillPauseWhenDucked(false)
+                .build()
+            
+            audioFocusRequest = focusRequest
+            
+            val result = manager.requestAudioFocus(focusRequest)
+            val success = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            
+            hasAudioFocus.set(success)
+            
+            if (success) {
+                Log.d(TAG, "✅ Audio focus granted (Android ${Build.VERSION.SDK_INT})")
+            } else {
+                Log.e(TAG, "❌ Audio focus request failed: result=$result (Android ${Build.VERSION.SDK_INT})")
+            }
+            
+            return success
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception requesting audio focus", e)
+            return false
+        }
+    }
+    
+    /**
+     * 释放音频焦点
+     */
+    private fun releaseAudioFocus() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return
+        }
+        
+        if (!hasAudioFocus.get()) {
+            return
+        }
+        
+        try {
+            val manager = audioManager
+            val request = audioFocusRequest
+            
+            if (manager != null && request != null) {
+                manager.abandonAudioFocusRequest(request)
+                Log.d(TAG, "🔓 Audio focus released")
+            }
+            
+            hasAudioFocus.set(false)
+            audioFocusRequest = null
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception releasing audio focus", e)
+        }
+    }
+    
+    /**
      * 开始录制音频 (修复缓冲区管理问题和并发访问)
      */
     private suspend fun startRecording(): Boolean {
@@ -516,6 +603,12 @@ class SenseVoiceInputDevice private constructor(
             if (isRecording.get()) {
                 Log.w(TAG, "⚠️ 实例 ${this.hashCode()} 已在录制中，忽略重复启动")
                 return true
+            }
+            
+            // Android 15+ 必须先请求音频焦点
+            if (!requestAudioFocus()) {
+                Log.e(TAG, "❌ Cannot create AudioRecord without audio focus (Android ${Build.VERSION.SDK_INT})")
+                return false
             }
             
             // 单例模式下不需要资源锁
@@ -530,6 +623,7 @@ class SenseVoiceInputDevice private constructor(
             
             if (minBufferSizeInBytes == AudioRecord.ERROR || minBufferSizeInBytes == AudioRecord.ERROR_BAD_VALUE) {
                 Log.e(TAG, "❌ 无法获取AudioRecord缓冲区大小")
+                releaseAudioFocus()
                 return false
             }
             
@@ -660,6 +754,9 @@ class SenseVoiceInputDevice private constructor(
             
             audioRecord = null
             
+            // 释放音频焦点（Android 15+ 必需）
+            releaseAudioFocus()
+            
         } catch (e: Exception) {
             Log.e(TAG, "❌ 清理AudioRecord资源失败", e)
         }
@@ -712,9 +809,10 @@ class SenseVoiceInputDevice private constructor(
                             // 成功读取数据，重置错误计数
                             consecutiveErrors = 0
                             
-                            // 转换为Float数组 (归一化到 -1.0 到 1.0)
-                            val samples = FloatArray(readSamples) { i -> 
-                                buffer[i].toFloat() / 32768.0f 
+                            // 🔧 转换为Float数组并创建新副本（修复数据引用bug）
+                            // 之前的优化导致floatBuffer被重用，当直接使用引用时数据会被覆盖
+                            val samples = FloatArray(readSamples) { i ->
+                                buffer[i].toFloat() / 32768.0f
                             }
                             
                             // 发送到处理通道
@@ -778,7 +876,7 @@ class SenseVoiceInputDevice private constructor(
                     isListening.set(false)
                     isRecording.set(false)
                     _uiState.value = SttState.Loaded
-                    throw e // 重新抛出取消异常
+                    // 不重新抛出，优雅退出即可
                 } catch (e: Exception) {
                     if (isRecording.get()) {
                         Log.e(TAG, "❌ 录制音频数据异常", e)
@@ -823,15 +921,8 @@ class SenseVoiceInputDevice private constructor(
                         break
                     }
                     
-                    // 参考SherpaOnnxSimulateAsr的高效缓冲管理
-                    synchronized(audioBuffer) {
-                        audioBuffer.addAll(samples.toList())
-                        // 如果缓冲区太大，移除旧数据
-                        while (audioBuffer.size > maxBufferSize) {
-                            audioBuffer.removeAt(0)
-                            if (bufferOffset > 0) bufferOffset--
-                        }
-                    }
+                    // 🚀 使用AudioBuffer添加音频块（自动管理循环缓冲）
+                    audioBuffer.addAudioChunk(samples)
                     
                     // VAD检测
                     val isSpeech = detectSpeech(samples)
@@ -849,9 +940,16 @@ class SenseVoiceInputDevice private constructor(
                         }
                         lastSpeechTime = currentTime
                         
-                        // 参考SherpaOnnxSimulateAsr每200ms进行实时识别
+                        // 🆕 渐进式识别：首次快速响应（0.5秒），后续提高质量（0.7秒）
                         val elapsed = currentTime - lastPartialRecognitionTime
-                        if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && audioBuffer.size >= SAMPLE_RATE / 2) {
+                        val minAudioDuration = if (partialRecognitionCount == 0) {
+                            PARTIAL_FIRST_MIN_AUDIO_DURATION_SEC // 首次：快速响应
+                        } else {
+                            PARTIAL_NORMAL_MIN_AUDIO_DURATION_SEC // 后续：提高准确率
+                        }
+                        
+                        if (elapsed > PARTIAL_RECOGNITION_COOLDOWN_MS && 
+                            audioBuffer.hasMinimumAudio(minAudioDuration)) {
                             performPartialRecognition()
                         }
                         
@@ -957,18 +1055,29 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
-     * 执行部分识别（实时反馈）- 参考SherpaOnnxSimulateAsr优化 + 高分提前结束
+     * 执行部分识别（实时反馈）- 渐进式快速响应策略
      */
     private suspend fun performPartialRecognition() {
         try {
             val currentTime = System.currentTimeMillis()
             lastPartialRecognitionTime = currentTime
             
-            // 参考SherpaOnnxSimulateAsr的缓冲管理方式
-            val audioData = synchronized(audioBuffer) {
-                if (audioBuffer.size < SAMPLE_RATE / 4) return // 至少0.25秒音频
-                audioBuffer.toFloatArray()
+            // 🆕 渐进式音频时长要求
+            val minAudioDuration = if (partialRecognitionCount == 0) {
+                PARTIAL_FIRST_MIN_AUDIO_DURATION_SEC
+            } else {
+                PARTIAL_NORMAL_MIN_AUDIO_DURATION_SEC
             }
+            
+            // 使用AudioBuffer获取累积的音频数据
+            if (!audioBuffer.hasMinimumAudio(minAudioDuration)) {
+                DebugLogger.logAudio(TAG, "⏭️ 音频不足${minAudioDuration}秒，跳过Partial识别")
+                return
+            }
+            val audioData = audioBuffer.getAccumulatedAudio()
+            
+            // 🆕 添加音频质量检查
+            val audioStats = audioBuffer.getAudioQualityStats()
             
             // 🔥 使用互斥锁保护recognizer访问
             val newText = recognizerMutex.withLock {
@@ -980,15 +1089,16 @@ class SenseVoiceInputDevice private constructor(
                 recognizer.recognize(audioData)
             }
             
-            // 🔥 过滤无意义的识别结果
+            // 🔥 优化过滤逻辑：保留韩文单字，但过滤纯标点
             val isMeaningful = newText.isNotBlank() && 
                                newText != "." && 
-                               newText.length > 1 &&
-                               !newText.matches(Regex("^[.。,，!！?？]+$"))
+                               !newText.matches(Regex("^[.。,，!！?？]+$")) && // 纯标点
+                               hasValidContent(newText) // 包含字母或韩文字符
             
             if (isMeaningful && newText != partialText) {
                 val oldText = partialText
                 partialText = newText
+                partialRecognitionCount++ // 增加识别计数
                 
                 // 参考SherpaOnnxSimulateAsr的结果管理策略
                 withContext(Dispatchers.Main) {
@@ -1002,7 +1112,8 @@ class SenseVoiceInputDevice private constructor(
                     }
                 }
                 
-                Log.d(TAG, "🎯 部分识别更新: '$oldText' → '$partialText' (音频长度: ${audioData.size / SAMPLE_RATE.toFloat()}秒)")
+                val audioDuration = audioData.size / SAMPLE_RATE.toFloat()
+                Log.d(TAG, "🎯 部分识别更新 #${partialRecognitionCount}: '$oldText' → '$partialText' (音频: ${String.format("%.2f", audioDuration)}秒, 质量: ${audioStats})")
                 
                 // 🆕 检查稳定性，重置计数
                 partialStableCount = 0
@@ -1033,11 +1144,40 @@ class SenseVoiceInputDevice private constructor(
                 }
             } else if (!isMeaningful && newText.isNotBlank()) {
                 // 过滤掉无意义输出，不发送事件
-                Log.d(TAG, "⏭️ 跳过无意义输出: '$newText'")
+                val audioDuration = audioData.size / SAMPLE_RATE.toFloat()
+                val reason = when {
+                    newText == "." -> "单点"
+                    newText.matches(Regex("^[.。,，!！?？]+$")) -> "纯标点"
+                    !hasValidContent(newText) -> "无有效字符"
+                    else -> "未知"
+                }
+                Log.d(TAG, "⏭️ 跳过无意义输出: '$newText' (原因: $reason, 音频: ${String.format("%.2f", audioDuration)}秒)")
             }
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 部分识别异常", e)
+        }
+    }
+    
+    /**
+     * 🆕 检查文本是否包含有效内容（字母、韩文字符等）
+     * 用于过滤纯标点的识别结果
+     */
+    private fun hasValidContent(text: String): Boolean {
+        return text.any { char ->
+            when {
+                // 英语字母
+                char in 'a'..'z' || char in 'A'..'Z' -> true
+                // 韩语字符（Hangul Syllables）
+                char in '\uAC00'..'\uD7A3' -> true
+                // 韩语兼容字母
+                char in '\u3131'..'\u318E' -> true
+                char in '\u1100'..'\u11FF' -> true
+                // 数字
+                char in '0'..'9' -> true
+                // 其他非标点字符
+                else -> false
+            }
         }
     }
     
@@ -1054,11 +1194,13 @@ class SenseVoiceInputDevice private constructor(
             return SPEECH_TIMEOUT_MS
         }
         
-        // 如果已经有有效的识别结果，使用中等超时（给韩语足够时间完成）
+        // 🔥 优化：有识别结果后快速结束，提高响应速度
         return if (partialText.length >= 3) {
-            1800L  // 有识别结果，1.8秒超时（从1秒增加到1.8秒）
+            1200L  // 有识别结果，1.2秒超时（快速响应）
+        } else if (partialText.length >= 1) {
+            1800L  // 有部分识别，1.8秒超时（中等响应）
         } else {
-            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（3秒）
+            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（4秒）
         }
     }
     
@@ -1104,7 +1246,7 @@ class SenseVoiceInputDevice private constructor(
     private suspend fun performFinalRecognition() {
         try {
             // 检查是否有足够的语音数据
-            if (audioBuffer.isEmpty() || !speechDetected) {
+            if (!audioBuffer.hasMinimumAudio(0.1f) || !speechDetected) {
                 withContext(Dispatchers.Main) {
                     eventListener?.invoke(InputEvent.None)
                 }
@@ -1123,12 +1265,11 @@ class SenseVoiceInputDevice private constructor(
                 return
             }
             
-            Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioBuffer.size}样本，语音时长: ${speechDuration}ms")
+            val audioSamples = audioBuffer.getAccumulatedAudio().size
+            Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioSamples}样本，语音时长: ${speechDuration}ms")
             
-            // 安全地从队列中获取所有音频数据 - 直接转换避免null问题
-            val audioData = synchronized(audioBuffer) {
-                audioBuffer.toFloatArray()
-            }
+            // 使用AudioBuffer获取累积的音频数据
+            val audioData = audioBuffer.getAccumulatedAudio()
             
             // 🔥 使用互斥锁保护recognizer访问
             val finalText = recognizerMutex.withLock {
@@ -1199,12 +1340,10 @@ class SenseVoiceInputDevice private constructor(
         // 🔥 修复：重置Partial识别时间戳（多轮对话bug）
         lastPartialRecognitionTime = 0L
         
-        synchronized(audioBuffer) {
-            audioBuffer.clear()
-            bufferOffset = 0
-        }
+        audioBuffer.clear()
         partialText = ""
         isPartialResultAdded = false // 重置结果管理标志
+        partialRecognitionCount = 0 // 重置识别计数
         
         // 🆕 重置高分提前结束相关状态
         lastStablePartialText = ""
@@ -1231,11 +1370,24 @@ class SenseVoiceInputDevice private constructor(
         Log.d(TAG, "🔇 停止录制音频...")
         isRecording.set(false)
         
-        // 取消录制协程
+        // 取消录制协程，但不立即清理（等待协程优雅退出）
         recordingJob?.cancel()
-        recordingJob = null
         
-        cleanupAudioRecord()
+        // 在协程中异步等待并清理
+        scope.launch {
+            try {
+                // 等待录制协程完成（最多500ms）
+                withTimeoutOrNull(500L) {
+                    recordingJob?.join()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "等待录制协程退出异常: ${e.message}")
+            } finally {
+                recordingJob = null
+                cleanupAudioRecord()
+                Log.d(TAG, "✅ 录制资源已清理")
+            }
+        }
     }
     
     /**
@@ -1243,8 +1395,8 @@ class SenseVoiceInputDevice private constructor(
      */
     fun getDeviceInfo(): String {
         val recognizerInfo = senseVoiceRecognizer?.getInfo() ?: "未初始化"
-        val bufferSize = audioBuffer.size
+        val bufferInfo = audioBuffer.getBufferInfo()
         val isActive = isListening.get()
-        return "SenseVoiceDevice($recognizerInfo, 缓冲区:${bufferSize}样本, 活跃:$isActive)"
+        return "SenseVoiceDevice($recognizerInfo, $bufferInfo, 活跃:$isActive)"
     }
 }

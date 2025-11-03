@@ -2,6 +2,14 @@
 # 使用方法：复制对应的命令到终端执行
 # 确保设备已连接: adb devices
 # 确保测试APK已安装
+#
+# 注意：DeviceControl已拆分为5个技能：
+# - PowerControl (电源和音量控制)
+# - InputSourceControl (输入源切换)
+# - AppLauncher (应用启动)
+# - WhiteboardTools (白板工具)
+# - SystemNavigation (系统导航和功能)
+# 所有命令通过 BaseDeviceControlSkill 执行，测试类保持不变
 
 # ============================================
 # 基础命令格式
@@ -121,6 +129,43 @@ adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceCon
 adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWifiConnect com.ai.voice.test/com.ai.voice.CustomTestRunner
 
 # ============================================
+# 白板工具测试用例
+# ============================================
+
+# 28. 打开白板
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWhiteboard com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 29. 保存白板
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testSaveWhiteboard com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 30. 红笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testRedPen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 31. 蓝笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBluePen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 32. 白笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWhitePen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 33. 黑笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBlackPen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 34. 橡皮擦
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testEraser com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 35. 清除所有
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testDeleteAll com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 36. 荧光笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHighlightPen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 37. 钢笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testFountainPen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# 38. 毛笔
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBrushPen com.ai.voice.test/com.ai.voice.CustomTestRunner
+
+# ============================================
 # 批量执行命令（可选）
 # ============================================
 
@@ -130,8 +175,8 @@ adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceCon
 # 执行所有输入源切换测试用例
 adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testInputSource,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHdmiOne,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHdmiTwo,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testDpPort com.ai.voice.test/com.ai.voice.CustomTestRunner
 
-# 执行所有应用启动测试用例
-adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testHomeScreen,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testGoogle,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBrowser,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testPlayStore,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testYoutube com.ai.voice.test/com.ai.voice.CustomTestRunner
+# 执行所有白板工具测试用例
+adb shell am instrument -w -e class com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWhiteboard,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testRedPen,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBluePen,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testWhitePen,com.ai.voice.skills.device_control.DeviceControlInstrumentationTest#testBlackPen com.ai.voice.test/com.ai.voice.CustomTestRunner
 
 # ============================================
 # 使用 Gradle 命令执行（替代方案）

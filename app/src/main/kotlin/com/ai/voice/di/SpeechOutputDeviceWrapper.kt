@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.dicio.skill.context.SpeechOutputDevice
 import com.ai.voice.io.speech.AndroidTtsSpeechDevice
+import com.ai.voice.io.speech.LanguageDetectingSpeechDevice
 import com.ai.voice.io.speech.NothingSpeechDevice
 import com.ai.voice.io.speech.SherpaOnnxTtsSpeechDevice
 import com.ai.voice.io.speech.SnackbarSpeechDevice
@@ -53,6 +54,9 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     
     private var currentFallbackChain: List<TtsFallbackDevice> = defaultTtsFallbackChain
     private var currentFallbackIndex = 0
+    
+    // 自动语言检测设置（默认启用）
+    private var enableAutoLanguageDetection = true
 
     init {
         scope.launch {
@@ -86,6 +90,23 @@ class SpeechOutputDeviceWrapper @Inject constructor(
      * 尝试使用降级链创建TTS设备
      */
     private suspend fun tryCreateTtsDeviceWithFallback(locale: java.util.Locale): SpeechOutputDevice {
+        // 🌐 如果启用自动语言检测，创建多语言TTS设备
+        if (enableAutoLanguageDetection) {
+            Log.i(TAG, "🌐 启用自动语言检测，创建多语言TTS设备")
+            try {
+                val languageDetectingDevice = LanguageDetectingSpeechDevice(
+                    context = context,
+                    defaultLocale = locale,
+                    deviceFactory = { ctx, loc -> createTtsDevice(currentFallbackChain[0], loc) }
+                )
+                return languageDetectingDevice
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ 多语言TTS设备创建失败，使用单语言TTS", e)
+                // 降级到单语言TTS
+            }
+        }
+        
+        // 🔤 单语言TTS模式（使用降级链）
         for (i in currentFallbackIndex until currentFallbackChain.size) {
             val deviceType = currentFallbackChain[i]
             try {

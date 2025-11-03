@@ -145,7 +145,7 @@ private fun MainSettingsScreen(
         }
         val wakeDevice = when (val device = settings.wakeDevice) {
             WakeDevice.UNRECOGNIZED,
-            WakeDevice.WAKE_DEVICE_UNSET -> WakeDevice.WAKE_DEVICE_SHERPA_ONNX
+            WakeDevice.WAKE_DEVICE_UNSET -> WakeDevice.WAKE_DEVICE_HI_NUDGE_V8
             else -> device
         }
         item {
