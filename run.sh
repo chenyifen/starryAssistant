@@ -71,32 +71,40 @@ echo "🎯 5. 启动应用（悬浮球启动器）..."
 package_name="com.ai.voice"
 activity_name="com.ai.voice.ui.floating.FloatingLauncherActivity"
 
+echo "📱 执行命令: adb shell am start -n $package_name/$activity_name"
 adb shell am start -n "$package_name/$activity_name"
 
 if [ $? -ne 0 ]; then
-    echo "❌ 启动应用失败"
+    echo "❌ 启动应用失败 - 检查设备连接和权限"
     exit 1
 fi
 
-echo "✅ 应用已启动"
+echo "✅ 应用启动命令执行成功"
 
 # 获取应用进程ID
 echo ""
 echo "🔍 获取应用进程信息..."
-sleep 2  # 等待应用完全启动
+sleep 3  # 等待应用完全启动
+
+echo "🔍 检查进程列表..."
+adb shell ps | grep -i "$package_name" || echo "⚠️  在进程列表中未找到应用"
 
 # 尝试多种方式获取进程ID
-app_pid=$(adb shell ps | grep "$package_name" | grep -v grep | awk '{print $2}' | head -1)
+echo "🔍 尝试获取进程ID..."
+app_pid=$(adb shell ps 2>/dev/null | grep "$package_name" | grep -v grep | awk '{print $2}' | head -1)
 
 # 如果上面的命令失败，尝试另一种方式
 if [ -z "$app_pid" ]; then
-    app_pid=$(adb shell ps | grep "$package_name" | awk 'NR==1{print $2}')
+    echo "🔄 尝试第二种方法获取进程ID..."
+    app_pid=$(adb shell ps 2>/dev/null | grep "$package_name" | awk 'NR==1{print $2}')
 fi
 
 # 最后尝试通过pidof命令（如果设备支持）
 if [ -z "$app_pid" ]; then
+    echo "🔄 尝试pidof命令..."
     app_pid=$(adb shell pidof "$package_name" 2>/dev/null)
 fi
+
 if [ -n "$app_pid" ]; then
     echo "📱 应用进程ID: $app_pid"
     echo "💡 可以使用以下命令监控特定进程:"
@@ -107,9 +115,24 @@ if [ -n "$app_pid" ]; then
     echo ""
     echo "📋 启动应用日志监控..."
     echo "💡 按Ctrl+C停止日志监控"
+    echo "🔍 过滤进程ID: $app_pid"
     adb logcat | grep "$app_pid"
 else
-    echo "⚠️ 未能获取应用进程ID，应用可能未完全启动"
-    echo "💡 尝试手动启动应用日志监控:"
-    echo "   adb logcat | grep \"$package_name\""
+    echo "⚠️ 未能获取应用进程ID，应用可能启动失败或已退出"
+    echo "🔍 调试信息:"
+
+    # 检查应用是否已安装
+    echo "📦 检查应用安装状态..."
+    adb shell pm list packages | grep "$package_name" || echo "❌ 应用未安装"
+
+    # 检查应用启动日志
+    echo "📋 检查最近的应用启动日志..."
+    adb logcat -d | grep -i "$package_name" | tail -10
+
+    echo ""
+    echo "💡 建议检查步骤:"
+    echo "1. 确认设备已连接: adb devices"
+    echo "2. 检查应用是否正确安装"
+    echo "3. 检查设备权限设置"
+    echo "4. 手动启动日志监控: adb logcat | grep \"$package_name\""
 fi
