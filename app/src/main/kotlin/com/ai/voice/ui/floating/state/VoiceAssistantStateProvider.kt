@@ -48,6 +48,13 @@ class VoiceAssistantStateProvider @Inject constructor(
         fun getInstance(): VoiceAssistantStateProvider {
             return INSTANCE ?: throw IllegalStateException("VoiceAssistantStateProvider not initialized")
         }
+
+        /**
+         * 获取全局实例，如果未初始化则返回null
+         */
+        fun getInstanceOrNull(): VoiceAssistantStateProvider? {
+            return INSTANCE
+        }
         
         /**
          * 初始化全局实例 - 由Hilt在创建时调用

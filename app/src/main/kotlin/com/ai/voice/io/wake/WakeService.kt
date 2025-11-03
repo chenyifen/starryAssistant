@@ -126,12 +126,14 @@ class WakeService : Service() {
         }
 
         // 设置状态监听器 - 监听ASR结束，重新开始唤醒监听
-        setupStateListener()
+        // 注意：延迟到onStartCommand中初始化，因为此时Hilt可能还没有完成VoiceAssistantStateProvider的初始化
+        scheduleStateListenerSetup()
     }
 
     /**
      * 设置状态监听器，监听语音助手状态变化
      * 当ASR结束后回到IDLE状态时，重新开始唤醒监听
+     * 注意：调用此方法前应确保VoiceAssistantStateProvider已初始化
      */
     private fun setupStateListener() {
         val stateProvider = VoiceAssistantStateProvider.getInstance()
@@ -172,6 +174,38 @@ class WakeService : Service() {
         // 注册监听器
         stateProvider.addListener(stateListener!!)
         DebugLogger.logWakeWord(TAG, "✅ 已设置状态监听器，监听ASR结束事件")
+    }
+
+    /**
+     * 计划设置状态监听器 - 延迟到Hilt初始化完成后再设置
+     */
+    private fun scheduleStateListenerSetup() {
+        // 使用Handler延迟执行，确保Hilt已完成初始化
+        handler.postDelayed({
+            try {
+                if (VoiceAssistantStateProvider.getInstanceOrNull() != null) {
+                    setupStateListener()
+                    DebugLogger.logWakeWord(TAG, "✅ 状态监听器设置成功")
+                } else {
+                    DebugLogger.logWakeWord(TAG, "⚠️ VoiceAssistantStateProvider仍未初始化，重试...")
+                    // 再次延迟重试
+                    handler.postDelayed({
+                        try {
+                            if (VoiceAssistantStateProvider.getInstanceOrNull() != null) {
+                                setupStateListener()
+                                DebugLogger.logWakeWord(TAG, "✅ 状态监听器重试设置成功")
+                            } else {
+                                DebugLogger.logWakeWordError(TAG, "VoiceAssistantStateProvider初始化失败，跳过状态监听器设置")
+                            }
+                        } catch (e2: Exception) {
+                            DebugLogger.logWakeWordError(TAG, "重试设置状态监听器失败", e2)
+                        }
+                    }, 2000) // 2秒后重试
+                }
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "延迟设置状态监听器失败", e)
+            }
+        }, 1000) // 1秒后执行
     }
 
     /**
