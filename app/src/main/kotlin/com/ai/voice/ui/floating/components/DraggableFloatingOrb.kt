@@ -108,7 +108,23 @@ class DraggableFloatingOrb(
         val orbHeight = 240 // 悬浮球高度（约80dp）
         val bottomMargin = 48 // 底部边距（约16dp）
         val navigationBarHeight = 144 // 导航栏高度（约48dp）
-        return screenHeight - orbHeight - bottomMargin - navigationBarHeight
+
+        // 获取状态栏高度（如果有）
+        val statusBarHeight = getStatusBarHeight()
+
+        // 计算可用高度：屏幕高度 - 状态栏高度
+        val availableHeight = screenHeight - statusBarHeight
+
+        return availableHeight - orbHeight - bottomMargin - navigationBarHeight
+    }
+
+    private fun getStatusBarHeight(): Int {
+        val resourceId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (resourceId > 0) {
+            context.resources.getDimensionPixelSize(resourceId)
+        } else {
+            0 // 默认值，如果获取失败
+        }
     }
     
     /**

@@ -3,10 +3,10 @@
     <!-- 悬浮球尺寸配置 -->
     
     <!-- 悬浮球实际显示大小 (可直接修改此值来调整悬浮球大小) -->
-    <dimen name="floating_orb_size">240dp</dimen>
+    <dimen name="floating_orb_size">120dp</dimen>
     
     <!-- 悬浮球动画实际大小 -->
-    <dimen name="floating_orb_animation_size">192dp</dimen>
+    <dimen name="floating_orb_animation_size">96dp</dimen>
     
     <!-- 悬浮球边缘吸附时的大小 (通常比正常大小小一些) -->
     <dimen name="floating_orb_edge_size">144dp</dimen>

@@ -223,9 +223,10 @@ class VoiceAssistantStateProvider @Inject constructor(
                     addUserMessage(bestResult, confidence)
                 }
                 
-                // 清空ASR文本，因为现在进入技能处理阶段
+                // 保持ASR文本显示更长时间，让用户看到完整对话过程
+                // ASR文本会在技能处理完成后或新对话开始时清空
                 scope.launch {
-                    kotlinx.coroutines.delay(1000) // 延迟1秒后清空，让用户看到最终结果
+                    kotlinx.coroutines.delay(3000) // 延长到3秒，让用户有足够时间看到结果
                     updateState(asrText = "")
                 }
             }

@@ -1188,21 +1188,9 @@ class SenseVoiceInputDevice private constructor(
      */
     private fun getDynamicTimeout(): Long {
         val timeSinceStart = System.currentTimeMillis() - asrStartTime
-        
-        // 如果还在初始缓冲期内，使用长超时
-        if (timeSinceStart < INITIAL_GRACE_PERIOD_MS) {
-            return SPEECH_TIMEOUT_MS
-        }
-        
-        // 🔥 优化：有识别结果后快速结束，提高响应速度
-        return if (partialText.length >= 3) {
-            1200L  // 有识别结果，1.2秒超时（快速响应）
-        } else if (partialText.length >= 1) {
-            1800L  // 有部分识别，1.8秒超时（中等响应）
-        } else {
-            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（4秒）
-        }
+        return SPEECH_TIMEOUT_MS
     }
+       
     
     /**
      * 🆕 检查是否应该触发提前结束

@@ -47,6 +47,9 @@ import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AudioDebugSaver
 import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.io.AudioResourceManager
+import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
+import com.ai.voice.ui.floating.state.VoiceAssistantFullState
+import com.ai.voice.ui.floating.VoiceAssistantUIState
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -90,6 +93,9 @@ class WakeService : Service() {
 
     private lateinit var notificationManager: NotificationManager
 
+    // 状态监听器 - 监听ASR结束，重新开始唤醒监听
+    private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
+
     override fun onBind(intent: Intent?): IBinder? {
         return null
     }
@@ -117,6 +123,70 @@ class WakeService : Service() {
         // 启动时清理旧的音频调试文件
         if (DebugLogger.isAudioSaveEnabled()) {
             AudioDebugSaver.cleanupOldAudioFiles(this, 50)
+        }
+
+        // 设置状态监听器 - 监听ASR结束，重新开始唤醒监听
+        setupStateListener()
+    }
+
+    /**
+     * 设置状态监听器，监听语音助手状态变化
+     * 当ASR结束后回到IDLE状态时，重新开始唤醒监听
+     */
+    private fun setupStateListener() {
+        val stateProvider = VoiceAssistantStateProvider.getInstance()
+        stateListener = { state ->
+            when (state.uiState) {
+                VoiceAssistantUIState.IDLE -> {
+                    // ASR结束，回到IDLE状态，重新开始唤醒监听
+                    if (!listening.get()) {
+                        DebugLogger.logWakeWord(TAG, "🎯 ASR结束，重新开始唤醒监听")
+                        scope.launch {
+                            try {
+                                // 请求麦克风资源
+                                val granted = AudioResourceManager.requestMicrophone(
+                                    AudioResourceManager.AudioOwner.WAKE_SERVICE
+                                )
+                                if (granted) {
+                                    // 启动唤醒监听
+                                    startPersistentListening()
+                                } else {
+                                    DebugLogger.logWakeWord(TAG, "❌ 无法获取麦克风资源，等待TTS结束")
+                                }
+                            } catch (e: Exception) {
+                                DebugLogger.logWakeWordError(TAG, "重新开始唤醒监听失败", e)
+                            }
+                        }
+                    }
+                }
+                VoiceAssistantUIState.LISTENING -> {
+                    // ASR开始监听，不需要额外操作
+                    DebugLogger.logWakeWord(TAG, "🎤 ASR开始监听")
+                }
+                else -> {
+                    // 其他状态无需处理
+                }
+            }
+        }
+
+        // 注册监听器
+        stateProvider.addListener(stateListener!!)
+        DebugLogger.logWakeWord(TAG, "✅ 已设置状态监听器，监听ASR结束事件")
+    }
+
+    /**
+     * 清理状态监听器
+     */
+    private fun cleanupStateListener() {
+        try {
+            stateListener?.let { listener ->
+                val stateProvider = VoiceAssistantStateProvider.getInstance()
+                stateProvider.removeListener(listener)
+                DebugLogger.logWakeWord(TAG, "✅ 已清理状态监听器")
+            }
+            stateListener = null
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "清理状态监听器失败", e)
         }
     }
 
@@ -221,10 +291,13 @@ class WakeService : Service() {
 
     override fun onDestroy() {
         listening.set(false)
-        
+
+        // 清理状态监听器
+        cleanupStateListener()
+
         // 通知回调：停止监听
         WakeWordCallbackManager.notifyListeningStopped()
-        
+
         // AutoTest日志：退出唤醒监听状态
         com.ai.voice.util.AutoTestLogger.logWakeListeningStopped()
         
