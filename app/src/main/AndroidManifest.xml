@@ -14,17 +14,22 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
+    <!-- 外部存储权限已移除 - Hyundai IT版本模型文件已内置到assets -->
     <!-- required by the download manager for APIs < Q -->
+    <!--
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    -->
     
     <!-- External storage permissions for accessing model files -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <!-- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> -->
     
     <!-- Android 10+ 分区存储权限 -->
+    <!--
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
         tools:ignore="ScopedStorage" />
+    -->
 
     <!-- the open skill needs to query all apps -->
     <uses-permission

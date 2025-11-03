@@ -1,0 +1,21 @@
+
+com.ai.voice.skills.device_control.DeviceControlInstrumentationTest:.....................
+Error in testEshare(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest):
+java.lang.AssertionError: Eshare should succeed
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testEshare(DeviceControlInstrumentationTest.kt:361)
+....
+
+Time: 57.553
+There was 1 failure:
+1) testEshare(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest)
+java.lang.AssertionError: Eshare should succeed
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testEshare(DeviceControlInstrumentationTest.kt:361)
+
+FAILURES!!!
+Tests run: 26,  Failures: 1
+
+

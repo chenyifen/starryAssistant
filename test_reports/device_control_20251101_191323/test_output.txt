@@ -1,0 +1,57 @@
+
+com.ai.voice.skills.device_control.DeviceControlInstrumentationTest:
+Error in testAllDeviceControlCommands(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest):
+java.lang.NoClassDefFoundError: Failed resolution of: Lcom/google/gson/JsonObject;
+	at com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper.changeScreenStatus(ScreenHelper.java:36)
+	at com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper.turnOffPower(ScreenHelper.java:25)
+	at com.ai.voice.skills.device_control.DeviceControlSkill.executePowerOff(DeviceControlSkill.kt:127)
+	at com.ai.voice.skills.device_control.DeviceControlSkill.generateOutput(DeviceControlSkill.kt:74)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest$testSingleCommand$output$1.invokeSuspend(DeviceControlInstrumentationTest.kt:174)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testSingleCommand(DeviceControlInstrumentationTest.kt:173)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testAllDeviceControlCommands(DeviceControlInstrumentationTest.kt:120)
+	... 34 trimmed
+Caused by: java.lang.ClassNotFoundException: Didn't find class "com.google.gson.JsonObject" on path: DexPathList[[zip file "/system/framework/android.test.runner.jar", zip file "/system/framework/android.test.mock.jar", zip file "/system/framework/android.test.base.jar", zip file "/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk", zip file "/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk"],nativeLibraryDirectories=[/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/lib/arm64, /data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/lib/arm64, /data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!/lib/arm64-v8a, /data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:379)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:312)
+	... 50 more
+
+
+Time: 0.11
+There was 1 failure:
+1) testAllDeviceControlCommands(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest)
+java.lang.NoClassDefFoundError: Failed resolution of: Lcom/google/gson/JsonObject;
+	at com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper.changeScreenStatus(ScreenHelper.java:36)
+	at com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper.turnOffPower(ScreenHelper.java:25)
+	at com.ai.voice.skills.device_control.DeviceControlSkill.executePowerOff(DeviceControlSkill.kt:127)
+	at com.ai.voice.skills.device_control.DeviceControlSkill.generateOutput(DeviceControlSkill.kt:74)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest$testSingleCommand$output$1.invokeSuspend(DeviceControlInstrumentationTest.kt:174)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testSingleCommand(DeviceControlInstrumentationTest.kt:173)
+	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testAllDeviceControlCommands(DeviceControlInstrumentationTest.kt:120)
+	... 34 trimmed
+Caused by: java.lang.ClassNotFoundException: Didn't find class "com.google.gson.JsonObject" on path: DexPathList[[zip file "/system/framework/android.test.runner.jar", zip file "/system/framework/android.test.mock.jar", zip file "/system/framework/android.test.base.jar", zip file "/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk", zip file "/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk"],nativeLibraryDirectories=[/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/lib/arm64, /data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/lib/arm64, /data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!/lib/arm64-v8a, /data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:379)
+	at java.lang.ClassLoader.loadClass(ClassLoader.java:312)
+	... 50 more
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
