@@ -35,14 +35,14 @@ import com.ai.voice.ui.util.LoadingProgress
 import com.ai.voice.ui.util.WakeStatesPreviews
 import com.ai.voice.ui.util.loadingProgressString
 
+// Hyundai IT版本：模型已内置，移除READ_EXTERNAL_STORAGE权限要求
 val wakeWordPermissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.USE_FULL_SCREEN_INTENT, Manifest.permission.READ_EXTERNAL_STORAGE)
+            Manifest.permission.USE_FULL_SCREEN_INTENT)
 else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-    arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS,
-            Manifest.permission.READ_EXTERNAL_STORAGE)
+    arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.POST_NOTIFICATIONS)
 else
-    arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.READ_EXTERNAL_STORAGE)
+    arrayOf(Manifest.permission.RECORD_AUDIO)
 
 /**
  * Calls [WakeWordWidgetImpl] with the data from the view model, and handles the permissions.

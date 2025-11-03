@@ -1,0 +1,1164 @@
+--------- beginning of main
+06-17 10:01:29.218 25029 25029 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.common.BIND_SHARED_PREFS pkg=com.google.android.gms }
+06-17 10:01:29.218 13344 13344 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10037; state: ENABLED
+06-17 10:01:29.221 24871 25175 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+--------- beginning of system
+06-17 10:01:29.225   904  1507 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10082; state: DISABLED
+06-17 10:01:29.231 13344 13344 D nativeloader: Configuring classloader-namespace-shared for other apk /system/priv-app/GooglePackageInstaller/GooglePackageInstaller.apk. target_sdk_version=33, uses_libraries=, library_path=/system/priv-app/GooglePackageInstaller/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user_de/0/com.google.android.packageinstaller:/system/priv-app/GooglePackageInstaller:/system/lib64:/system_ext/lib64
+--------- beginning of kernel
+12-31 22:32:04.309 28625 28625 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.309 28625 28625 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.309 28625 28625 W         : Find 6635 fail !!
+06-17 10:01:29.236 24871 25175 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.246 24871 25175 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.252 13192 13374 I A       : ColdBootHelper constructor
+06-17 10:01:29.258 13344 13344 V GraphicsEnvironment: ANGLE Developer option for 'com.google.android.packageinstaller' set to: 'default'
+06-17 10:01:29.258 13344 13344 V GraphicsEnvironment: ANGLE GameManagerService for com.google.android.packageinstaller: false
+06-17 10:01:29.258 13344 13344 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+06-17 10:01:29.261 13344 13344 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+06-17 10:01:29.261 13344 13344 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+06-17 10:01:29.272 24871 25179 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.277   904  6375 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10045; state: DISABLED
+06-17 10:01:29.277   904  6375 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10045; state: DISABLED
+06-17 10:01:29.277   904  6375 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10045; state: DISABLED
+06-17 10:01:29.277   904  6375 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10045; state: ENABLED
+06-17 10:01:29.278   904  1098 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10045; state: ENABLED
+06-17 10:01:29.286 13192 13324 I A       : getLocaleToModelSpecsMap
+06-17 10:01:29.286 13192 13324 I A       : Proto config empty. Exit merge.
+06-17 10:01:29.285   725   725 D Zygote  : Forked child process 13385
+06-17 10:01:29.287   904  1098 I ActivityManager: Start proc 13385:com.android.providers.tv/u0a45 for broadcast {com.android.providers.tv/com.android.providers.tv.PackageChangedReceiver}
+12-31 22:32:04.365 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.365 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.365 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.296 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:29.296 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:29.296 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:29.298 13192 13324 I MicroDetectionWorker: (REDACTED) Initializing MicroDataManager InitializeType-%d, isForced-%b, isActivePhoneEnrollment-%b isActiveGoogleHomeEnrollment-%b
+06-17 10:01:29.298  2155  2155 E PackageManagerUtil: app name not found.
+06-17 10:01:29.298  2155  2155 E PackageManagerUtil: android.content.pm.PackageManager$NameNotFoundException: com.seewo.oscalculator
+06-17 10:01:29.298 13192 13324 I MicroDetectionState: (REDACTED) #takeChangeMicroDetectorMode [mIsBargeInEnabled: %b, mCurrentDetectionMode: %s]
+06-17 10:01:29.299 13192 13324 I MicroDetectionState: (REDACTED) Should stop hotword detection immediately - %b
+06-17 10:01:29.302 13192 13318 I A       : getLocaleToModelSpecsMap
+06-17 10:01:29.302 13192 13318 I A       : Proto config empty. Exit merge.
+06-17 10:01:29.303 13192 13318 I MicroDataManager: (REDACTED) Location for model with model type: %s and locale: %s, is : %s
+06-17 10:01:29.304 13192 13318 W A       : No value provided for the places model index flag.
+06-17 10:01:29.305 13192 13318 W A       : No value provided for the places model index flag.
+06-17 10:01:29.306 25029 25042 I gle.android.gms: Background concurrent copying GC freed 34345(2038KB) AllocSpace objects, 10(392KB) LOS objects, 49% free, 8043KB/15MB, paused 41us,22us total 126.778ms
+06-17 10:01:29.307 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:29.307 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:29.311 24771 24771 I zwl     : TaskbarAllAppsController setApps = [Lcom.android.launcher3.model.data.AppInfo;@d3f8eb6
+06-17 10:01:29.319   718   750 I adbd    : jdwp connection from 13385
+06-17 10:01:29.325 24871 25179 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.331 13385 13385 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10045; state: ENABLED
+06-17 10:01:29.340 13192 13322 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10082; state: ENABLED
+06-17 10:01:29.341 13385 13385 D nativeloader: Configuring classloader-namespace-shared for other apk /system/priv-app/TvProvider/TvProvider.apk. target_sdk_version=33, uses_libraries=, library_path=/system/priv-app/TvProvider/lib/arm64:/system/lib64:/system_ext/lib64, permitted_path=/data:/mnt/expand:/data/user/0/com.android.providers.tv:/system/priv-app/TvProvider:/system/lib64:/system_ext/lib64
+06-17 10:01:29.342 13192 13215 I earchbox:search: JIT allocated 57KB for compiled code of java.lang.Object com.google.android.apps.gsa.binaries.velvet.app.aqa.e()
+06-17 10:01:29.343 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:29.343 24871 25179 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+12-31 22:32:04.422 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.423 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.423 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.353 13385 13385 V GraphicsEnvironment: ANGLE Developer option for 'com.android.providers.tv' set to: 'default'
+06-17 10:01:29.353 13385 13385 V GraphicsEnvironment: ANGLE GameManagerService for com.android.providers.tv: false
+06-17 10:01:29.353 13385 13385 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+06-17 10:01:29.358 13385 13385 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+06-17 10:01:29.359 13385 13385 D NetworkSecurityConfig: No Network Security Config specified, using platform default
+06-17 10:01:29.362 24718 28169 D VCommonContentProvider: update key=ONE_SCREEN_EDLA_ALL_APP_TOOL, value=[{"action":"","launchType":"","name":"Browser","packageName":"com.seewo.chromiumbrowser","type":"App"},{"action":"","launchType":"","name":"Calculator","packageName":"com.google.android.calculator","type":"App"},{"action":"","launchType":"","name":"Calendar","packageName":"com.google.android.calendar","type":"App"},{"action":"","launchType":"","name":"Camera","packageName":"com.android.camera2","type":"App"},{"action":"","launchType":"","name":"Chorus","packageName":"com.nuiteq.chorus","type":"App"},{"action":"","launchType":"","name":"Chrome","packageName":"com.android.chrome","type":"App"},{"action":"","launchType":"","name":"Clock","packageName":"com.google.android.deskclock","type":"App"},{"action":"","launchType":"","name":"Cloud Drive","packageName":"com.seewo.gdupload","type":"App"},{"action":"","launchType":"","name":"Collage","packageName":"com.seewo.collage.server","type":"App"},{"action":"","launchType":"","name":"Command","packageName":"com.ifpdos.dms","type":"App"},{"action":"","launchType":"","name":"CTI Mount Controller","packageName":"com.nuiteq.utils.apps.conenmountcontroller","type":"App"},{"action":"","launchType":"","name":"Drive","packageName":"com.google.android.apps.docs","type":"App"},{"action":"","launchType":"","name":"Finder","packageName":"com.seewo.easifinder","type":"App"},{"action":"","launchType":"","name":"Gmail","packageName":"com.google.android.gm","type":"App"},{"action":"","launchType":"","name":"Google","packageName":"com.google.android.googlequicksearchbox","type":"App"},{"action":"","launchType":"","name":"Google TV","packageName":"com.google.android.videos","type":"App"},{"action":"","launchType":"","name":"Keep Notes","packageName":"com.google.android.keep","type":"App"},{"action":"","launchType":"","name":"Keeper","packageName":"com.seewo.keeper","type":"App"},{"action":"","launchType":"","name":"Maps","packageName":"com.google.android.apps.maps","type":"App"},{"action":"","launchType":"","name":"Meet","packageName":"com.google.android.apps.tachyon","type":"App"},{"action":"","launchType":"","name":"Note","packageName":"com.seewo.easinote","type":"App"},{"action":"","launchType":"","name":"Palette","packageName":"com.seewo.easipallet","type":"App"},{"action":"","launchType":"","name":"Photos","packageName":"com.google.android.apps.photos","type":"App"},{"action":"","launchType":"","name":"Google Play Store","packageName":"com.android.vending","type":"App"},{"action":"","launchType":"","name":"Personal Safety","packageName":"com.google.android.apps.safetyhub","type":"App"},{"action":"","launchType":"","name":"Settings","packageName":"com.ifpdos.vsettings","type":"App"},{"action":"","launchType":"","name":"Sho","packageName":"com.nuiteq.apps.digitalsignage","type":"App"},{"action":"","launchType":"","name":"Visualizer","packageName":"com.seewo.videopresenter","type":"App"},{"action":"","launchType":"","name":"VoiceAssistant","packageName":"com.ai.voice","type":"App"},{"action":"","launchType":"","name":"Whiteboard","packageName":"com.nuiteq.apps.chorus","type":"App"},{"action":"","launchType":"","name":"YouTube","packageName":"com.google.android.youtube","type":"App"},{"action":"","launchType":"","name":"YouTube Music","packageName":"com.google.android.apps.youtube.music","type":"App"},{"action":"com.seewo.widgetcountdown.services.WidgetsManagerService","launchType":"Service","name":"Timer","packageName":"com.seewo.widgetcountdown","type":"Tool"},{"action":"com.seewo.freezescreen.service.FreezeScreenService","launchType":"Service","name":"Freeze","packageName":"com.seewo.freezescreen","type":"Tool"},{"action":"com.seewo.widgetstopwatch.service.LaunchService","launchType":"Service","name":"Stopwatch","packageName":"com.seewo.widgetstopwatch","type":"Tool"},{"action":"com.seewo.widgetspotlight.SpotlightService","launchType":"Service","name":"Spotlight","packageName":"com.seewo.widgetspotlight","type":"Tool"},{"action":"com.seewo.screenlock.ScreenLockService","launchType":"Service","na
+06-17 10:01:29.362  2155  2155 D PackageChangeReceiver: android.intent.action.PACKAGE_REMOVED packageName:com.ai.voice replacing:true
+06-17 10:01:29.362  2155  2155 W PackageChangeReceiver: op == OP_NONE
+06-17 10:01:29.362  2155  2155 E @MeetingSDK: SDKServiceNotConnected!
+06-17 10:01:29.362  2155  2155 I Choreographer: Skipped 40 frames!  The application may be doing too much work on its main thread.
+06-17 10:01:29.363 13385 13385 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10045; state: ENABLED
+06-17 10:01:29.365   904  1079 I system_server: Background concurrent copying GC freed 323730(16MB) AllocSpace objects, 26(556KB) LOS objects, 49% free, 22MB/45MB, paused 84us,73us total 261.214ms
+06-17 10:01:29.365  2155  2155 D PackageChangeReceiver: action: android.intent.action.PACKAGE_ADDED
+06-17 10:01:29.365  2155  2155 D t       : refreshAppInfoList
+06-17 10:01:29.374  2155  2155 I SystemBar: pkgName=com.seewo.chromiumbrowser appName:Browser
+06-17 10:01:29.376  2155  2155 I SystemBar: pkgName=com.google.android.calculator appName:Calculator
+06-17 10:01:29.379 12964 12964 I Finsky  : [2] vfy.g(0): vfy - Received: android.intent.action.PACKAGE_CHANGED, [kYQ1nD4Rcy4vMLuE5Ys07t8rJOdiGtCkBR4lvqPN5yo]
+06-17 10:01:29.379  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.calculator is AdaptiveIconDrawable
+06-17 10:01:29.379  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:349 iconHeight:349
+12-31 22:32:04.454   341   341 W audit   : audit_lost=1413513 audit_rate_limit=5 audit_backlog_limit=64
+12-31 22:32:04.454   341   341 E audit   : rate limit exceeded
+06-17 10:01:29.382  2155  2155 I SystemBar: pkgName=com.google.android.calendar appName:Calendar
+06-17 10:01:29.386 12964 13191 I Finsky  : [90] ocj.run(10): Wrote row to frosting DB: 305
+06-17 10:01:29.388  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.calendar is AdaptiveIconDrawable
+06-17 10:01:29.388  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:288 iconHeight:288
+06-17 10:01:29.392  2155  2155 I SystemBar: pkgName=com.android.camera2 appName:Camera
+06-17 10:01:29.393 12964 13191 I Finsky  : [90] ocj.run(10): Wrote row to frosting DB: 306
+06-17 10:01:29.395  2155  2155 E t       : isNoNeedCreateIconApp: com.android.camera2 is AdaptiveIconDrawable
+06-17 10:01:29.395  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.397  2155  2155 I SystemBar: pkgName=com.nuiteq.chorus appName:Chorus
+12-31 22:32:04.477 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.478 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.478 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.407  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:512 iconHeight:512
+06-17 10:01:29.410  2155  2155 I SystemBar: pkgName=com.android.chrome appName:Chrome
+06-17 10:01:29.410 13192 13318 I MicroModelsUtil: (REDACTED) #getHotwordModel [locale: %s, modelType: %s]
+06-17 10:01:29.414  2155  2155 E t       : isNoNeedCreateIconApp: com.android.chrome is AdaptiveIconDrawable
+06-17 10:01:29.414  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.416  2155  2155 I SystemBar: pkgName=com.google.android.deskclock appName:Clock
+06-17 10:01:29.417 24871 13239 I Fitness : OnPackageChangedOperation got intent: Intent { act=android.intent.action.PACKAGE_CHANGED dat=package: flg=0x5000010 pkg=com.google.android.gms cmp=com.google.android.gms/.chimera.PersistentIntentOperationService (has extras) } [CONTEXT service_id=17 ]
+06-17 10:01:29.423  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.deskclock is AdaptiveIconDrawable
+06-17 10:01:29.423  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.423 24871 13239 I Fitness : FitCleanupIntentOperation received Intent android.intent.action.PACKAGE_CHANGED [CONTEXT service_id=17 ]
+06-17 10:01:29.429  2155  2155 I SystemBar: pkgName=com.seewo.gdupload appName:Cloud Drive
+06-17 10:01:29.430 24871 25210 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.430 13381 13381 D AndroidRuntime: >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+06-17 10:01:29.432  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.432 24871 25210 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.433 24871 25210 W ChimeraUtils: Module com.google.android.gms.nearby_en has empty metadata display_name_string_id
+06-17 10:01:29.434 13381 13381 I AndroidRuntime: Using default boot image
+06-17 10:01:29.434 13381 13381 I AndroidRuntime: Leaving lock profiling enabled
+06-17 10:01:29.434  2155  2155 I SystemBar: pkgName=com.seewo.collage.server appName:Collage
+06-17 10:01:29.436  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:128 iconHeight:128
+06-17 10:01:29.436 13381 13381 I app_process: Core platform API reporting enabled, enforcing=false
+06-17 10:01:29.438  2155  2155 I SystemBar: pkgName=com.ifpdos.dms appName:Command
+06-17 10:01:29.440  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:121 iconHeight:121
+06-17 10:01:29.442  2155  2155 I SystemBar: pkgName=com.android.contacts appName:Contacts
+06-17 10:01:29.442  2155  2155 I SystemBar: pkgName=com.nuiteq.utils.apps.conenmountcontroller appName:CTI Mount Controller
+06-17 10:01:29.444  2155  2155 E t       : isNoNeedCreateIconApp: com.nuiteq.utils.apps.conenmountcontroller is AdaptiveIconDrawable
+06-17 10:01:29.444  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.447  2155  2155 I SystemBar: pkgName=com.google.android.apps.docs appName:Drive
+06-17 10:01:29.450  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.docs is AdaptiveIconDrawable
+06-17 10:01:29.450  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.453  2155  2155 I SystemBar: pkgName=com.seewo.easifinder appName:Finder
+06-17 10:01:29.454  2155  2155 I SystemBar: pkgName=com.google.android.gm appName:Gmail
+06-17 10:01:29.454 13192 13340 E MicroModelsUtil: (REDACTED) Hotword file group is null with group name: %s, locale: %s
+06-17 10:01:29.454 13192 13322 W MicroModelsUtil: Returning null hotword model because MDD did not contain a valid URI. This can indicate that the model download did not finish or that it was not downloaded at all.
+06-17 10:01:29.455 13192 13374 W MicroDataManager: (REDACTED) Locale %s unrecognized. hotword detection will likely fail.
+06-17 10:01:29.455 13192 13374 W MicroDataManager: (REDACTED) MicroDataManager using no hotword model for locale: %s, type: %s!
+06-17 10:01:29.455 13192 13374 I MicroDataManager: (REDACTED) MicroDataManager InitializationTask. googleHotwordData is null: true, hotwordModel is null: %b , sourceLocationOfCurrentHotwordModel %s
+06-17 10:01:29.456 13192 13324 I A       : getLocaleToModelSpecsMap
+06-17 10:01:29.456 13192 13324 I A       : Proto config empty. Exit merge.
+06-17 10:01:29.457  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.gm is AdaptiveIconDrawable
+06-17 10:01:29.457  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.458 13192 13324 I MicroDetectionState: (REDACTED) #takeChangeMicroDetectorMode [mIsBargeInEnabled: %b, mCurrentDetectionMode: %s]
+06-17 10:01:29.458 13192 13324 I MicroDetectionState: (REDACTED) Should stop hotword detection immediately - %b
+12-31 22:32:04.533 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.533 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.533 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.459  2155  2155 I SystemBar: pkgName=com.google.android.googlequicksearchbox appName:Google
+06-17 10:01:29.464  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.googlequicksearchbox is AdaptiveIconDrawable
+06-17 10:01:29.464  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.466  2155  2155 I SystemBar: pkgName=com.google.android.videos appName:Google TV
+06-17 10:01:29.472  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.videos is AdaptiveIconDrawable
+06-17 10:01:29.472  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.475  2155  2155 I SystemBar: pkgName=com.google.android.keep appName:Keep Notes
+06-17 10:01:29.481  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.keep is AdaptiveIconDrawable
+06-17 10:01:29.481  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.484  2155  2155 I SystemBar: pkgName=com.seewo.keeper appName:Keeper
+06-17 10:01:29.487  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.488  2155  2155 I SystemBar: pkgName=com.google.android.apps.maps appName:Maps
+06-17 10:01:29.493  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.maps is AdaptiveIconDrawable
+06-17 10:01:29.493  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.495  2155  2155 I SystemBar: pkgName=com.google.android.apps.tachyon appName:Meet
+06-17 10:01:29.499  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.tachyon is AdaptiveIconDrawable
+06-17 10:01:29.499  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.501  2155  2155 I SystemBar: pkgName=com.seewo.easinote appName:Note
+06-17 10:01:29.503  2155  2155 I SystemBar: pkgName=com.seewo.easipallet appName:Palette
+06-17 10:01:29.505   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 7, dspCtlMsg.mbuf=
+06-17 10:01:29.505   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.505   637   697 E [avmanager]DSP: dspHal_default_value_init 77 AVMANAGE_CLASS_EN_DSP_CONFIG:1
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1568] 
+06-17 10:01:29.505   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 30, dspCtlMsg.mbuf=MIC_AEC_EN=?
+06-17 10:01:29.505   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1585] aec_status=0
+06-17 10:01:29.505   637   697 I [avmanager]DSP: dspHal_get_aec_status success!
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_default_value_init,80] aec_status = 0
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1622] 
+06-17 10:01:29.505   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 32, dspCtlMsg.mbuf=MIC_SPEECH_GAIN=?
+06-17 10:01:29.505   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1639] speech_gain=0.000000
+06-17 10:01:29.505   637   697 I [avmanager]DSP: dspHal_get_speech_gain success!
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_default_value_init,85] speech_gain = 0
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1677] 
+06-17 10:01:29.505   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 31, dspCtlMsg.mbuf=MIC_AINR_EN=?
+06-17 10:01:29.505   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1694] nr_level=0
+06-17 10:01:29.505   637   697 I [avmanager]DSP: dspHal_get_noise_reduction success!
+06-17 10:01:29.505   637   697 E [avmanager]DSP: [dspHal_default_value_init,90] nr_level = 0
+06-17 10:01:29.506  2155  2155 E t       : isNoNeedCreateIconApp: com.seewo.easipallet is AdaptiveIconDrawable
+06-17 10:01:29.506  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.507   637   694 I [avmanager]hal_usart: lenth:11
+06-17 10:01:29.507   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.507   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.507   637   694 I [avmanager]hal_usart: lenth:13
+06-17 10:01:29.507   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.507   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.507   637   694 I [avmanager]hal_usart: lenth:18
+06-17 10:01:29.507   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.507   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.507   637   694 I [avmanager]hal_usart: lenth:14
+06-17 10:01:29.507   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.507   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.508  2155  2155 I SystemBar: pkgName=com.google.android.apps.photos appName:Photos
+06-17 10:01:29.511  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.photos is AdaptiveIconDrawable
+06-17 10:01:29.511  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.513  2155  2155 I SystemBar: pkgName=com.ifpdos.ospip appName:PIP
+06-17 10:01:29.513  2155  2155 I SystemBar: pkgName=com.android.vending appName:Google Play Store
+12-31 22:32:04.589 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.589 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.589 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.516  2155  2155 E t       : isNoNeedCreateIconApp: com.android.vending is AdaptiveIconDrawable
+06-17 10:01:29.516  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.519  2155  2155 I SystemBar: pkgName=com.google.android.apps.safetyhub appName:Personal Safety
+06-17 10:01:29.522  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.safetyhub is AdaptiveIconDrawable
+06-17 10:01:29.522  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.524  2155  2155 I SystemBar: pkgName=com.ifpdos.vsettings appName:Settings
+06-17 10:01:29.524 13381 13381 D app_process: Time zone APEX ICU file found: /apex/com.android.tzdata/etc/icu/icu_tzdata.dat
+06-17 10:01:29.524 13381 13381 D app_process: I18n APEX ICU file found: /apex/com.android.i18n/etc/icu/icudt70l.dat
+06-17 10:01:29.526  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.528  2155  2155 I SystemBar: pkgName=com.nuiteq.apps.digitalsignage appName:Sho
+06-17 10:01:29.532  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:1251 iconHeight:1251
+06-17 10:01:29.533  2155  2155 I SystemBar: pkgName=com.seewo.videopresenter appName:Visualizer
+06-17 10:01:29.535  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.537  2155  2155 I SystemBar: pkgName=com.ai.voice appName:VoiceAssistant
+06-17 10:01:29.540  2155  2155 E t       : isNoNeedCreateIconApp: com.ai.voice is AdaptiveIconDrawable
+06-17 10:01:29.540  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:270 iconHeight:272
+06-17 10:01:29.542  2155  2155 I SystemBar: pkgName=com.nuiteq.apps.chorus appName:Whiteboard
+06-17 10:01:29.545  2155  2155 E t       : isNoNeedCreateIconApp: com.nuiteq.apps.chorus is AdaptiveIconDrawable
+06-17 10:01:29.545  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.547  2155  2155 I SystemBar: pkgName=com.google.android.youtube appName:YouTube
+06-17 10:01:29.548 13381 13381 D AndroidRuntime: Calling main entry com.android.commands.am.Am
+06-17 10:01:29.550  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.youtube is AdaptiveIconDrawable
+06-17 10:01:29.550  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.551   904  5437 I ActivityManager: Force stopping com.ai.voice appid=10173 user=0: start instr
+06-17 10:01:29.553   904  5437 D CompatibilityChangeReporter: Compat change id reported: 135634846; UID 10173; state: DISABLED
+06-17 10:01:29.553   904  5437 D CompatibilityChangeReporter: Compat change id reported: 177438394; UID 10173; state: DISABLED
+06-17 10:01:29.553   904  5437 D CompatibilityChangeReporter: Compat change id reported: 135772972; UID 10173; state: DISABLED
+06-17 10:01:29.553   904  5437 D CompatibilityChangeReporter: Compat change id reported: 135754954; UID 10173; state: ENABLED
+06-17 10:01:29.553   904  1098 D CompatibilityChangeReporter: Compat change id reported: 143937733; UID 10173; state: ENABLED
+06-17 10:01:29.553   904  5437 W ActivityManager: startInstrumentation com.ai.voice.test
+06-17 10:01:29.553  2155  2155 I SystemBar: pkgName=com.google.android.apps.youtube.music appName:YouTube Music
+06-17 10:01:29.557  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.youtube.music is AdaptiveIconDrawable
+06-17 10:01:29.557  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.559  2155  2155 D t       : AppInfoList size = 32
+06-17 10:01:29.561   725   725 D Zygote  : Forked child process 13439
+06-17 10:01:29.561   904  1098 I ActivityManager: Start proc 13439:com.ai.voice/u0a173 for added application com.ai.voice
+06-17 10:01:29.566 13439 13439 I com.ai.voice: Late-enabling -Xcheck:jni
+12-31 22:32:04.645 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.645 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.645 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.596  2155  2155 E PackageManagerUtil: app name not found.
+06-17 10:01:29.596  2155  2155 E PackageManagerUtil: android.content.pm.PackageManager$NameNotFoundException: com.seewo.oscalculator
+06-17 10:01:29.603   718   750 I adbd    : jdwp connection from 13439
+06-17 10:01:29.612 13439 13439 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10173; state: ENABLED
+06-17 10:01:29.614 24718 28169 D VCommonContentProvider: update key=ONE_SCREEN_EDLA_ALL_APP_TOOL, value=[{"action":"","launchType":"","name":"Browser","packageName":"com.seewo.chromiumbrowser","type":"App"},{"action":"","launchType":"","name":"Calculator","packageName":"com.google.android.calculator","type":"App"},{"action":"","launchType":"","name":"Calendar","packageName":"com.google.android.calendar","type":"App"},{"action":"","launchType":"","name":"Camera","packageName":"com.android.camera2","type":"App"},{"action":"","launchType":"","name":"Chorus","packageName":"com.nuiteq.chorus","type":"App"},{"action":"","launchType":"","name":"Chrome","packageName":"com.android.chrome","type":"App"},{"action":"","launchType":"","name":"Clock","packageName":"com.google.android.deskclock","type":"App"},{"action":"","launchType":"","name":"Cloud Drive","packageName":"com.seewo.gdupload","type":"App"},{"action":"","launchType":"","name":"Collage","packageName":"com.seewo.collage.server","type":"App"},{"action":"","launchType":"","name":"Command","packageName":"com.ifpdos.dms","type":"App"},{"action":"","launchType":"","name":"CTI Mount Controller","packageName":"com.nuiteq.utils.apps.conenmountcontroller","type":"App"},{"action":"","launchType":"","name":"Drive","packageName":"com.google.android.apps.docs","type":"App"},{"action":"","launchType":"","name":"Finder","packageName":"com.seewo.easifinder","type":"App"},{"action":"","launchType":"","name":"Gmail","packageName":"com.google.android.gm","type":"App"},{"action":"","launchType":"","name":"Google","packageName":"com.google.android.googlequicksearchbox","type":"App"},{"action":"","launchType":"","name":"Google TV","packageName":"com.google.android.videos","type":"App"},{"action":"","launchType":"","name":"Keep Notes","packageName":"com.google.android.keep","type":"App"},{"action":"","launchType":"","name":"Keeper","packageName":"com.seewo.keeper","type":"App"},{"action":"","launchType":"","name":"Maps","packageName":"com.google.android.apps.maps","type":"App"},{"action":"","launchType":"","name":"Meet","packageName":"com.google.android.apps.tachyon","type":"App"},{"action":"","launchType":"","name":"Note","packageName":"com.seewo.easinote","type":"App"},{"action":"","launchType":"","name":"Palette","packageName":"com.seewo.easipallet","type":"App"},{"action":"","launchType":"","name":"Photos","packageName":"com.google.android.apps.photos","type":"App"},{"action":"","launchType":"","name":"Google Play Store","packageName":"com.android.vending","type":"App"},{"action":"","launchType":"","name":"Personal Safety","packageName":"com.google.android.apps.safetyhub","type":"App"},{"action":"","launchType":"","name":"Settings","packageName":"com.ifpdos.vsettings","type":"App"},{"action":"","launchType":"","name":"Sho","packageName":"com.nuiteq.apps.digitalsignage","type":"App"},{"action":"","launchType":"","name":"Visualizer","packageName":"com.seewo.videopresenter","type":"App"},{"action":"","launchType":"","name":"VoiceAssistant","packageName":"com.ai.voice","type":"App"},{"action":"","launchType":"","name":"Whiteboard","packageName":"com.nuiteq.apps.chorus","type":"App"},{"action":"","launchType":"","name":"YouTube","packageName":"com.google.android.youtube","type":"App"},{"action":"","launchType":"","name":"YouTube Music","packageName":"com.google.android.apps.youtube.music","type":"App"},{"action":"com.seewo.widgetcountdown.services.WidgetsManagerService","launchType":"Service","name":"Timer","packageName":"com.seewo.widgetcountdown","type":"Tool"},{"action":"com.seewo.freezescreen.service.FreezeScreenService","launchType":"Service","name":"Freeze","packageName":"com.seewo.freezescreen","type":"Tool"},{"action":"com.seewo.widgetstopwatch.service.LaunchService","launchType":"Service","name":"Stopwatch","packageName":"com.seewo.widgetstopwatch","type":"Tool"},{"action":"com.seewo.widgetspotlight.SpotlightService","launchType":"Service","name":"Spotlight","packageName":"com.seewo.widgetspotlight","type":"Tool"},{"action":"com.seewo.screenlock.ScreenLockService","launchType":"Service","na
+06-17 10:01:29.614  2155  2155 D PackageChangeReceiver: android.intent.action.PACKAGE_ADDED packageName:com.ai.voice replacing:true
+06-17 10:01:29.614  2155  2155 D PackageChangeReceiver: op != OP_NONE, current:OP_UPDATE
+06-17 10:01:29.615  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{}","requestName":"com.seewo.sdk.internal.command.source.CmdGetCurrentSource"}
+06-17 10:01:29.615  1450  1625 D UdiServer-App: onRequest: GET v1/source/current
+06-17 10:01:29.615  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@e2aeee3@v1/source/current[bf36893e-1d3d-4301-8448-5748a3c6ca0b]
+06-17 10:01:29.615  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/source/current/get
+06-17 10:01:29.615  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.615  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/source/current/get  from com.ifpdos.systembar
+06-17 10:01:29.615  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.615  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.615  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: │ start getCurrentSource from vman
+06-17 10:01:29.615  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurInputSource:303] getCurInputSource 24
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.616   637   637 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.616 13439 13439 W ActivityThread: Package uses different ABI(s) than its instrumentation: package[com.ai.voice]: arm64-v8a, null instrumentation[com.ai.voice.test]: null, null
+06-17 10:01:29.616   637   637 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.616   637   637 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.616   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.617   637   637 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.617   637   637 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.617   637   637 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 1
+06-17 10:01:29.617   637   637 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 12
+06-17 10:01:29.617   637   637 E Cvte@dp_in_logic: [31m[1408:getInputSourcePlugStatus_dp:166] control.value = 0[0m
+06-17 10:01:29.617   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.618  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.618  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: │ getCurrentSource from vman:ANDROID
+06-17 10:01:29.618  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.618  1408 24697 D SourceUtils: fromVManSource: name=ANDROID,24
+06-17 10:01:29.618  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.618  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/source/current/get : response(200,{"source":"ANDROID"}) , duration 3
+06-17 10:01:29.618  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.618  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@e2aeee3@v1/source/current[bf36893e-1d3d-4301-8448-5748a3c6ca0b], response: UdiResponse{OK, {"source":"ANDROID"}}, duration: 3
+06-17 10:01:29.618  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"sdkSourceItem\":\"ANDROID\"}","responseName":"RespSourceItemResult","status":"SUCCESS"}
+06-17 10:01:29.618 13439 13439 W com.ai.voice: ClassLoaderContext classpath size mismatch. expected=0, found=1 (PCL[] | PCL[/system/framework/android.test.runner.jar*2256426886])
+06-17 10:01:29.620 13439 13439 W com.ai.voice: ClassLoaderContext classpath size mismatch. expected=0, found=2 (PCL[] | PCL[/system/framework/android.test.runner.jar*2256426886:/system/framework/android.test.mock.jar*849501951])
+06-17 10:01:29.620 13439 13439 W ziparchive: Unable to open '/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.dm': No such file or directory
+06-17 10:01:29.620 13439 13439 W ziparchive: Unable to open '/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.dm': No such file or directory
+06-17 10:01:29.621  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{\"type\":\"DEVICE_LOCK\"}","requestName":"com.seewo.sdk.internal.command.lock.CmdGetNormalLock"}
+06-17 10:01:29.621  1450  1625 D UdiServer-App: onRequest: GET v1/system/lock/device/enable
+06-17 10:01:29.621  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@7a4c25e@v1/system/lock/device/enable[d56ea2b3-b612-4c35-aef7-00e090834728]
+06-17 10:01:29.621  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/system/lock/device/enable/get
+06-17 10:01:29.621  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.621  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get  from com.ifpdos.systembar
+06-17 10:01:29.621  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.621  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.621  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get : response(200,{"enable":false}) , duration 0
+06-17 10:01:29.621  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.621  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@7a4c25e@v1/system/lock/device/enable[d56ea2b3-b612-4c35-aef7-00e090834728], response: UdiResponse{OK, {"enable":false}}, duration: 0
+06-17 10:01:29.621  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"result\":false}","responseName":"RespBooleanResult","status":"SUCCESS"}
+06-17 10:01:29.622  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{\"type\":\"DEVICE_LOCK\"}","requestName":"com.seewo.sdk.internal.command.lock.CmdGetNormalLock"}
+06-17 10:01:29.622  1450  1625 D UdiServer-App: onRequest: GET v1/system/lock/device/enable
+06-17 10:01:29.622  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@5249c55@v1/system/lock/device/enable[100e3886-9e2e-4591-b069-70326af97a01]
+06-17 10:01:29.622  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/system/lock/device/enable/get
+06-17 10:01:29.622  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.622  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get  from com.ifpdos.systembar
+06-17 10:01:29.622  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.623  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.623  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get : response(200,{"enable":false}) , duration 0
+06-17 10:01:29.623  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.623  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@5249c55@v1/system/lock/device/enable[100e3886-9e2e-4591-b069-70326af97a01], response: UdiResponse{OK, {"enable":false}}, duration: 1
+06-17 10:01:29.623  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"result\":false}","responseName":"RespBooleanResult","status":"SUCCESS"}
+06-17 10:01:29.623  2155  2155 D SystemBarVisibleManager: isAbsoluteHideInAndroid: source=ANDROID, deviceLocked=false, bootGuideFinish=true systemDockStatus=1 systemBarStatus=, isAbsoluteHide=false
+06-17 10:01:29.623  2155  2155 I CommonUtil: isHideSystemBarInAdmin: supportMultiUser: false adminMode: false isSystem: true threeButtonModel:false
+06-17 10:01:29.623  2155  2155 E BarView : SystemBarWindow event.operation: OP_UPDATEevent.pkg:com.ai.voice
+06-17 10:01:29.624  2155  2155 E t       : isNoNeedCreateIconApp: com.ai.voice is AdaptiveIconDrawable
+06-17 10:01:29.624  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:270 iconHeight:272
+12-31 22:32:04.701 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.701 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.701 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.627  2155  2155 E t       : isNoNeedCreateIconApp: com.ai.voice is AdaptiveIconDrawable
+06-17 10:01:29.627  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:270 iconHeight:272
+06-17 10:01:29.629  2155  2155 D SystemBarWindowPresenter: processManager: 
+06-17 10:01:29.629  2155  2155 E @MeetingSDK: SDKServiceNotConnected!
+06-17 10:01:29.629  2155  2155 D PackageChangeReceiver: action: android.intent.action.PACKAGE_ADDED
+06-17 10:01:29.629  2155  2155 D t       : refreshAppInfoList
+06-17 10:01:29.633  2155  2155 I SystemBar: pkgName=com.seewo.chromiumbrowser appName:Browser
+06-17 10:01:29.634  2155  2155 I SystemBar: pkgName=com.google.android.calculator appName:Calculator
+06-17 10:01:29.635  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.calculator is AdaptiveIconDrawable
+06-17 10:01:29.635  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:349 iconHeight:349
+06-17 10:01:29.637  2155  2155 I SystemBar: pkgName=com.google.android.calendar appName:Calendar
+06-17 10:01:29.641  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.calendar is AdaptiveIconDrawable
+06-17 10:01:29.641  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:288 iconHeight:288
+06-17 10:01:29.644  2155  2155 I SystemBar: pkgName=com.android.camera2 appName:Camera
+06-17 10:01:29.646  2155  2155 E t       : isNoNeedCreateIconApp: com.android.camera2 is AdaptiveIconDrawable
+06-17 10:01:29.646  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.648  2155  2155 I SystemBar: pkgName=com.nuiteq.chorus appName:Chorus
+06-17 10:01:29.649 13439 13439 W ziparchive: Unable to open '/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.dm': No such file or directory
+06-17 10:01:29.649 13439 13439 W ziparchive: Unable to open '/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.dm': No such file or directory
+06-17 10:01:29.653  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:512 iconHeight:512
+06-17 10:01:29.654  2155  2155 I SystemBar: pkgName=com.android.chrome appName:Chrome
+06-17 10:01:29.657  2155  2155 E t       : isNoNeedCreateIconApp: com.android.chrome is AdaptiveIconDrawable
+06-17 10:01:29.657  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.659  2155  2155 I SystemBar: pkgName=com.google.android.deskclock appName:Clock
+06-17 10:01:29.664  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.deskclock is AdaptiveIconDrawable
+06-17 10:01:29.664  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.668  2155  2155 I SystemBar: pkgName=com.seewo.gdupload appName:Cloud Drive
+06-17 10:01:29.670  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.671  2155  2155 I SystemBar: pkgName=com.seewo.collage.server appName:Collage
+06-17 10:01:29.673  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:128 iconHeight:128
+06-17 10:01:29.674  2155  2155 I SystemBar: pkgName=com.ifpdos.dms appName:Command
+06-17 10:01:29.676  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:121 iconHeight:121
+06-17 10:01:29.677  2155  2155 I SystemBar: pkgName=com.android.contacts appName:Contacts
+06-17 10:01:29.678  2155  2155 I SystemBar: pkgName=com.nuiteq.utils.apps.conenmountcontroller appName:CTI Mount Controller
+06-17 10:01:29.672   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474527): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:29.672   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474528): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:29.672   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474529): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:29.672   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474530): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:29.672   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474531): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:29.679  2155  2155 E t       : isNoNeedCreateIconApp: com.nuiteq.utils.apps.conenmountcontroller is AdaptiveIconDrawable
+06-17 10:01:29.679  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.681  2155  2155 I SystemBar: pkgName=com.google.android.apps.docs appName:Drive
+12-31 22:32:04.757 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.757 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.757 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.684  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.docs is AdaptiveIconDrawable
+06-17 10:01:29.684  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.686  2155  2155 I SystemBar: pkgName=com.seewo.easifinder appName:Finder
+06-17 10:01:29.687  2155  2155 I SystemBar: pkgName=com.google.android.gm appName:Gmail
+06-17 10:01:29.690  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.gm is AdaptiveIconDrawable
+06-17 10:01:29.690  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.692  2155  2155 I SystemBar: pkgName=com.google.android.googlequicksearchbox appName:Google
+06-17 10:01:29.695  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.googlequicksearchbox is AdaptiveIconDrawable
+06-17 10:01:29.695  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.697  2155  2155 I SystemBar: pkgName=com.google.android.videos appName:Google TV
+06-17 10:01:29.700  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.videos is AdaptiveIconDrawable
+06-17 10:01:29.701  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.703  2155  2155 I SystemBar: pkgName=com.google.android.keep appName:Keep Notes
+06-17 10:01:29.705  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.keep is AdaptiveIconDrawable
+06-17 10:01:29.705  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.708  2155  2155 I SystemBar: pkgName=com.seewo.keeper appName:Keeper
+06-17 10:01:29.710  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.712  2155  2155 I SystemBar: pkgName=com.google.android.apps.maps appName:Maps
+06-17 10:01:29.716  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.maps is AdaptiveIconDrawable
+06-17 10:01:29.716  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.718  2155  2155 I SystemBar: pkgName=com.google.android.apps.tachyon appName:Meet
+06-17 10:01:29.721  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.tachyon is AdaptiveIconDrawable
+06-17 10:01:29.721  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.724  2155  2155 I SystemBar: pkgName=com.seewo.easinote appName:Note
+06-17 10:01:29.725  2155  2155 I SystemBar: pkgName=com.seewo.easipallet appName:Palette
+06-17 10:01:29.727  2155  2155 E t       : isNoNeedCreateIconApp: com.seewo.easipallet is AdaptiveIconDrawable
+06-17 10:01:29.727  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.729  2155  2155 I SystemBar: pkgName=com.google.android.apps.photos appName:Photos
+06-17 10:01:29.732  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.photos is AdaptiveIconDrawable
+06-17 10:01:29.732  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.734  2155  2155 I SystemBar: pkgName=com.ifpdos.ospip appName:PIP
+06-17 10:01:29.734  2155  2155 I SystemBar: pkgName=com.android.vending appName:Google Play Store
+06-17 10:01:29.738  2155  2155 E t       : isNoNeedCreateIconApp: com.android.vending is AdaptiveIconDrawable
+06-17 10:01:29.738  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.740  2155  2155 I SystemBar: pkgName=com.google.android.apps.safetyhub appName:Personal Safety
+06-17 10:01:29.742  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.safetyhub is AdaptiveIconDrawable
+06-17 10:01:29.742  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+12-31 22:32:04.817 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.817 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.817 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.744  2155  2155 I SystemBar: pkgName=com.ifpdos.vsettings appName:Settings
+06-17 10:01:29.746  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.748  2155  2155 I SystemBar: pkgName=com.nuiteq.apps.digitalsignage appName:Sho
+06-17 10:01:29.751  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:1251 iconHeight:1251
+06-17 10:01:29.753  2155  2155 I SystemBar: pkgName=com.seewo.videopresenter appName:Visualizer
+06-17 10:01:29.755  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:251 iconHeight:251
+06-17 10:01:29.756  2155  2155 I SystemBar: pkgName=com.ai.voice appName:VoiceAssistant
+06-17 10:01:29.756  2155  2155 E t       : isNoNeedCreateIconApp: com.ai.voice is AdaptiveIconDrawable
+06-17 10:01:29.756  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:270 iconHeight:272
+06-17 10:01:29.761  2155  2155 I SystemBar: pkgName=com.nuiteq.apps.chorus appName:Whiteboard
+06-17 10:01:29.762  2155  2155 E t       : isNoNeedCreateIconApp: com.nuiteq.apps.chorus is AdaptiveIconDrawable
+06-17 10:01:29.762  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.764  2155  2155 I SystemBar: pkgName=com.google.android.youtube appName:YouTube
+06-17 10:01:29.768  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.youtube is AdaptiveIconDrawable
+06-17 10:01:29.768  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.771  2155  2155 I SystemBar: pkgName=com.google.android.apps.youtube.music appName:YouTube Music
+06-17 10:01:29.774  2155  2155 E t       : isNoNeedCreateIconApp: com.google.android.apps.youtube.music is AdaptiveIconDrawable
+06-17 10:01:29.774  2155  2155 D BitmapUtil: Need to create new icon, iconWidth:216 iconHeight:216
+06-17 10:01:29.777  2155  2155 D t       : AppInfoList size = 32
+06-17 10:01:29.781   904  1159 I RoleService: Granting default roles...
+06-17 10:01:29.783   904  1159 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10162; state: DISABLED
+06-17 10:01:29.789 13268 13461 W Role    : Cannot get ApplicationInfo for default holder: com.android.messaging
+12-31 22:32:04.873 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.873 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.873 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.805   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 7, dspCtlMsg.mbuf=
+06-17 10:01:29.805   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.805   637   697 E [avmanager]DSP: dspHal_default_value_init 77 AVMANAGE_CLASS_EN_DSP_CONFIG:1
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1568] 
+06-17 10:01:29.805   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 30, dspCtlMsg.mbuf=MIC_AEC_EN=?
+06-17 10:01:29.805   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1585] aec_status=0
+06-17 10:01:29.805   637   697 I [avmanager]DSP: dspHal_get_aec_status success!
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_default_value_init,80] aec_status = 0
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1622] 
+06-17 10:01:29.805   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 32, dspCtlMsg.mbuf=MIC_SPEECH_GAIN=?
+06-17 10:01:29.805   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1639] speech_gain=0.000000
+06-17 10:01:29.805   637   697 I [avmanager]DSP: dspHal_get_speech_gain success!
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_default_value_init,85] speech_gain = 0
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1677] 
+06-17 10:01:29.805   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 31, dspCtlMsg.mbuf=MIC_AINR_EN=?
+06-17 10:01:29.805   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:29.805   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1694] nr_level=0
+06-17 10:01:29.805   637   697 I [avmanager]DSP: dspHal_get_noise_reduction success!
+06-17 10:01:29.805   637   694 I [avmanager]hal_usart: lenth:11
+06-17 10:01:29.806   637   697 E [avmanager]DSP: [dspHal_default_value_init,90] nr_level = 0
+06-17 10:01:29.806   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.806   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.806   637   694 I [avmanager]hal_usart: lenth:13
+06-17 10:01:29.806   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.806   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.806   637   694 I [avmanager]hal_usart: lenth:18
+06-17 10:01:29.806   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.806   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.806   637   694 I [avmanager]hal_usart: lenth:14
+06-17 10:01:29.806   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:29.806   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:29.808 13268 13461 W Role    : Default holder doesn't have required signing certificate: com.google.android.apps.work.clouddpc:23962F4B43B9857638EA66F4D419518EAE282491ACDA4B94707BD59003C45E58
+06-17 10:01:29.823  2155  2155 E PackageManagerUtil: app name not found.
+06-17 10:01:29.823  2155  2155 E PackageManagerUtil: android.content.pm.PackageManager$NameNotFoundException: com.seewo.oscalculator
+06-17 10:01:29.843 24718 28169 D VCommonContentProvider: update key=ONE_SCREEN_EDLA_ALL_APP_TOOL, value=[{"action":"","launchType":"","name":"Browser","packageName":"com.seewo.chromiumbrowser","type":"App"},{"action":"","launchType":"","name":"Calculator","packageName":"com.google.android.calculator","type":"App"},{"action":"","launchType":"","name":"Calendar","packageName":"com.google.android.calendar","type":"App"},{"action":"","launchType":"","name":"Camera","packageName":"com.android.camera2","type":"App"},{"action":"","launchType":"","name":"Chorus","packageName":"com.nuiteq.chorus","type":"App"},{"action":"","launchType":"","name":"Chrome","packageName":"com.android.chrome","type":"App"},{"action":"","launchType":"","name":"Clock","packageName":"com.google.android.deskclock","type":"App"},{"action":"","launchType":"","name":"Cloud Drive","packageName":"com.seewo.gdupload","type":"App"},{"action":"","launchType":"","name":"Collage","packageName":"com.seewo.collage.server","type":"App"},{"action":"","launchType":"","name":"Command","packageName":"com.ifpdos.dms","type":"App"},{"action":"","launchType":"","name":"CTI Mount Controller","packageName":"com.nuiteq.utils.apps.conenmountcontroller","type":"App"},{"action":"","launchType":"","name":"Drive","packageName":"com.google.android.apps.docs","type":"App"},{"action":"","launchType":"","name":"Finder","packageName":"com.seewo.easifinder","type":"App"},{"action":"","launchType":"","name":"Gmail","packageName":"com.google.android.gm","type":"App"},{"action":"","launchType":"","name":"Google","packageName":"com.google.android.googlequicksearchbox","type":"App"},{"action":"","launchType":"","name":"Google TV","packageName":"com.google.android.videos","type":"App"},{"action":"","launchType":"","name":"Keep Notes","packageName":"com.google.android.keep","type":"App"},{"action":"","launchType":"","name":"Keeper","packageName":"com.seewo.keeper","type":"App"},{"action":"","launchType":"","name":"Maps","packageName":"com.google.android.apps.maps","type":"App"},{"action":"","launchType":"","name":"Meet","packageName":"com.google.android.apps.tachyon","type":"App"},{"action":"","launchType":"","name":"Note","packageName":"com.seewo.easinote","type":"App"},{"action":"","launchType":"","name":"Palette","packageName":"com.seewo.easipallet","type":"App"},{"action":"","launchType":"","name":"Photos","packageName":"com.google.android.apps.photos","type":"App"},{"action":"","launchType":"","name":"Google Play Store","packageName":"com.android.vending","type":"App"},{"action":"","launchType":"","name":"Personal Safety","packageName":"com.google.android.apps.safetyhub","type":"App"},{"action":"","launchType":"","name":"Settings","packageName":"com.ifpdos.vsettings","type":"App"},{"action":"","launchType":"","name":"Sho","packageName":"com.nuiteq.apps.digitalsignage","type":"App"},{"action":"","launchType":"","name":"Visualizer","packageName":"com.seewo.videopresenter","type":"App"},{"action":"","launchType":"","name":"VoiceAssistant","packageName":"com.ai.voice","type":"App"},{"action":"","launchType":"","name":"Whiteboard","packageName":"com.nuiteq.apps.chorus","type":"App"},{"action":"","launchType":"","name":"YouTube","packageName":"com.google.android.youtube","type":"App"},{"action":"","launchType":"","name":"YouTube Music","packageName":"com.google.android.apps.youtube.music","type":"App"},{"action":"com.seewo.widgetcountdown.services.WidgetsManagerService","launchType":"Service","name":"Timer","packageName":"com.seewo.widgetcountdown","type":"Tool"},{"action":"com.seewo.freezescreen.service.FreezeScreenService","launchType":"Service","name":"Freeze","packageName":"com.seewo.freezescreen","type":"Tool"},{"action":"com.seewo.widgetstopwatch.service.LaunchService","launchType":"Service","name":"Stopwatch","packageName":"com.seewo.widgetstopwatch","type":"Tool"},{"action":"com.seewo.widgetspotlight.SpotlightService","launchType":"Service","name":"Spotlight","packageName":"com.seewo.widgetspotlight","type":"Tool"},{"action":"com.seewo.screenlock.ScreenLockService","launchType":"Service","na
+06-17 10:01:29.843  2155  2155 D PackageChangeReceiver: android.intent.action.PACKAGE_ADDED packageName:com.ai.voice.test replacing:false
+06-17 10:01:29.843  2155  2155 D PackageChangeReceiver: op != OP_NONE, current:OP_ADD
+06-17 10:01:29.844  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{}","requestName":"com.seewo.sdk.internal.command.source.CmdGetCurrentSource"}
+06-17 10:01:29.844  1450  1625 D UdiServer-App: onRequest: GET v1/source/current
+06-17 10:01:29.844  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@2361bf8@v1/source/current[41bc9e49-c2d1-4cdb-87cb-ffed8f40871c]
+06-17 10:01:29.844  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/source/current/get
+06-17 10:01:29.844  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.844  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/source/current/get  from com.ifpdos.systembar
+06-17 10:01:29.844  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.844  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.844  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: │ start getCurrentSource from vman
+06-17 10:01:29.844  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.844   637  2023 D Cvte@source_logic: [1408:getCurInputSource:303] getCurInputSource 24
+06-17 10:01:29.844   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.844   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.845   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.845   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.845   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.845   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.845   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.846   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.846 13268 13461 W Role    : Cannot get ApplicationInfo for default holder: com.google.android.projection.gearhead
+06-17 10:01:29.846   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.846   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.846   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.846   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 1
+06-17 10:01:29.846   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 12
+06-17 10:01:29.846   637  2023 E Cvte@dp_in_logic: [31m[1408:getInputSourcePlugStatus_dp:166] control.value = 0[0m
+06-17 10:01:29.846   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.846  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.846  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: │ getCurrentSource from vman:ANDROID
+06-17 10:01:29.846  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.846  1408 24697 D SourceUtils: fromVManSource: name=ANDROID,24
+06-17 10:01:29.846  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.846  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/source/current/get : response(200,{"source":"ANDROID"}) , duration 2
+06-17 10:01:29.846  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.847  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@2361bf8@v1/source/current[41bc9e49-c2d1-4cdb-87cb-ffed8f40871c], response: UdiResponse{OK, {"source":"ANDROID"}}, duration: 3
+06-17 10:01:29.847  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"sdkSourceItem\":\"ANDROID\"}","responseName":"RespSourceItemResult","status":"SUCCESS"}
+06-17 10:01:29.847  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{\"type\":\"DEVICE_LOCK\"}","requestName":"com.seewo.sdk.internal.command.lock.CmdGetNormalLock"}
+06-17 10:01:29.847  1450  1625 D UdiServer-App: onRequest: GET v1/system/lock/device/enable
+06-17 10:01:29.847  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@be80e37@v1/system/lock/device/enable[eb808ba6-8327-4f49-915b-4cf762a0318e]
+06-17 10:01:29.847  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/system/lock/device/enable/get
+06-17 10:01:29.848  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.848  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get  from com.ifpdos.systembar
+06-17 10:01:29.848  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.848  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.848  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get : response(200,{"enable":false}) , duration 0
+06-17 10:01:29.848  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.848  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@be80e37@v1/system/lock/device/enable[eb808ba6-8327-4f49-915b-4cf762a0318e], response: UdiResponse{OK, {"enable":false}}, duration: 1
+06-17 10:01:29.848  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"result\":false}","responseName":"RespBooleanResult","status":"SUCCESS"}
+06-17 10:01:29.848  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{\"type\":\"DEVICE_LOCK\"}","requestName":"com.seewo.sdk.internal.command.lock.CmdGetNormalLock"}
+06-17 10:01:29.849  1450  1625 D UdiServer-App: onRequest: GET v1/system/lock/device/enable
+06-17 10:01:29.849  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@d6198c2@v1/system/lock/device/enable[03fe40a4-75c2-4341-8a18-eb1ea0edac71]
+06-17 10:01:29.849  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/system/lock/device/enable/get
+06-17 10:01:29.849  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.849  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get  from com.ifpdos.systembar
+06-17 10:01:29.849  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.849  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.849  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get : response(200,{"enable":false}) , duration 0
+06-17 10:01:29.849  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.849  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@d6198c2@v1/system/lock/device/enable[03fe40a4-75c2-4341-8a18-eb1ea0edac71], response: UdiResponse{OK, {"enable":false}}, duration: 0
+06-17 10:01:29.849  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"result\":false}","responseName":"RespBooleanResult","status":"SUCCESS"}
+06-17 10:01:29.849  2155  2155 D SystemBarVisibleManager: isAbsoluteHideInAndroid: source=ANDROID, deviceLocked=false, bootGuideFinish=true systemDockStatus=1 systemBarStatus=, isAbsoluteHide=false
+06-17 10:01:29.850  2155  2155 I CommonUtil: isHideSystemBarInAdmin: supportMultiUser: false adminMode: false isSystem: true threeButtonModel:false
+06-17 10:01:29.850  2155  2155 E BarView : SystemBarWindow event.operation: OP_ADDevent.pkg:com.ai.voice.test
+06-17 10:01:29.850  2155  2155 E @MeetingSDK: SDKServiceNotConnected!
+06-17 10:01:29.850  2155  2155 D PackageChangeReceiver: action: android.intent.action.PACKAGE_CHANGED
+06-17 10:01:29.850  2155  2155 D PackageChangeReceiver: android.intent.action.PACKAGE_CHANGED packageName:com.ai.voice.test replacing:false
+06-17 10:01:29.850  2155  2155 D PackageChangeReceiver: op != OP_NONE, current:OP_UPDATE
+06-17 10:01:29.850  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{}","requestName":"com.seewo.sdk.internal.command.source.CmdGetCurrentSource"}
+06-17 10:01:29.851  1450  1625 D UdiServer-App: onRequest: GET v1/source/current
+06-17 10:01:29.851  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@feda109@v1/source/current[0be44de9-ab64-4797-abaa-cdb17918da93]
+06-17 10:01:29.851  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/source/current/get
+06-17 10:01:29.851  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.851  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/source/current/get  from com.ifpdos.systembar
+06-17 10:01:29.851  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.851  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.851  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: │ start getCurrentSource from vman
+06-17 10:01:29.851  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.851   637  2023 D Cvte@source_logic: [1408:getCurInputSource:303] getCurInputSource 24
+06-17 10:01:29.851   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.851   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.851   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.851   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.851   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.851   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.852   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.852   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.852   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:29.852   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:29.852   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.853   637  2023 D Cvte@source_logic: [1408:getCurSocSource:385] getCurSocSource 1
+06-17 10:01:29.853   637  2023 D Cvte@source_logic: [1408:getCurFirstSwitchSource:410] getCurFirstSwitchSource 12
+06-17 10:01:29.853   637  2023 E Cvte@dp_in_logic: [31m[1408:getInputSourcePlugStatus_dp:166] control.value = 0[0m
+06-17 10:01:29.853   637  2023 E Cvte@VmanDispatch: [31m[1408:dispatch:168] id:2596 not found![0m
+06-17 10:01:29.853  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.853  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: │ getCurrentSource from vman:ANDROID
+06-17 10:01:29.853  1408 24697 D UdiServiceCore-SourceServiceCoreVMan: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.853  1408 24697 D SourceUtils: fromVManSource: name=ANDROID,24
+06-17 10:01:29.853  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.853  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/source/current/get : response(200,{"source":"ANDROID"}) , duration 2
+06-17 10:01:29.853  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.853  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@feda109@v1/source/current[0be44de9-ab64-4797-abaa-cdb17918da93], response: UdiResponse{OK, {"source":"ANDROID"}}, duration: 2
+06-17 10:01:29.853  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"sdkSourceItem\":\"ANDROID\"}","responseName":"RespSourceItemResult","status":"SUCCESS"}
+06-17 10:01:29.854  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{\"type\":\"DEVICE_LOCK\"}","requestName":"com.seewo.sdk.internal.command.lock.CmdGetNormalLock"}
+06-17 10:01:29.854  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.854  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get  from com.ifpdos.systembar
+06-17 10:01:29.854  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.854  1450  1625 D UdiServer-App: onRequest: GET v1/system/lock/device/enable
+06-17 10:01:29.854  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@dae9f3c@v1/system/lock/device/enable[7294e992-3887-4cd3-86aa-585c8f727563]
+06-17 10:01:29.854  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/system/lock/device/enable/get
+06-17 10:01:29.854  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.854  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get : response(200,{"enable":false}) , duration 0
+06-17 10:01:29.854  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.854  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@dae9f3c@v1/system/lock/device/enable[7294e992-3887-4cd3-86aa-585c8f727563], response: UdiResponse{OK, {"enable":false}}, duration: 0
+06-17 10:01:29.855  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"result\":false}","responseName":"RespBooleanResult","status":"SUCCESS"}
+12-31 22:32:04.929 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.929 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.929 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:29.855  1450  1625 D UdiServer-SDKService: com.ifpdos.systembar sendMessage {"paramsJson":"{\"type\":\"DEVICE_LOCK\"}","requestName":"com.seewo.sdk.internal.command.lock.CmdGetNormalLock"}
+06-17 10:01:29.855  1450  1625 D UdiServer-App: onRequest: GET v1/system/lock/device/enable
+06-17 10:01:29.855  1450  1625 D UdiServer-Transfer: before process request: e.d.f.a.b@b6cd4b@v1/system/lock/device/enable[27aca2e6-2999-447a-8cd8-eaf15c9c3561]
+06-17 10:01:29.855  1450  1625 D UdiServer-Transfer-BinderHttpd: process GET v1/system/lock/device/enable/get
+06-17 10:01:29.855  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.855  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get  from com.ifpdos.systembar
+06-17 10:01:29.855  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.856  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.856  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: │ on GET v1/system/lock/device/enable/get : response(200,{"enable":false}) , duration 1
+06-17 10:01:29.856  1408 24697 D UdiServiceCore-Transfer-BinderHttpd: └────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+06-17 10:01:29.856  1450  1625 D UdiServer-Transfer: after process request: e.d.f.a.b@b6cd4b@v1/system/lock/device/enable[27aca2e6-2999-447a-8cd8-eaf15c9c3561], response: UdiResponse{OK, {"enable":false}}, duration: 1
+06-17 10:01:29.856  1450  1625 D UdiServer-SDKService: {"paramsJson":"{\"result\":false}","responseName":"RespBooleanResult","status":"SUCCESS"}
+06-17 10:01:29.856  2155  2155 D SystemBarVisibleManager: isAbsoluteHideInAndroid: source=ANDROID, deviceLocked=false, bootGuideFinish=true systemDockStatus=1 systemBarStatus=, isAbsoluteHide=false
+06-17 10:01:29.856  2155  2155 I CommonUtil: isHideSystemBarInAdmin: supportMultiUser: false adminMode: false isSystem: true threeButtonModel:false
+06-17 10:01:29.856  2155  2155 E BarView : SystemBarWindow event.operation: OP_UPDATEevent.pkg:com.ai.voice.test
+06-17 10:01:29.857  2155  2155 D SystemBarWindowPresenter: processManager: 
+06-17 10:01:29.857  2155  2155 E @MeetingSDK: SDKServiceNotConnected!
+12-31 22:32:04.985 28625 28625 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:04.985 28625 28625 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:04.985 28625 28625 W         : Find 6635 fail !!
+12-31 22:32:05.045 28625 28625 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.045 28625 28625 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.045 28625 28625 W         : Find 6635 fail !!
+06-17 10:01:30.015 25029 27034 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+06-17 10:01:30.018   904  1514 D CompatibilityChangeReporter: Compat change id reported: 161252188; UID 10173; state: ENABLED
+12-31 22:32:05.101 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.101 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.101 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.027 25029 27034 I Icing   : Indexing com.google.android.gms-internal.3p:MobileApplication from com.google.android.gms
+06-17 10:01:30.031 13192 13322 I FedAssExpListener: Fed-ass not supported for signed out users.
+06-17 10:01:30.031 13192 13321 I FedAssExpListener: Successfully processed experiments changed.
+06-17 10:01:30.032 13192 13317 I A       : NGA disabled due to not being eligible.
+06-17 10:01:30.033 13192 13318 I OpaEligibilityChecker: send OpaEligibilityChange broadcast to CommonBroadcastReceiver
+06-17 10:01:30.033 13192 13317 I A       : (REDACTED) Nga state changed to %s
+06-17 10:01:30.041 25029 27034 I Icing   : Indexing done com.google.android.gms-apps
+06-17 10:01:30.042 13192 13382 I BistoSettingsListener: listener created
+06-17 10:01:30.043 13192 13328 I SettingsDataLayer.AE: (REDACTED) Set Assistant Enabled to %s
+06-17 10:01:30.044 25029 27034 I Icing   : Indexing done com.google.android.gms-internal.3p:MobileApplication
+06-17 10:01:30.045 25029 27034 I Icing   : Indexing com.google.android.gms-internal.3p:MusicRecording from com.google.android.gms
+06-17 10:01:30.053 25029 27034 I Icing   : Indexing done com.google.android.gms-internal.3p:MusicRecording
+06-17 10:01:30.054 25029 27034 I Icing   : Indexing com.google.android.gms-internal.3p:MobileApplication from com.google.android.gms
+06-17 10:01:30.054 13192 13192 I SearchWidgetFlow: (REDACTED) GsaWidgetProvider:onReceive(%s) started
+06-17 10:01:30.055 25029 27034 I Icing   : Indexing done com.google.android.gms-internal.3p:MobileApplication
+06-17 10:01:30.059 13192 13324 I SearchWidgetFlow: GsaWidgetSessionController:handleGenericClientEvent
+06-17 10:01:30.063   904  1514 I WifiService: getVerboseLoggingLevel uid=10082
+06-17 10:01:30.070 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:30.070 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:30.079 13192 13234 I A       : getLocaleToModelSpecsMap
+06-17 10:01:30.079 13192 13234 I A       : Proto config empty. Exit merge.
+06-17 10:01:30.080 13192 13234 I A       : (REDACTED) hasHotwordEverywhere-%b
+06-17 10:01:30.080 13192 13234 I A       : getLocaleToModelSpecsMap
+06-17 10:01:30.080 13192 13234 I A       : Proto config empty. Exit merge.
+06-17 10:01:30.082   904 13478 D ATMSAndroidT: after isForce: false isFreeform: false
+06-17 10:01:30.082   904  6375 D CompatibilityChangeReporter: Compat change id reported: 197654537; UID 1000; state: ENABLED
+12-31 22:32:05.157 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.157 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.157 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.087 13192 13470 E MicroModelsUtil: (REDACTED) Hotword file group is null with group name: %s, locale: %s
+06-17 10:01:30.090 13192 13382 I SettingsDataLayer.AE: Set Assistant eligibility status
+06-17 10:01:30.090 13192 13234 I HotwordService: (REDACTED) Model ID: %s
+06-17 10:01:30.090 13192 13234 I HotwordService: (REDACTED) hotwordModelLocation is null %b, locale is %s, re-mapped Chinese locale %s
+06-17 10:01:30.090 13192 13234 I HotwordService: (REDACTED) isOpaEligibleAndUserEnabled: %b
+06-17 10:01:30.090 13192 13234 I A       : getLocaleToModelSpecsMap
+06-17 10:01:30.090 13192 13234 I A       : Proto config empty. Exit merge.
+06-17 10:01:30.090   904  6375 D ConnectivityService: requestNetwork for uid/pid:10082/13192 activeRequest: null callbackRequest: 127 [NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
+06-17 10:01:30.091   904  1237 D EthernetNetworkFactory: eth0: onNetworkNeeded for request: NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.091   904  1237 D EthernetNetworkFactory: IpClient already started
+06-17 10:01:30.091   904  1227 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.091   904  1227 V WifiNetworkFactory: Accepted network request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.091   904  1227 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.091   904  1227 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.091   904  1227 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=128, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.091   904  1238 D ConnectivityService: NetReassign [128 : null → 100] [c 0] [a 1] [i 0]
+06-17 10:01:30.092 13192 13378 I SettingsDataLayer.AE: Set isHotwordOpaEligible
+06-17 10:01:30.093 13192 13234 I A       : getLocaleToModelSpecsMap
+06-17 10:01:30.093 13192 13234 I A       : Proto config empty. Exit merge.
+06-17 10:01:30.094 13192 13324 I SearchWidgetFlow: (REDACTED) SearchWidgetWorker:handleIntent(%s) started
+06-17 10:01:30.094 25626 26312 E GsaVoiceInteractionSrv: (REDACTED) modelLocation is null: %b isAlwaysOnEnabled is false: %b isFromAnyScreenEnabled is false: %b
+06-17 10:01:30.094 25626 26312 I BistoHotwordHelper: (REDACTED) getHotwordActive::active query: %s, watch: %s, devices connected: %s
+06-17 10:01:30.094 13192 13192 I SearchWidgetFlow: (REDACTED) SearchWidget:handleIntent(%s)
+06-17 10:01:30.094 25626 26312 I GsaVoiceInteractionSrv: #checkDspStatus
+06-17 10:01:30.094 25626 26312 I BistoHotwordHelper: (REDACTED) setting speaker id present: %b
+06-17 10:01:30.095 25626 26312 I BistoHotwordHelper: (REDACTED) setting speaker ID model presence: %b
+06-17 10:01:30.095 13192 13466 E BistoWorker: Couldn't get logged in Google account.
+06-17 10:01:30.095 25626 26312 I BistoHotwordHelper: (REDACTED) setting hotword model of size: %d bytes
+06-17 10:01:30.095 25626 26312 I BistoHotwordHelper: (REDACTED) setting modeltype: %s
+06-17 10:01:30.095 25626 26312 I BistoHotwordHelper: (REDACTED) setHotwordVoiceLocale: prev: %s, new: %s
+06-17 10:01:30.095 25626 26312 I BistoHotwordHelper: (REDACTED) setting VM enrollment allowed: %b
+06-17 10:01:30.095 25626 26312 I BistoHotwordHelper: (REDACTED) setSodaUsed: prev: %b, new: %b
+06-17 10:01:30.097 13192 13215 I earchbox:search: JIT allocated 84KB for compiled code of java.lang.Object com.google.android.apps.gsa.binaries.velvet.app.apq.a()
+06-17 10:01:30.098 13192 13215 I earchbox:search: Compiler allocated 4558KB to compile java.lang.Object com.google.android.apps.gsa.binaries.velvet.app.apq.a()
+06-17 10:01:30.106   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 7, dspCtlMsg.mbuf=
+06-17 10:01:30.106   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.106   637   697 E [avmanager]DSP: dspHal_default_value_init 77 AVMANAGE_CLASS_EN_DSP_CONFIG:1
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1568] 
+06-17 10:01:30.106   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 30, dspCtlMsg.mbuf=MIC_AEC_EN=?
+06-17 10:01:30.106   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1585] aec_status=0
+06-17 10:01:30.106   637   697 I [avmanager]DSP: dspHal_get_aec_status success!
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_default_value_init,80] aec_status = 0
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1622] 
+06-17 10:01:30.106   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 32, dspCtlMsg.mbuf=MIC_SPEECH_GAIN=?
+06-17 10:01:30.106   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1639] speech_gain=0.000000
+06-17 10:01:30.106   637   697 I [avmanager]DSP: dspHal_get_speech_gain success!
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_default_value_init,85] speech_gain = 0
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1677] 
+06-17 10:01:30.106   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 31, dspCtlMsg.mbuf=MIC_AINR_EN=?
+06-17 10:01:30.106   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1694] nr_level=0
+06-17 10:01:30.106   637   697 I [avmanager]DSP: dspHal_get_noise_reduction success!
+06-17 10:01:30.106   637   697 E [avmanager]DSP: [dspHal_default_value_init,90] nr_level = 0
+06-17 10:01:30.108   637   694 I [avmanager]hal_usart: lenth:11
+06-17 10:01:30.108   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.108   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.108   637   694 I [avmanager]hal_usart: lenth:13
+06-17 10:01:30.108   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.108   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.108   637   694 I [avmanager]hal_usart: lenth:18
+06-17 10:01:30.108   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.108   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.108   637   694 I [avmanager]hal_usart: lenth:14
+06-17 10:01:30.108   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.108   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.110 13192 13317 I WebViewFactory: Loading com.google.android.webview version 111.0.5563.116 (code 556311633)
+06-17 10:01:30.114 13192 13317 W ziparchive: Unable to open '/product/app/TrichromeLibrary/TrichromeLibrary.dm': No such file or directory
+06-17 10:01:30.114 13192 13317 W ziparchive: Unable to open '/product/app/TrichromeLibrary/TrichromeLibrary.dm': No such file or directory
+06-17 10:01:30.114 13192 13317 W earchbox:search: Entry not found
+06-17 10:01:30.115 13192 13317 D nativeloader: Configuring vendor-classloader-namespace for unbundled product apk /product/app/TrichromeLibrary/TrichromeLibrary.apk. target_sdk_version=33, uses_libraries=ALL, library_path=/product/app/WebViewGoogle/lib/arm64:/product/app/WebViewGoogle/WebViewGoogle.apk!/lib/arm64-v8a:/product/app/TrichromeLibrary/TrichromeLibrary.apk!/lib/arm64-v8a:/product/lib64:/system/product/lib64, permitted_path=/data:/mnt/expand:/product/lib64:/system/product/lib64
+06-17 10:01:30.115 13192 13317 D nativeloader: Extending system_exposed_libraries: librknnhal_bridge.rockchip.so
+06-17 10:01:30.117 13192 13317 W earchbox:search: ClassLoaderContext shared library size mismatch. Expected=0, found=1 (PCL[] | PCL[]{PCL[]})
+06-17 10:01:30.118 13192 13317 D nativeloader: Configuring vendor-classloader-namespace for unbundled product apk /product/app/WebViewGoogle/WebViewGoogle.apk. target_sdk_version=33, uses_libraries=, library_path=/product/app/WebViewGoogle/lib/arm64:/product/app/WebViewGoogle/WebViewGoogle.apk!/lib/arm64-v8a:/product/app/TrichromeLibrary/TrichromeLibrary.apk!/lib/arm64-v8a:/product/lib64:/system/product/lib64, permitted_path=/data:/mnt/expand:/product/lib64:/system/product/lib64
+06-17 10:01:30.128 13192 13317 I cr_WVCFactoryProvider: Loaded version=111.0.5563.116 minSdkVersion=29 isBundle=true multiprocess=true packageId=2
+06-17 10:01:30.132 13192 13324 W SessionLifecycleManager: (REDACTED) Client : %s has no associated SessionController
+06-17 10:01:30.132 13192 13324 W SearchServiceCore: Abort, client detached.
+06-17 10:01:30.132 13192 13378 I SearchWidgetFlow: (REDACTED) SearchWidgetWorker:handleIntent(%s) done
+06-17 10:01:30.133 13192 13382 I SearchWidgetFlow: (REDACTED) GsaWidgetProvider:onReceive(%s) done
+06-17 10:01:30.137 13192 13484 I cr_VariationsUtils: Failed reading seed file "/data/user/0/com.google.android.googlequicksearchbox/app_webview/variations_seed_new"
+06-17 10:01:30.138 13192 13484 I cr_VariationsUtils: Failed reading seed file "/data/user/0/com.google.android.googlequicksearchbox/app_webview/variations_seed"
+06-17 10:01:30.138 13192 13484 I cr_VariationsUtils: Requesting new seed from IVariationsSeedServer
+12-31 22:32:05.214 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.214 30917 30917 W         : reading register 0x1 from 0x56 failed
+06-17 10:01:30.139 13192 13317 I cr_LibraryLoader: Successfully loaded native library
+12-31 22:32:05.214 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.139   904  6375 D CompatibilityChangeReporter: Compat change id reported: 161252188; UID 10097; state: ENABLED
+06-17 10:01:30.139 13192 13317 I cr_CachingUmaRecorder: Flushed 9 samples from 9 histograms.
+06-17 10:01:30.140   904  6375 D CompatibilityChangeReporter: Compat change id reported: 168419799; UID 10097; state: DISABLED
+06-17 10:01:30.144 32178 32230 I cr_VariationsUtils: Seed download job already scheduled
+06-17 10:01:30.183 13192 13318 W ziparchive: Unable to open '/data/user_de/0/com.google.android.gms/app_chimera/m/00000002/DynamiteLoader.dm': No such file or directory
+06-17 10:01:30.183 13192 13318 W ziparchive: Unable to open '/data/user_de/0/com.google.android.gms/app_chimera/m/00000002/DynamiteLoader.dm': No such file or directory
+06-17 10:01:30.186 13192 13318 I DynamiteModule: Considering local module com.google.android.gms.cronet_dynamite:0 and remote module com.google.android.gms.cronet_dynamite:2411
+06-17 10:01:30.187 13192 13318 I DynamiteModule: Selected remote version of com.google.android.gms.cronet_dynamite, version >= 2411
+06-17 10:01:30.187 13192 13318 V DynamiteModule: Dynamite loader version >= 2, using loadModule2NoCrashUtils
+06-17 10:01:30.195 13439 13439 D nativeloader: Configuring classloader-namespace for other apk /system/framework/android.test.runner.jar:/system/framework/android.test.mock.jar:/system/framework/android.test.base.jar:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/lib/arm64:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/lib/arm64:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!/lib/arm64-v8a:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.ai.voice
+12-31 22:32:05.269 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.269 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.269 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.197 13192 13318 W ziparchive: Unable to open '/data/user_de/0/com.google.android.gms/app_chimera/m/00000001/CronetDynamite.dm': No such file or directory
+06-17 10:01:30.197 13192 13318 W ziparchive: Unable to open '/data/user_de/0/com.google.android.gms/app_chimera/m/00000001/CronetDynamite.dm': No such file or directory
+06-17 10:01:30.201 13439 13439 V GraphicsEnvironment: ANGLE Developer option for 'com.ai.voice' set to: 'default'
+06-17 10:01:30.201 13439 13439 V GraphicsEnvironment: ANGLE GameManagerService for com.ai.voice: false
+06-17 10:01:30.202 13439 13439 V GraphicsEnvironment: Neither updatable production driver nor prerelease driver is supported.
+06-17 10:01:30.204 13439 13439 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+06-17 10:01:30.205   904  5437 D ConnectivityService: requestNetwork for uid/pid:10082/13192 activeRequest: null callbackRequest: 129 [NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
+06-17 10:01:30.205 13439 13439 D nativeloader: Configuring classloader-namespace for other apk /system/framework/android.test.mock.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/lib/arm64:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/lib/arm64, permitted_path=/data:/mnt/expand
+06-17 10:01:30.205 13439 13439 D nativeloader: Extending system_exposed_libraries: librknnhal_bridge.rockchip.so
+06-17 10:01:30.205   904  1237 D EthernetNetworkFactory: eth0: onNetworkNeeded for request: NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.205   904  1237 D EthernetNetworkFactory: IpClient already started
+06-17 10:01:30.206   904  1227 D WifiNetworkFactory: got request NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.206   904  1227 V WifiNetworkFactory: Accepted network request NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.206 13192 13318 I cr_CronetLibraryLoader: Cronet version: 112.0.5594.1, arch: aarch64
+06-17 10:01:30.206   904  1227 D UntrustedWifiNetworkFactory: got request NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.206   904  1227 D OemPaidWifiNetworkFactory: got request NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.206   904  1238 D ConnectivityService: NetReassign [130 : null → 100] [c 0] [a 1] [i 1]
+06-17 10:01:30.206 13439 13439 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+06-17 10:01:30.206   904  1227 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=130, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10082 RequestorUid: 10082 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+06-17 10:01:30.207 13439 13439 W com.ai.voice: ClassLoaderContext shared library size mismatch. Expected=0, found=2 (PCL[] | PCL[]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]})
+06-17 10:01:30.208 13439 13439 D nativeloader: Configuring classloader-namespace for other apk /system/framework/android.test.runner.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/lib/arm64:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/lib/arm64, permitted_path=/data:/mnt/expand
+06-17 10:01:30.208 13439 13439 D nativeloader: Extending system_exposed_libraries: librknnhal_bridge.rockchip.so
+06-17 10:01:30.209   904  1238 D ConnectivityService: NetReassign [no changes] [c 0] [a 0] [i 1]
+06-17 10:01:30.210 13439 13439 W com.ai.voice: ClassLoaderContext shared library size mismatch. Expected=0, found=3 (PCL[] | PCL[]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]#PCL[/system/framework/android.test.runner.jar*2256426886]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]}};PCL[/system/framework/android.test.runner.jar*2256426886:/system/framework/android.test.mock.jar*849501951:/system/framework/android.test.base.jar*1628045882:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk*1635731342:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes2.dex*4105674332:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes3.dex*777303125:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes4.dex*1185609230:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes5.dex*3047143458:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes6.dex*2714942864:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk*3936356746:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes2.dex*3977655426:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes3.dex*872075925:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes4.dex*2921853800:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes5.dex*2772396186:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes6.dex*1674824374:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes7.dex*1062778610:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes8.dex*3315128559:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes9.dex*586312394:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes10.dex*481472826:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes11.dex*2136699603:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes12.dex*2941468975:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes13.dex*798095918:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes14.dex*320236886:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes15.dex*2803784774:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes16.dex*2319069454:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes17.dex*1059203428:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes18.dex*188035028:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes19.dex*3896671788:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes20.dex*2469116508:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes21.dex*3487770611])
+06-17 10:01:30.211 13439 13439 W com.ai.voice: ClassLoaderContext classpath size mismatch. expected=0, found=1 (PCL[] | PCL[/system/framework/android.test.runner.jar*2256426886]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]#PCL[/system/framework/android.test.runner.jar*2256426886]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]}};PCL[/system/framework/android.test.runner.jar*2256426886:/system/framework/android.test.mock.jar*849501951:/system/framework/android.test.base.jar*1628045882:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk*1635731342:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes2.dex*4105674332:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes3.dex*777303125:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes4.dex*1185609230:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes5.dex*3047143458:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes6.dex*2714942864:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk*3936356746:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes2.dex*3977655426:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes3.dex*872075925:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes4.dex*2921853800:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes5.dex*2772396186:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes6.dex*1674824374:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes7.dex*1062778610:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes8.dex*3315128559:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes9.dex*586312394:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes10.dex*481472826:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes11.dex*2136699603:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes12.dex*2941468975:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes13.dex*798095918:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes14.dex*320236886:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes15.dex*2803784774:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes16.dex*2319069454:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes17.dex*1059203428:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes18.dex*188035028:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes19.dex*3896671788:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes20.dex*2469116508:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes21.dex*3487770611])
+06-17 10:01:30.212 13439 13439 W com.ai.voice: ClassLoaderContext classpath size mismatch. expected=0, found=2 (PCL[] | PCL[/system/framework/android.test.runner.jar*2256426886:/system/framework/android.test.mock.jar*849501951]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]#PCL[/system/framework/android.test.runner.jar*2256426886]{PCL[/system/framework/android.test.base.jar*1628045882]#PCL[/system/framework/android.test.mock.jar*849501951]}};PCL[/system/framework/android.test.runner.jar*2256426886:/system/framework/android.test.mock.jar*849501951:/system/framework/android.test.base.jar*1628045882:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk*1635731342:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes2.dex*4105674332:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes3.dex*777303125:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes4.dex*1185609230:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes5.dex*3047143458:/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!classes6.dex*2714942864:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk*3936356746:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes2.dex*3977655426:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes3.dex*872075925:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes4.dex*2921853800:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes5.dex*2772396186:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes6.dex*1674824374:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes7.dex*1062778610:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes8.dex*3315128559:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes9.dex*586312394:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes10.dex*481472826:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes11.dex*2136699603:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes12.dex*2941468975:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes13.dex*798095918:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes14.dex*320236886:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes15.dex*2803784774:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes16.dex*2319069454:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes17.dex*1059203428:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes18.dex*188035028:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes19.dex*3896671788:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes20.dex*2469116508:/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!classes21.dex*3487770611])
+06-17 10:01:30.212 13439 13439 W ziparchive: Unable to open '/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.dm': No such file or directory
+06-17 10:01:30.212 13439 13439 W ziparchive: Unable to open '/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.dm': No such file or directory
+06-17 10:01:30.223   573 13503 I resolv  : GetAddrInfoHandler::run: {100 262244 100 983140 10082 0}
+06-17 10:01:30.224   573 13504 I resolv  : res_nmkquery: (QUERY, IN, A)
+06-17 10:01:30.224   573 13504 I resolv  : res_stats_usable_server: too many resolution errors, ignoring server
+06-17 10:01:30.229 25029 27034 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+06-17 10:01:30.231 25029 27034 I Icing   : Indexing done com.google.android.gms-apps
+06-17 10:01:30.237 13439 13439 W ziparchive: Unable to open '/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.dm': No such file or directory
+06-17 10:01:30.237 13439 13439 W ziparchive: Unable to open '/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.dm': No such file or directory
+12-31 22:32:05.316   598   598 W healthd : battery none chg=au
+12-31 22:32:05.325 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.325 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.325 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.275 25029 27034 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+06-17 10:01:30.277 25029 27034 I Icing   : Indexing done com.google.android.gms-apps
+12-31 22:32:05.381 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.381 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.381 30917 30917 W         : Find 6635 fail !!
+12-31 22:32:05.437 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.437 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.437 30917 30917 W         : Find 6635 fail !!
+12-31 22:32:05.461   341   341 W audit   : audit_lost=1413598 audit_rate_limit=5 audit_backlog_limit=64
+12-31 22:32:05.461   341   341 E audit   : rate limit exceeded
+06-17 10:01:30.406   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 7, dspCtlMsg.mbuf=
+06-17 10:01:30.406   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.406   637   697 E [avmanager]DSP: dspHal_default_value_init 77 AVMANAGE_CLASS_EN_DSP_CONFIG:1
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1568] 
+06-17 10:01:30.406   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 30, dspCtlMsg.mbuf=MIC_AEC_EN=?
+06-17 10:01:30.406   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1585] aec_status=0
+06-17 10:01:30.406   637   697 I [avmanager]DSP: dspHal_get_aec_status success!
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_default_value_init,80] aec_status = 0
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1622] 
+06-17 10:01:30.406   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 32, dspCtlMsg.mbuf=MIC_SPEECH_GAIN=?
+06-17 10:01:30.406   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1639] speech_gain=0.000000
+06-17 10:01:30.406   637   697 I [avmanager]DSP: dspHal_get_speech_gain success!
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_default_value_init,85] speech_gain = 0
+06-17 10:01:30.406   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1677] 
+06-17 10:01:30.406   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 31, dspCtlMsg.mbuf=MIC_AINR_EN=?
+06-17 10:01:30.406   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.407   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1694] nr_level=0
+06-17 10:01:30.407   637   697 I [avmanager]DSP: dspHal_get_noise_reduction success!
+06-17 10:01:30.407   637   697 E [avmanager]DSP: [dspHal_default_value_init,90] nr_level = 0
+06-17 10:01:30.409   637   694 I [avmanager]hal_usart: lenth:11
+06-17 10:01:30.409   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.409   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.409   637   694 I [avmanager]hal_usart: lenth:13
+06-17 10:01:30.409   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.409   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.409   637   694 I [avmanager]hal_usart: lenth:18
+06-17 10:01:30.409   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.409   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.409   637   694 I [avmanager]hal_usart: lenth:14
+06-17 10:01:30.409   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.409   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+12-31 22:32:05.493 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.493 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.493 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.426 25029 27034 I Icing   : Indexing com.google.android.gms-apps from com.google.android.gms
+06-17 10:01:30.428 25029 27034 I Icing   : Indexing done com.google.android.gms-apps
+12-31 22:32:05.549 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.549 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.549 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.512   637  2023 D Cvte@source_logic: [1465:getCurInputSource:303] getCurInputSource 24
+06-17 10:01:30.512   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:30.512   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:30.512   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.513   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:30.513   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:30.513   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.513   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:30.513   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:30.513   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.514   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:30.514   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:30.514   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.514   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:30.514   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:30.514   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.515   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2609 not found![0m
+06-17 10:01:30.515  1465  1603 E <vman_client>: [TvInputCtrlManager.java::getInputSourceEnStatus:461:1465]: getInputSourceEnStatus failed
+06-17 10:01:30.515   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:30.515   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:30.515   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.516   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2609 not found![0m
+06-17 10:01:30.516  1465  1603 E <vman_client>: [TvInputCtrlManager.java::getInputSourceEnStatus:461:1465]: getInputSourceEnStatus failed
+06-17 10:01:30.516   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 1
+06-17 10:01:30.516   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 12
+06-17 10:01:30.516   637  2023 E Cvte@dp_in_logic: [31m[1465:getInputSourcePlugStatus_dp:166] control.value = 0[0m
+06-17 10:01:30.516   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:30.516   637  2023 D Cvte@backlight_logic: [1465:getScreenBrightness:70] getScreenBrightness
+06-17 10:01:30.517  1465  1603 D <hotkey>: [DBCLoop.java::run:60:1465]:  [dbc] off or current source unsupport 
+12-31 22:32:05.605 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.605 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.605 30917 30917 W         : Find 6635 fail !!
+12-31 22:32:05.661 28625 28625 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.661 28625 28625 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.661 28625 28625 W         : Find 6635 fail !!
+12-31 22:32:05.717 28625 28625 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.717 28625 28625 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.717 28625 28625 W         : Find 6635 fail !!
+06-17 10:01:30.662   904  1220 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-17 10:01:30.662 24900 25064 D BleDeviceHelper: startBluetoothLeScan
+06-17 10:01:30.664 24900 25064 D PreferencesUtils: [com.ifpdos.account] getHiBluetoothStatus: false
+06-17 10:01:30.664 24900 25064 D BleDeviceHelper: no bluetooth module
+06-17 10:01:30.664 24900 25064 D BleDeviceHelper: stopLeScan: null
+06-17 10:01:30.665   904  1514 D CompatibilityChangeReporter: Compat change id reported: 218493289; UID 1000; state: ENABLED
+06-17 10:01:30.669   904  1514 D BluetoothManagerService: enable(com.ifpdos.account):  mBluetooth =null mBinding = false mState = OFF
+06-17 10:01:30.669   904  1514 D BluetoothManagerService: bluebooth chip is not detected, can't open.
+06-17 10:01:30.674   573   573 I netd    : tetherGetStats() -> {[TetherStatsParcel{iface: eth0, rxBytes: 0, rxPackets: 0, txBytes: 0, txPackets: 0, ifIndex: 0}]} <1.40ms>
+06-17 10:01:30.680   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474617): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:30.680   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474618): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:30.685   904  1220 W BestClock: java.time.DateTimeException: Missing NTP fix
+06-17 10:01:30.680   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474619): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:30.680   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474620): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:30.680   341   341 W hdcp2_tx_rx: type=1400 audit(0.0:1474621): avc: denied { getattr } for path="/dev/block/mmcblk0" dev="tmpfs" ino=466 scontext=u:r:hdcp2:s0 tcontext=u:object_r:uboot_block_device:s0 tclass=blk_file permissive=0
+06-17 10:01:30.686   573   573 I netd    : bandwidthSetGlobalAlert(2097152) <0.15ms>
+06-17 10:01:30.696   904  1097 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } to com.google.android.gms/.stats.service.DropBoxEntryAddedReceiver
+06-17 10:01:30.696   904  1097 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.DROPBOX_ENTRY_ADDED flg=0x10 (has extras) } to com.google.android.gms/.chimera.GmsIntentOperationService$PersistentTrustedReceiver
+12-31 22:32:05.773 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.773 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.773 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.707   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 7, dspCtlMsg.mbuf=
+06-17 10:01:30.707   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.707   637   697 E [avmanager]DSP: dspHal_default_value_init 77 AVMANAGE_CLASS_EN_DSP_CONFIG:1
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1568] 
+06-17 10:01:30.707   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 30, dspCtlMsg.mbuf=MIC_AEC_EN=?
+06-17 10:01:30.707   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1585] aec_status=0
+06-17 10:01:30.707   637   697 I [avmanager]DSP: dspHal_get_aec_status success!
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_default_value_init,80] aec_status = 0
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1622] 
+06-17 10:01:30.707   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 32, dspCtlMsg.mbuf=MIC_SPEECH_GAIN=?
+06-17 10:01:30.707   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1639] speech_gain=0.000000
+06-17 10:01:30.707   637   697 I [avmanager]DSP: dspHal_get_speech_gain success!
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_default_value_init,85] speech_gain = 0
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1677] 
+06-17 10:01:30.707   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 31, dspCtlMsg.mbuf=MIC_AINR_EN=?
+06-17 10:01:30.707   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1694] nr_level=0
+06-17 10:01:30.707   637   697 I [avmanager]DSP: dspHal_get_noise_reduction success!
+06-17 10:01:30.707   637   697 E [avmanager]DSP: [dspHal_default_value_init,90] nr_level = 0
+06-17 10:01:30.709   637   694 I [avmanager]hal_usart: lenth:11
+06-17 10:01:30.709   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.709   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.709   637   694 I [avmanager]hal_usart: lenth:13
+06-17 10:01:30.709   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.709   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.709   637   694 I [avmanager]hal_usart: lenth:18
+06-17 10:01:30.709   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.709   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:30.709   637   694 I [avmanager]hal_usart: lenth:14
+06-17 10:01:30.709   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:30.709   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+12-31 22:32:05.833 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.833 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.833 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.760 13439 13439 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: true
+06-17 10:01:30.764 13439 13439 D NetworkSecurityConfig: Using Network Security Config from resource network_security_config debugBuild: true
+06-17 10:01:30.765 13439 13439 I AndroidJUnitRunner: newApplication dagger.hilt.android.testing.HiltTestApplication
+06-17 10:01:30.769 13439 13439 I MultiDex: VM with version 2.1.0 has multidex support
+06-17 10:01:30.769 13439 13439 I MultiDex: Installing application
+06-17 10:01:30.769 13439 13439 I MultiDex: VM has multidex support, MultiDex support library is disabled.
+06-17 10:01:30.810 13439 13439 I DUDISdkInitializer: create 
+12-31 22:32:05.889 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.889 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.889 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.816 13439 13439 I DudiManager: dudiServiceConnected =false udiServiceConnected  false cookies u13439_com.ai.voice
+06-17 10:01:30.821 13439 13439 I McuManager: McuManager isMcuExit false
+06-17 10:01:30.826 13439 13439 D UdiSdk  : start udi client sdk init
+06-17 10:01:30.827 13439 13439 W com.ai.voice: Accessing hidden method Landroid/app/ActivityManager;->getService()Landroid/app/IActivityManager; (unsupported, reflection, allowed)
+06-17 10:01:30.828 13439 13439 W com.ai.voice: Accessing hidden method Landroid/app/IActivityManager$Stub$Proxy;->peekService(Landroid/content/Intent;Ljava/lang/String;Ljava/lang/String;)Landroid/os/IBinder; (max-target-o, reflection, denied)
+06-17 10:01:30.828 13439 13439 W com.ai.voice: Accessing hidden method Landroid/app/IActivityManager;->peekService(Landroid/content/Intent;Ljava/lang/String;Ljava/lang/String;)Landroid/os/IBinder; (max-target-o, reflection, denied)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: tryPeekServiceManager error
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: java.lang.NoSuchMethodException: android.app.IActivityManager$Stub$Proxy.peekService [class android.content.Intent, class java.lang.String, class java.lang.String]
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at java.lang.Class.getMethod(Class.java:2103)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at java.lang.Class.getMethod(Class.java:1724)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.sdk.httpd.binder.BinderSocketDns.tryPeekServiceManager(BinderSocketDns.java:79)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.sdk.httpd.binder.BinderSocketDns.addHostPackage(BinderSocketDns.java:47)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.udi.sdk.UdiSdkEnvironment.init(UdiSdkEnvironment.java:181)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.udi.sdk.UdiSdk.init(UdiSdk.java:91)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.core.common.aidl.client.udi.UdiManager.connectToUdi(UdiManager.java:51)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.core.common.aidl.client.DudiManager.initialize(DudiManager.java:103)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.core.common.aidl.client.DudiSdkInitializer.create(DudiSdkInitializer.java:25)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.ifpdos.core.common.aidl.client.DudiSdkInitializer.create(DudiSdkInitializer.java:20)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at androidx.startup.AppInitializer.doInitialize(AppInitializer.java:180)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at androidx.startup.AppInitializer.discoverAndInitialize(AppInitializer.java:238)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at androidx.startup.AppInitializer.discoverAndInitialize(AppInitializer.java:206)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at androidx.startup.InitializationProvider.onCreate(InitializationProvider.java:45)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.content.ContentProvider.attachInfo(ContentProvider.java:2451)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.content.ContentProvider.attachInfo(ContentProvider.java:2421)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.app.ActivityThread.installProvider(ActivityThread.java:7488)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.app.ActivityThread.installContentProviders(ActivityThread.java:6999)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:6770)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.app.ActivityThread.-$$Nest$mhandleBindApplication(Unknown Source:0)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2134)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.os.Handler.dispatchMessage(Handler.java:106)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.os.Looper.loopOnce(Looper.java:201)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.os.Looper.loop(Looper.java:288)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at android.app.ActivityThread.main(ActivityThread.java:7898)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at java.lang.reflect.Method.invoke(Native Method)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+06-17 10:01:30.828 13439 13439 E BinderSocketDns: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+06-17 10:01:30.828 13439 13439 D BinderSocketDns: selinux restrictions,getService cannot be invoked and bindService is required to connect
+06-17 10:01:30.831   904  5437 D CompatibilityChangeReporter: Compat change id reported: 161145287; UID 10173; state: DISABLED
+06-17 10:01:30.831 13439 13439 I DudiManager: connect initialized=false
+06-17 10:01:30.831   904  5437 W ActivityManager: Unable to start service Intent { act=com.ifpdos.dudi.midleware.DUDIMiddlewareService pkg=com.ifpdos.dudi.midleware } U=0: not found
+06-17 10:01:30.832 13439 13439 D DudiManager: connect result =false
+06-17 10:01:30.833   904  5437 W ActivityManager: Unable to start service Intent { act=com.dss.multiuser.DssMultiUserService pkg=com.dss.multiuser } U=0: not found
+06-17 10:01:30.833 13439 13439 D MultiUserDataAidl: connect result =false
+06-17 10:01:30.844 13439 13439 I AndroidJUnitRunner: onCreate Bundle[mParcelledData.dataSize=164]
+06-17 10:01:30.845 13439 13439 D AndroidJUnitRunner: Use the raw file system for managing file I/O.
+06-17 10:01:30.851 13439 13439 V TestEventClient: No service name argument was given (testDiscoveryService, testRunEventService or orchestratorService)
+06-17 10:01:30.852 13439 13508 D AndroidJUnitRunner: onStart is called.
+06-17 10:01:30.853 13439 13439 I UdiManager: UdiSdk init onSuccess
+12-31 22:32:05.945 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:05.945 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:05.945 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.893 13439 13439 I DudiManager: UdiSdk init onSuccess
+06-17 10:01:30.893 13439 13439 I DudiManager: changeDudiState2Connect dudiServiceConnected=false  udiServiceConnected true  cookies  u13439_com.ai.voice  dudiStateChangeListeners 0
+06-17 10:01:30.913 13439 13508 I TestRunner: run started: 1 tests
+06-17 10:01:30.914 13439 13508 I TestRunner: started: testAllDeviceControlCommands(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest)
+12-31 22:32:06.001 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:06.001 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:06.001 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.953 13439 13508 D LocaleManager: 🌐 LocaleManager.getSentencesLocale() - 语言解析调试:
+06-17 10:01:30.953 13439 13508 D LocaleManager:   📥 输入Language: LANGUAGE_KO
+06-17 10:01:30.953 13439 13508 D LocaleManager:   🔄 特殊处理韩语: LANGUAGE_KO -> ko
+06-17 10:01:30.954 13439 13508 D LocaleManager:   🔄 解析后的可用Locales: [ko]
+06-17 10:01:30.954 13439 13508 D LocaleManager:   📚 Sentences支持的语言: [cn, ko, en]
+06-17 10:01:30.954 13439 13508 D LocaleManager:   ✅ 解析成功: availableLocale=ko, supportedLocaleString=ko
+06-17 10:01:30.954 13439 13508 D LocaleManager:   🎯 最终传给应用的Locale: ko
+12-31 22:32:06.057 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:06.057 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:06.057 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:30.995 13439 13508 D MultiLanguageHelper: ✅ [device_control] 加载语言: cn
+06-17 10:01:30.995 13439 13508 D MultiLanguageHelper: ✅ [device_control] 加载语言: en
+06-17 10:01:30.997 13439 13508 D MultiLanguageHelper: ✅ [device_control] 加载语言: ko
+06-17 10:01:30.997 13439 13508 D MultiLanguageHelper: 🌐 [device_control] 技能支持 3 种语言: [cn, en, ko]
+06-17 10:01:31.003 13439 13508 D MultiLanguageSkill: 🌐 [device_control] 多语言匹配开始: '关机'
+06-17 10:01:31.007 13439 13508 D MultiLanguageSkill:   [device_control] 语言1 匹配分数: 1.0
+06-17 10:01:31.007   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 7, dspCtlMsg.mbuf=
+06-17 10:01:31.007   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:31.007   637   697 E [avmanager]DSP: dspHal_default_value_init 77 AVMANAGE_CLASS_EN_DSP_CONFIG:1
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1568] 
+06-17 10:01:31.007   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 30, dspCtlMsg.mbuf=MIC_AEC_EN=?
+06-17 10:01:31.007   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_get_aec_status,1585] aec_status=0
+06-17 10:01:31.007   637   697 I [avmanager]DSP: dspHal_get_aec_status success!
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_default_value_init,80] aec_status = 0
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1622] 
+06-17 10:01:31.007   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 32, dspCtlMsg.mbuf=MIC_SPEECH_GAIN=?
+06-17 10:01:31.007   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_get_speech_gain,1639] speech_gain=0.000000
+06-17 10:01:31.007   637   697 I [avmanager]DSP: dspHal_get_speech_gain success!
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_default_value_init,85] speech_gain = 0
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1677] 
+06-17 10:01:31.007   637   697 E [avmanager]Dsp_MkFifo: [dsp_mkfifo_write:72] dspCtlMsg.mtyp = 31, dspCtlMsg.mbuf=MIC_AINR_EN=?
+06-17 10:01:31.007   637   697 I [avmanager]Dsp_MkFifo: dsp_mkfifo_write:89, write ok len=524.
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_get_noise_reduction,1694] nr_level=0
+06-17 10:01:31.007   637   697 I [avmanager]DSP: dspHal_get_noise_reduction success!
+06-17 10:01:31.007   637   697 E [avmanager]DSP: [dspHal_default_value_init,90] nr_level = 0
+06-17 10:01:31.008   637   694 I [avmanager]hal_usart: lenth:11
+06-17 10:01:31.008   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:31.008   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:31.008   637   694 I [avmanager]hal_usart: lenth:13
+06-17 10:01:31.008   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:31.008   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:31.008   637   694 I [avmanager]hal_usart: lenth:18
+06-17 10:01:31.008   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:31.008   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:31.008   637   694 I [avmanager]hal_usart: lenth:14
+06-17 10:01:31.008   637   694 E [avmanager]hal_usart: FILE:vendor/cvte/avmanager/common/hal_usart.c, FUNC:writeUsartDevice, LINE:43, ERRNO:I/O error, wirte usart failed
+06-17 10:01:31.008   637   694 E [avmanager]DSP: dspHalWriteUsart,576 error: retlen= -1
+06-17 10:01:31.016 13439 13508 D MultiLanguageSkill: ✅ [device_control] 最佳匹配分数: 1.0
+06-17 10:01:31.018 13439 13508 E TestRunner: failed: testAllDeviceControlCommands(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest)
+06-17 10:01:31.018 13439 13508 E TestRunner: ----- begin exception -----
+06-17 10:01:31.018 13439 13508 E TestRunner: java.lang.NoClassDefFoundError: Failed resolution of: Lcom/google/gson/JsonObject;
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper.changeScreenStatus(ScreenHelper.java:36)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper.turnOffPower(ScreenHelper.java:25)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ai.voice.skills.device_control.DeviceControlSkill.executePowerOff(DeviceControlSkill.kt:127)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ai.voice.skills.device_control.DeviceControlSkill.generateOutput(DeviceControlSkill.kt:74)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest$testSingleCommand$output$1.invokeSuspend(DeviceControlInstrumentationTest.kt:174)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testSingleCommand(DeviceControlInstrumentationTest.kt:173)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at com.ai.voice.skills.device_control.DeviceControlInstrumentationTest.testAllDeviceControlCommands(DeviceControlInstrumentationTest.kt:120)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at java.lang.reflect.Method.invoke(Native Method)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at androidx.test.internal.runner.junit4.statement.RunBefores.evaluate(RunBefores.java:80)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at dagger.hilt.android.internal.testing.MarkThatRulesRanRule$1.evaluate(MarkThatRulesRanRule.java:108)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.Suite.runChild(Suite.java:128)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.Suite.runChild(Suite.java:27)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:68)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:59)
+06-17 10:01:31.018 13439 13508 E TestRunner: 	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:463)
+06-17 10:01:31.019 13439 13508 E TestRunner: 	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2322)
+06-17 10:01:31.019 13439 13508 E TestRunner: Caused by: java.lang.ClassNotFoundException: Didn't find class "com.google.gson.JsonObject" on path: DexPathList[[zip file "/system/framework/android.test.runner.jar", zip file "/system/framework/android.test.mock.jar", zip file "/system/framework/android.test.base.jar", zip file "/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk", zip file "/data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk"],nativeLibraryDirectories=[/data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/lib/arm64, /data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/lib/arm64, /data/app/~~ORhGC1eJGe_1kz2nY53bug==/com.ai.voice.test-2EZhPlUfDm9aS-KTQe7bjg==/base.apk!/lib/arm64-v8a, /data/app/~~aV-Brp8p-4gNENk4dcDAHw==/com.ai.voice-g86_rwXwBunzKF5GPMf7gQ==/base.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
+06-17 10:01:31.019 13439 13508 E TestRunner: 	at dalvik.system.BaseDexClassLoader.findClass(BaseDexClassLoader.java:259)
+06-17 10:01:31.019 13439 13508 E TestRunner: 	at java.lang.ClassLoader.loadClass(ClassLoader.java:379)
+06-17 10:01:31.019 13439 13508 E TestRunner: 	at java.lang.ClassLoader.loadClass(ClassLoader.java:312)
+06-17 10:01:31.019 13439 13508 E TestRunner: 	... 50 more
+06-17 10:01:31.019 13439 13508 E TestRunner: ----- end exception -----
+06-17 10:01:31.021 13439 13508 I TestRunner: finished: testAllDeviceControlCommands(com.ai.voice.skills.device_control.DeviceControlInstrumentationTest)
+06-17 10:01:31.023 13439 13508 I TestRunner: run finished: 1 tests, 1 failed, 0 ignored
+06-17 10:01:31.028   904  5437 I ActivityManager: Force stopping com.ai.voice appid=10173 user=0: finished inst
+06-17 10:01:31.028   904  5437 I ActivityManager: Killing 13439:com.ai.voice/u0a173 (adj 0): stop com.ai.voice due to finished inst
+06-17 10:01:31.029 13381 13381 I app_process: System.exit called, status: 0
+06-17 10:01:31.029 13381 13381 I AndroidRuntime: VM exiting with result code 0.
+06-17 10:01:31.031   637  2023 D Cvte@source_logic: [1465:getCurInputSource:303] getCurInputSource 24
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:31.032   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:31.032   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:31.032   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:31.032   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:31.032   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:31.032   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.033   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2609 not found![0m
+06-17 10:01:31.033  1465  1602 E <vman_client>: [TvInputCtrlManager.java::getInputSourceEnStatus:461:1465]: getInputSourceEnStatus failed
+06-17 10:01:31.033   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 0
+06-17 10:01:31.033   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 9
+06-17 10:01:31.033   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.033   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2609 not found![0m
+06-17 10:01:31.033  1465  1602 E <vman_client>: [TvInputCtrlManager.java::getInputSourceEnStatus:461:1465]: getInputSourceEnStatus failed
+06-17 10:01:31.033   637  2023 D Cvte@source_logic: [1465:getCurSocSource:385] getCurSocSource 1
+06-17 10:01:31.033   637  2023 D Cvte@source_logic: [1465:getCurFirstSwitchSource:410] getCurFirstSwitchSource 12
+06-17 10:01:31.033   637  2023 E Cvte@dp_in_logic: [31m[1465:getInputSourcePlugStatus_dp:166] control.value = 0[0m
+06-17 10:01:31.033   637  2023 E Cvte@VmanDispatch: [31m[1465:dispatch:168] id:2596 not found![0m
+06-17 10:01:31.034   904  1099 I libprocessgroup: Successfully killed process cgroup uid 10173 pid 13439 in 5ms
+12-31 22:32:06.113 30917 30917 W         : reading register 0x0 from 0x56 failed
+12-31 22:32:06.115 30917 30917 W         : reading register 0x1 from 0x56 failed
+12-31 22:32:06.115 30917 30917 W         : Find 6635 fail !!
+06-17 10:01:31.055   718 13383 E adbd    : error reading output FD 114: Connection reset by peer

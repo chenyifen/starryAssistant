@@ -1,0 +1,39 @@
+{
+  "wake_word": "하이넛지",
+  "romanized": "hi_nutji",
+  "language": "ko-KR",
+  "model_type": "OpenWakeWord",
+  "version": "3.1.0",
+  "created_date": "2025-10-23",
+  "performance": {
+    "accuracy": "95.1%",
+    "precision": "94.1%",
+    "recall": "96.2%",
+    "f1_score": "95.2%"
+  },
+  "training_info": {
+    "strategy": "방안A: 控制数据规模 + 降低权重",
+    "optimization_basis": "OpenWakeWord源码分析",
+    "positive_samples": 500,
+    "negative_samples": 500,
+    "max_negative_weight": 5
+  },
+  "model_files": [
+    "melspectrogram.tflite",
+    "embedding.tflite",
+    "wake.tflite"
+  ],
+  "audio_specs": {
+    "sample_rate": 16000,
+    "frame_length": 1152,
+    "frame_duration_ms": 72,
+    "mel_bins": 32,
+    "embedding_dim": 96,
+    "sequence_length": 16
+  },
+  "integration": {
+    "target_app": "Dicio Android",
+    "asset_path": "app/src/withModels/assets/models/openWakeWord/",
+    "usage": "Copy all .tflite files to the asset path and rebuild the app"
+  }
+}
