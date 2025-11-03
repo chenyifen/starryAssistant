@@ -11,7 +11,15 @@
 
 ---
 
-## 任务1: 悬浮球UI和交互改造
+## 任务1: 悬浮球UI和交互改造 ✅ 已完成
+
+**完成时间**: 2025-11-03 23:50  
+**完成情况**: 
+- ✅ 禁用悬浮球点击交互（移除onOrbClick和onOrbLongPress回调）
+- ✅ 固定悬浮球在左下角位置（savedX=48, savedY=calculateBottomLeftY()）
+- ✅ 修改布局为水平Row：悬浮球在左，文本显示在右
+- ✅ 启动时不显示悬浮球，等待唤醒触发
+- ✅ 架构重构：UI层监听StateProvider状态，不直接处理唤醒回调
 
 ### 输入
 - 现有的`DraggableFloatingOrb`类（可点击、可拖动）

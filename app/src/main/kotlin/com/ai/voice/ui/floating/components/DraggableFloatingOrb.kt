@@ -687,18 +687,18 @@ private fun FloatingOrbContent(
         label = "scale"
     )
 
-    // 正常状态的布局 - 修复文本显示问题
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.wrapContentHeight() // 关键修复：使用wrapContentHeight而不是fillMaxSize
+    // Hyundai IT版本：水平布局 - 悬浮球在左，文本在右
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.wrapContentSize() // 自适应大小
     ) {
-        // 悬浮球 - 精确点击区域
+        // 悬浮球 - 左侧
         Box(
             modifier = Modifier
                 .size(animationSize) // 使用缓存的动画尺寸
                 .scale(scale) // 只在拖拽时轻微缩放
-                .clickable { onOrbClick() } // 只有这个区域可以点击
+                .clickable { onOrbClick() } // 只有这个区域可以点击（实际已禁用）
                 .let { modifier ->
                     // 只在拖拽时添加60%透明度的白色边框
                     if (isDragging) {
@@ -721,15 +721,15 @@ private fun FloatingOrbContent(
             )
         }
         
-        // ASR/TTS文本显示区域 - 在悬浮球下方
+        // ASR/TTS文本显示区域 - 右侧（Hyundai IT版本）
         if (!isAtEdge && shouldShowText) {
             FloatingTextDisplay(
                 userText = currentAsrText,
                 aiText = currentTtsText,
                 isVisible = true,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
+                    .weight(1f) // 占据剩余空间
+                    .padding(start = 8.dp)
             )
         }
     }
