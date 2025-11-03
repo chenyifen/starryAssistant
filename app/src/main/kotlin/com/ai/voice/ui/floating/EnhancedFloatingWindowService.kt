@@ -341,7 +341,7 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun observeAssistantState() {
         serviceScope.launch {
-            voiceAssistantStateProvider.state.collect { state ->
+            voiceAssistantStateProvider.fullState.collect { state ->
                 handleStateChange(state)
             }
         }
@@ -386,6 +386,11 @@ class EnhancedFloatingWindowService : Service(),
                     kotlinx.coroutines.delay(2000)
                     hideFloatingOrb()
                 }
+            }
+            
+            else -> {
+                // 其他状态（如WAKE_DETECTED）- 保持当前UI状态
+                DebugLogger.logUI(TAG, "ℹ️ Other state: ${state.uiState}")
             }
         }
     }
