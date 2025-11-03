@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.pm.ServiceInfo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -441,7 +442,16 @@ class EnhancedFloatingWindowService : Service(),
             .build()
         
         // 启动前台服务
-        startForeground(NOTIFICATION_ID, notification)
+        // Android 14+ (API 34+) 需要指定前台服务类型
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
         DebugLogger.logUI(TAG, "✅ Foreground service notification created")
     }
     
