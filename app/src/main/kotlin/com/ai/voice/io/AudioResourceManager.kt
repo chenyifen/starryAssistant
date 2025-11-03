@@ -82,6 +82,8 @@ object AudioResourceManager {
      */
     suspend fun requestMicrophone(owner: AudioOwner): Boolean {
         return resourceMutex.withLock {
+            Log.d(TAG, "🔍 [$owner] 请求麦克风 - 当前状态: ${_audioState.value}, 持有者: ${_currentOwner.value}, TTS: ${isTtsPlaying.get()}")
+            
             // 边界情况1：TTS播放时拒绝所有录音请求
             if (isTtsPlaying.get()) {
                 Log.w(TAG, "❌ [$owner] 请求麦克风被拒绝：TTS正在播放")

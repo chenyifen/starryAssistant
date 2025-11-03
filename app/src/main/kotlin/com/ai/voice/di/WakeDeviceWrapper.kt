@@ -113,7 +113,7 @@ class WakeDeviceWrapperImpl(
     private fun buildInputDevice(setting: DataStoreWakeDevice): WakeDevice? {
         return when (setting) {
             UNRECOGNIZED,
-            WAKE_DEVICE_UNSET -> SherpaOnnxWakeDevice(appContext) // 默认使用SherpaOnnx KWS
+            WAKE_DEVICE_UNSET -> HiNudgeOnnxV8WakeDevice(appContext) // 默认使用V8韩语唤醒词模型
             WAKE_DEVICE_OWW -> OpenWakeWordDevice(appContext, okHttpClient)
             WAKE_DEVICE_SHERPA_ONNX -> SherpaOnnxWakeDevice(appContext)
             WAKE_DEVICE_HI_NUDGE -> HiNudgeOnnxWakeDevice(appContext)

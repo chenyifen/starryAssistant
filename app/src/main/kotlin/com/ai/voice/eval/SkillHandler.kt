@@ -20,7 +20,11 @@ import com.ai.voice.settings.datastore.UserSettings
 import com.ai.voice.settings.datastore.UserSettingsModule
 import com.ai.voice.skills.calculator.CalculatorInfo
 import com.ai.voice.skills.current_time.CurrentTimeInfo
-import com.ai.voice.skills.device_control.DeviceControlInfo
+import com.ai.voice.skills.power_control.PowerControlInfo
+import com.ai.voice.skills.input_source.InputSourceControlInfo
+import com.ai.voice.skills.app_launcher.AppLauncherInfo
+import com.ai.voice.skills.whiteboard_tools.WhiteboardToolsInfo
+import com.ai.voice.skills.system_navigation.SystemNavigationInfo
 import com.ai.voice.skills.fallback.text.TextFallbackInfo
 import com.ai.voice.skills.listening.ListeningInfo
 import com.ai.voice.skills.lyrics.LyricsInfo
@@ -53,7 +57,11 @@ class SkillHandler @Inject constructor(
         CurrentTimeInfo,
         MediaInfo,
         ListeningInfo(dataStore),
-        DeviceControlInfo,
+        PowerControlInfo,
+        InputSourceControlInfo,
+        AppLauncherInfo,
+        WhiteboardToolsInfo,
+        SystemNavigationInfo,
     )
 
     // TODO add more fallback skills (e.g. search)

@@ -107,7 +107,7 @@ skills:
           - id: where
             type: string
 
-  - id: device_control
+  - id: power_control
     specificity: high
     sentences:
       - id: power_off
@@ -115,6 +115,10 @@ skills:
       - id: volume_up
       - id: volume_down
       - id: mute_on
+
+  - id: input_source_control
+    specificity: high
+    sentences:
       - id: input_source
       - id: hdmi_one
       - id: hdmi_two
@@ -122,11 +126,23 @@ skills:
       - id: front_hdmi
       - id: front_usb_c
       - id: ops
-      - id: home_screen
+
+  - id: app_launcher
+    specificity: high
+    sentences:
       - id: google
       - id: browser
       - id: play_store
       - id: youtube
+      - id: settings
+      - id: recorder
+      - id: eshare
+      - id: camera
+      - id: finder
+
+  - id: whiteboard_tools
+    specificity: high
+    sentences:
       - id: whiteboard
       - id: save_whiteboard
       - id: red_pen
@@ -138,13 +154,13 @@ skills:
       - id: highlight_pen
       - id: fountain_pen
       - id: brush_pen
-      - id: settings
-      - id: recorder
-      - id: eshare
-      - id: camera
-      - id: screenshot
-      - id: finder
+
+  - id: system_navigation
+    specificity: high
+    sentences:
+      - id: home_screen
       - id: go_back
+      - id: screenshot
       - id: note_mode
       - id: window_mode
       - id: wifi_connect

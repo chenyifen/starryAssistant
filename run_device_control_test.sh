@@ -2,6 +2,8 @@
 
 # DeviceControl仪器测试运行脚本
 # 用于运行DeviceControl技能的仪器测试并收集报告
+# 
+# 注意：DeviceControl已拆分为5个技能，此脚本测试所有拆分后的技能命令
 
 set -e
 
@@ -57,7 +59,7 @@ echo "测试日志将保存到: $TEST_LOG"
 
 # 启动logcat监控
 adb logcat -c  # 清空logcat
-adb logcat -s "TestRunner" "DeviceControlInstrumentationTest" "DeviceControlSkill" "AutoTest" > "$LOG_DIR/logcat_$TEST_START_TIME.log" &
+adb logcat -s "TestRunner" "DeviceControlInstrumentationTest" "BaseDeviceControlSkill" "PowerControl" "InputSourceControl" "AppLauncher" "WhiteboardTools" "SystemNavigation" "AutoTest" > "$LOG_DIR/logcat_$TEST_START_TIME.log" &
 LOGCAT_PID=$!
 
 # 运行测试
@@ -105,6 +107,8 @@ DeviceControl仪器测试总结报告
 ===============================
 测试时间: $(date '+%Y-%m-%d %H:%M:%S')
 设备信息: $DEVICE_INFO
+测试类型: DeviceControl仪器测试（包含所有拆分后的技能）
+测试范围: PowerControl, InputSourceControl, AppLauncher, WhiteboardTools, SystemNavigation
 测试状态: $(if [ "$TEST_SUCCESS" = true ]; then echo "✅ 成功"; else echo "❌ 失败"; fi)
 
 文件位置:

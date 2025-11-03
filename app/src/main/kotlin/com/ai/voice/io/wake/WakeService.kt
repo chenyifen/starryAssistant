@@ -10,7 +10,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager.PERMISSION_GRANTED
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Build
@@ -59,6 +62,11 @@ class WakeService : Service() {
     private val audioRecordPaused = AtomicBoolean(false) // 用于暂停AudioRecord以避免与ASR冲突
     private var currentAudioRecord: AudioRecord? = null // 当前的AudioRecord实例
     // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
+    
+    // 音频焦点管理（Android 15+ 必需）
+    private var audioManager: AudioManager? = null
+    private var audioFocusRequest: AudioFocusRequest? = null
+    private var hasAudioFocus = AtomicBoolean(false)
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
@@ -90,6 +98,9 @@ class WakeService : Service() {
         super.onCreate()
         DebugLogger.logWakeWord(TAG, "🚀 WakeService onCreate")
         notificationManager = getSystemService(this, NotificationManager::class.java)!!
+        
+        // 初始化 AudioManager（Android 15 音频焦点必需）
+        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         scope.launch {
             // Recreate the notification so that it says the correct thing (i.e. there is a
@@ -217,6 +228,9 @@ class WakeService : Service() {
         // AutoTest日志：退出唤醒监听状态
         com.ai.voice.util.AutoTestLogger.logWakeListeningStopped()
         
+        // 释放音频焦点（Android 15+ 必需）
+        releaseAudioFocus()
+        
         // 释放麦克风资源
         scope.launch {
             try {
@@ -245,41 +259,164 @@ class WakeService : Service() {
         }
     }
 
+    /**
+     * 请求音频焦点（Android 15+ 必需）
+     * 
+     * @return true=成功获取音频焦点，false=失败
+     */
+    private fun requestAudioFocus(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            // Android 8.0 以下不需要音频焦点
+            return true
+        }
+        
+        val manager = audioManager ?: run {
+            DebugLogger.logWakeWordError(TAG, "❌ AudioManager not initialized")
+            return false
+        }
+        
+        try {
+            // 创建音频焦点请求
+            // 🔥 重要：使用 AUDIOFOCUS_GAIN（持续录音），而不是 TRANSIENT（短暂）
+            val audioAttributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            
+            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setAudioAttributes(audioAttributes)
+                .setAcceptsDelayedFocusGain(false)
+                .setWillPauseWhenDucked(false)
+                .setOnAudioFocusChangeListener { focusChange ->
+                    DebugLogger.logAudioProcessing(TAG, "🎧 Audio focus changed: $focusChange")
+                    when (focusChange) {
+                        AudioManager.AUDIOFOCUS_LOSS -> {
+                            DebugLogger.logWakeWord(TAG, "⚠️ Audio focus lost permanently")
+                        }
+                        AudioManager.AUDIOFOCUS_GAIN -> {
+                            DebugLogger.logWakeWord(TAG, "✅ Audio focus regained")
+                        }
+                        AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                            DebugLogger.logWakeWord(TAG, "⚠️ Audio focus lost temporarily")
+                        }
+                    }
+                }
+                .build()
+            
+            audioFocusRequest = focusRequest
+            
+            val result = manager.requestAudioFocus(focusRequest)
+            val success = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            
+            hasAudioFocus.set(success)
+            
+            if (success) {
+                DebugLogger.logAudioProcessing(TAG, "✅ Audio focus granted (Android ${Build.VERSION.SDK_INT})")
+            } else {
+                DebugLogger.logWakeWordError(TAG, "❌ Audio focus request failed: result=$result (Android ${Build.VERSION.SDK_INT})")
+            }
+            
+            return success
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ Exception requesting audio focus", e)
+            return false
+        }
+    }
+    
+    /**
+     * 释放音频焦点
+     */
+    private fun releaseAudioFocus() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return
+        }
+        
+        if (!hasAudioFocus.get()) {
+            return
+        }
+        
+        try {
+            val manager = audioManager
+            val request = audioFocusRequest
+            
+            if (manager != null && request != null) {
+                manager.abandonAudioFocusRequest(request)
+                DebugLogger.logAudioProcessing(TAG, "🔓 Audio focus released")
+            }
+            
+            hasAudioFocus.set(false)
+            audioFocusRequest = null
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "❌ Exception releasing audio focus", e)
+        }
+    }
+
     @SuppressLint("MissingPermission")
     private fun createOptimalAudioRecord(): AudioRecord? {
-        // 尝试不同的音频源配置
+        // Android 15+ 必须先请求音频焦点
+        if (!requestAudioFocus()) {
+            DebugLogger.logWakeWordError(TAG, "❌ Cannot create AudioRecord without audio focus (Android ${Build.VERSION.SDK_INT})")
+            return null
+        }
+        // 先检测常见采样率的支持情况（仅日志，便于定位 -22）
+        val probeRates = intArrayOf(44100, 48000, 16000, 32000, 22050, 8000)
+        runCatching {
+            val sb = StringBuilder()
+            sb.append("🎛️ Input support probe (CHANNEL_IN_MONO, PCM_16BIT): ")
+            probeRates.forEach { rate ->
+                val minBuf = AudioRecord.getMinBufferSize(rate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+                sb.append("$rate=")
+                if (minBuf == AudioRecord.ERROR || minBuf == AudioRecord.ERROR_BAD_VALUE) {
+                    sb.append("UNSUPPORTED; ")
+                } else {
+                    sb.append("minBuf=$minBuf; ")
+                }
+            }
+            DebugLogger.logAudioProcessing(TAG, sb.toString())
+        }
+
+        // 音源优先顺序（更稳妥的顺序）：MIC → DEFAULT → VOICE_COMMUNICATION → VOICE_RECOGNITION
         val audioSources = arrayOf(
-            MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
             MediaRecorder.AudioSource.MIC to "MIC",
             MediaRecorder.AudioSource.DEFAULT to "DEFAULT",
-            MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION"
+            MediaRecorder.AudioSource.VOICE_COMMUNICATION to "VOICE_COMMUNICATION",
+            MediaRecorder.AudioSource.VOICE_RECOGNITION to "VOICE_RECOGNITION",
         )
-        
-        // 尝试不同的缓冲区大小
-        val bufferSizes = arrayOf(6400, 3200, 1600, 8000)
-        
+
+        // 固定目标采样率为 16k（模型需求）；但如果 16k 不被支持，记录日志并放弃，避免后续流程失配
+        val targetRate = 16000
+        val minBufAt16k = AudioRecord.getMinBufferSize(targetRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        if (minBufAt16k == AudioRecord.ERROR || minBufAt16k == AudioRecord.ERROR_BAD_VALUE) {
+            DebugLogger.logWakeWordError(TAG, "❌ Device does not support 16k mono PCM16 input (getMinBufferSize)! Likely cause of -22")
+            // 重要：释放音频焦点，避免泄漏
+            releaseAudioFocus()
+            return null
+        }
+
+        // 尝试不同的缓冲放大倍率（在最小缓冲基础上放大）
+        val bufferMultipliers = intArrayOf(1, 2, 4)
         for ((source, sourceName) in audioSources) {
-            for (bufferSize in bufferSizes) {
+            for (mult in bufferMultipliers) {
+                val bufferSize = (minBufAt16k * mult).coerceAtLeast(minBufAt16k)
                 try {
-                    DebugLogger.logAudioProcessing(TAG, "🔧 Trying AudioRecord: source=$sourceName, bufferSize=$bufferSize")
-                    
+                    DebugLogger.logAudioProcessing(TAG, "🔧 Trying AudioRecord: source=$sourceName, sampleRate=$targetRate, bufferSize=$bufferSize")
+
                     val ar = AudioRecord(
                         source,
-                        16000,
+                        targetRate,
                         AudioFormat.CHANNEL_IN_MONO,
                         AudioFormat.ENCODING_PCM_16BIT,
                         bufferSize
                     )
-                    
+
                     if (ar.state == AudioRecord.STATE_INITIALIZED) {
                         DebugLogger.logAudioProcessing(TAG, "✅ AudioRecord initialized: source=$sourceName, bufferSize=$bufferSize")
-                        
-                        // 测试录音功能
+
                         if (testAudioRecord(ar)) {
-                            DebugLogger.logAudioProcessing(TAG, "🎵 AudioRecord test passed: source=$sourceName")
+                            DebugLogger.logAudioProcessing(TAG, "🎵 AudioRecord test passed: source=$sourceName @ ${targetRate}Hz")
                             return ar
                         } else {
-                            DebugLogger.logWakeWordError(TAG, "❌ AudioRecord test failed: source=$sourceName")
+                            DebugLogger.logWakeWordError(TAG, "❌ AudioRecord test failed after init: source=$sourceName")
                             ar.release()
                         }
                     } else {
@@ -287,11 +424,13 @@ class WakeService : Service() {
                         ar.release()
                     }
                 } catch (e: Exception) {
-                    DebugLogger.logWakeWordError(TAG, "❌ Exception creating AudioRecord: source=$sourceName", e)
+                    DebugLogger.logWakeWordError(TAG, "❌ Exception creating AudioRecord: source=$sourceName, bufferSize=$bufferSize", e)
                 }
             }
         }
-        
+
+        // 重要：全部失败时释放音频焦点
+        releaseAudioFocus()
         return null
     }
     
@@ -360,7 +499,16 @@ class WakeService : Service() {
             ))
             .build()
 
-        startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+        // Android 15+ (targetSdk 36) 需要明确指定前台服务类型
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                FOREGROUND_NOTIFICATION_ID,
+                notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            )
+        } else {
+            startForeground(FOREGROUND_NOTIFICATION_ID, notification)
+        }
     }
 
     private fun listenForWakeWord() {
@@ -372,7 +520,11 @@ class WakeService : Service() {
         val granted = runBlocking {
             AudioResourceManager.requestMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
         }
-    
+        
+        if (!granted) {
+            DebugLogger.logWakeWordError(TAG, "❌ 麦克风资源请求被拒绝")
+            return
+        }
         
         DebugLogger.logWakeWord(TAG, "✅ 成功获取麦克风资源")
         
@@ -530,6 +682,9 @@ class WakeService : Service() {
                 DebugLogger.logWakeWordError(TAG, "❌ Error releasing AudioRecord", e)
             }
             currentAudioRecord = null
+            
+            // 释放音频焦点（Android 15+ 必需）
+            releaseAudioFocus()
             
             // 释放麦克风资源（如果还没被释放）
             runBlocking {

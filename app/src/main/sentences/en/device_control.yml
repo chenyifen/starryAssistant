@@ -7,6 +7,10 @@ power_off:
   - power down
   - turn the? power off
   - shut the? system down
+  - shutdown
+  - power off now
+  - turn it off
+  - switch off
 
 power_on:
   - turn on the? power
@@ -16,6 +20,10 @@ power_on:
   - power up
   - turn the? power on
   - start the? system
+  - power on now
+  - turn it on
+  - switch on
+  - boot up
 
 volume_up:
   - turn the? volume up
@@ -28,6 +36,9 @@ volume_up:
   - increase volume
   - more volume
   - up the? volume
+  - vol up
+  - volume higher
+  - pump up the? volume
 
 volume_down:
   - turn the? volume down
@@ -40,6 +51,9 @@ volume_down:
   - decrease volume
   - less volume
   - down the? volume
+  - vol down
+  - volume lower
+  - quiet down
 
 mute_on:
   - mute on
@@ -50,6 +64,10 @@ mute_on:
   - silence the? audio
   - mute the? sound
   - turn off the? sound
+  - mute it
+  - quiet
+  - silent mode
+  - no sound
 
 input_source:
   - open the? input source window
@@ -153,6 +171,10 @@ google:
   - start google
   - access google
   - google page
+  - search google
+  - google search
+  - google dot com
+  - go google
 
 browser:
   - open the? browser
@@ -162,6 +184,10 @@ browser:
   - start browser
   - internet browser
   - web browser
+  - internet
+  - web
+  - go online
+  - surf the? web
 
 play_store:
   - open the? play store
@@ -180,6 +206,9 @@ youtube:
   - launch youtube
   - start youtube
   - go to youtube
+  - watch youtube
+  - youtube videos
+  - play youtube
 
 whiteboard:
   - open the? whiteboard
