@@ -110,4 +110,15 @@
     <string name="floating_text_initializing">초기화 중…</string>
     <string name="floating_text_loading">로딩 중…</string>
     
+    <!-- 웨이크 서비스 통지 -->
+    <string name="wake_service_label">Dicio 웨이크 워드 서비스</string>
+    <string name="wake_service_foreground_notification">\"Hey Dicio\" 웨이크 워드 대기 중</string>
+    <string name="wake_custom_service_foreground_notification">사용자 정의 웨이크 워드 대기 중</string>
+    <string name="wake_service_foreground_notification_summary">이 알림을 통해 Dicio가 백그라운드에서 마이크를 듣고 웨이크 워드를 감지할 수 있습니다</string>
+    <string name="wake_service_start_notification">탭하여 Dicio 웨이크 워드 서비스 시작</string>
+    <string name="wake_service_start_notification_summary">Android 11+ 에서는 사용자의 수동 조작 없이 Dicio가 서비스를 시작할 수 없습니다.</string>
+    <string name="wake_service_triggered_notification">Dicio 웨이크 워드 감지됨, 탭하여 열기</string>
+    <string name="wake_service_triggered_notification_summary">Android 10+ 에서는 웨이크 워드가 감지되었을 때 알림 없이 Dicio를 시작할 수 없습니다.</string>
+    <string name="stop">중지</string>
+    
 </resources>

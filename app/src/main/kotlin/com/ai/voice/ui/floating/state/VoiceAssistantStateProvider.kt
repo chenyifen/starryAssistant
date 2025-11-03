@@ -673,7 +673,9 @@ class VoiceAssistantStateProvider @Inject constructor(
      * 轻量级通知：直接在主线程调用，避免协程开销
      */
     private fun notifyListenersLight() {
-        listeners.forEach { listener ->
+        // 🔒 创建副本避免ConcurrentModificationException（listener回调中可能移除自己）
+        val listenersCopy = listeners.toList()
+        listenersCopy.forEach { listener ->
             try {
                 listener(_currentState)
             } catch (e: Exception) {
@@ -687,7 +689,9 @@ class VoiceAssistantStateProvider @Inject constructor(
      */
     private fun notifyListeners() {
         scope.launch {
-            listeners.forEach { listener ->
+            // 🔒 创建副本避免ConcurrentModificationException（listener回调中可能移除自己）
+            val listenersCopy = listeners.toList()
+            listenersCopy.forEach { listener ->
                 try {
                     listener(_currentState)
                 } catch (e: Exception) {

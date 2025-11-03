@@ -482,6 +482,7 @@ class WakeService : Service() {
                     else R.string.wake_custom_service_foreground_notification
                 )
             )
+            .setContentText(getString(R.string.wake_service_foreground_notification_summary)) // 添加说明文本
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setShowWhen(false)
