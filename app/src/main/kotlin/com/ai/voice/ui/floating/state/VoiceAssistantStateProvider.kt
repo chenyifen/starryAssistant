@@ -236,11 +236,16 @@ class VoiceAssistantStateProvider @Inject constructor(
             }
             
             InputEvent.None -> {
-                DebugLogger.logUI(TAG, "🔇 No speech detected")
-                // 由状态机接管：收到None说明本轮无语音，主动停止STT，回到待唤醒
-                updateState(asrText = "")
+                DebugLogger.logUI(TAG, "🔇 No speech detected - 静音超时，回到IDLE状态")
+                // Hyundai IT: 静音超时后回到IDLE状态，隐藏悬浮球
+                updateState(
+                    uiState = VoiceAssistantUIState.IDLE,
+                    asrText = "",
+                    displayText = ""
+                )
                 try {
                     sttInputDeviceWrapper.stopListening()
+                    DebugLogger.logUI(TAG, "✅ STT已停止，等待下一次唤醒")
                 } catch (e: Exception) {
                     DebugLogger.logUI(TAG, "⚠️ 停止STT失败: ${e.message}")
                 }

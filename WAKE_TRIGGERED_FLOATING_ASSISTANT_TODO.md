@@ -104,7 +104,14 @@
 
 ---
 
-## 任务3: 状态管理机制改造
+## 任务3: 状态管理机制改造 ✅ 已完成
+
+**完成时间**: 2025-11-03 23:54  
+**完成情况**: 
+- ✅ 静音超时时间调整为10秒（SPEECH_TIMEOUT_MS = 10000L）
+- ✅ StateProvider收到InputEvent.None后设置状态为IDLE
+- ✅ IDLE状态触发UI层隐藏悬浮球
+- ✅ 完整状态流转：唤醒 → 显示悬浮球 → ASR监听 → 静音10秒 → 回到IDLE → 隐藏悬浮球
 
 ### 输入
 - 现有的`VoiceAssistantStateProvider`
