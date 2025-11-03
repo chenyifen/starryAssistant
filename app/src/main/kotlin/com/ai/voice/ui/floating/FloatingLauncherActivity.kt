@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import com.ai.voice.R
 import com.ai.voice.util.PermissionHelper
+import com.ai.voice.io.wake.WakeService
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -218,11 +219,24 @@ class FloatingLauncherActivity : ComponentActivity() {
     }
     
     /**
-     * 启动悬浮球服务并关闭Activity
+     * 启动服务并关闭Activity
+     * 
+     * 架构设计：
+     * 1. WakeService - 独立的唤醒词检测服务（业务层）
+     * 2. EnhancedFloatingWindowService - UI显示服务（UI层）
+     * 两者独立运行，通过WakeWordCallbackManager和StateProvider通信
      */
     private fun startServiceAndFinish() {
-        Log.d(TAG, "✅ 所有权限已具备，启动悬浮球服务")
+        Log.d(TAG, "✅ 所有权限已具备，启动服务")
+        
+        // 1. 先启动WakeService（唤醒词监听 - 业务层）
+        WakeService.start(this)
+        Log.d(TAG, "✅ WakeService started")
+        
+        // 2. 再启动EnhancedFloatingWindowService（UI显示 - UI层）
         EnhancedFloatingWindowService.start(this)
+        Log.d(TAG, "✅ EnhancedFloatingWindowService started")
+        
         Toast.makeText(this, R.string.floating_assistant_started, Toast.LENGTH_SHORT).show()
         finish()
     }

@@ -120,8 +120,8 @@ class EnhancedFloatingWindowService : Service(),
         // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
         
-        // 启动WakeService（现在由悬浮球服务管理）
-        startWakeService()
+        // 不再由UI服务启动WakeService - 应该由应用入口（FloatingLauncherActivity）启动
+        // startWakeService()  // 移除 - 架构重构
         
         // 监听VoiceAssistantStateProvider的状态变化（UI层正确做法）
         observeAssistantState()
@@ -338,13 +338,14 @@ class EnhancedFloatingWindowService : Service(),
     /**
      * 监听VoiceAssistantStateProvider的状态变化
      * UI层只负责根据状态更新UI，不处理业务逻辑
+     * 
+     * 注意：StateProvider使用监听器模式，不是Flow
      */
     private fun observeAssistantState() {
-        serviceScope.launch {
-            voiceAssistantStateProvider.fullState.collect { state ->
-                handleStateChange(state)
-            }
+        val stateListener: (VoiceAssistantFullState) -> Unit = { state ->
+            handleStateChange(state)
         }
+        voiceAssistantStateProvider.addListener(stateListener)
     }
     
     /**
