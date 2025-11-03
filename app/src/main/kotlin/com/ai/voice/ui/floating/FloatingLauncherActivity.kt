@@ -60,7 +60,10 @@ class FloatingLauncherActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "🚀 FloatingLauncherActivity 启动")
-        
+
+        // 立即设置一个空的布局，避免Activity崩溃
+        setContentView(android.R.layout.simple_list_item_1)
+
         // 开始权限检查流程
         checkNextPermission()
     }
@@ -81,8 +84,10 @@ class FloatingLauncherActivity : ComponentActivity() {
      * 检查基础权限（录音、通知）
      */
     private fun checkBasicPermissions() {
+        Log.d(TAG, "🔍 检查基础权限...")
         val missing = PermissionHelper.getMissingBasicPermissions(this)
-        
+        Log.d(TAG, "📋 缺少权限: ${missing.joinToString(", ")}")
+
         if (missing.isEmpty()) {
             Log.d(TAG, "✅ 基础权限已具备")
             currentStep = PermissionStep.CHECK_STORAGE
@@ -173,7 +178,11 @@ class FloatingLauncherActivity : ComponentActivity() {
      * 检查悬浮窗权限
      */
     private fun checkOverlayPermission() {
-        if (Settings.canDrawOverlays(this)) {
+        Log.d(TAG, "🔍 检查悬浮窗权限...")
+        val hasOverlay = Settings.canDrawOverlays(this)
+        Log.d(TAG, "📋 悬浮窗权限状态: $hasOverlay")
+
+        if (hasOverlay) {
             Log.d(TAG, "✅ 悬浮窗权限已具备")
             currentStep = PermissionStep.START_SERVICE
             checkNextPermission()
@@ -220,7 +229,7 @@ class FloatingLauncherActivity : ComponentActivity() {
     
     /**
      * 启动服务并关闭Activity
-     * 
+     *
      * 架构设计：
      * 1. WakeService - 独立的唤醒词检测服务（业务层）
      * 2. EnhancedFloatingWindowService - UI显示服务（UI层）
@@ -228,17 +237,35 @@ class FloatingLauncherActivity : ComponentActivity() {
      */
     private fun startServiceAndFinish() {
         Log.d(TAG, "✅ 所有权限已具备，启动服务")
-        
-        // 1. 先启动WakeService（唤醒词监听 - 业务层）
-        WakeService.start(this)
-        Log.d(TAG, "✅ WakeService started")
-        
-        // 2. 再启动EnhancedFloatingWindowService（UI显示 - UI层）
-        EnhancedFloatingWindowService.start(this)
-        Log.d(TAG, "✅ EnhancedFloatingWindowService started")
-        
-        Toast.makeText(this, R.string.floating_assistant_started, Toast.LENGTH_SHORT).show()
-        finish()
+
+        try {
+            // 1. 先启动WakeService（唤醒词监听 - 业务层）
+            Log.d(TAG, "🚀 启动WakeService...")
+            WakeService.start(this)
+            Log.d(TAG, "✅ WakeService started")
+
+            // 等待一小段时间确保WakeService启动完成
+            Thread.sleep(500)
+
+            // 2. 再启动EnhancedFloatingWindowService（UI显示 - UI层）
+            Log.d(TAG, "🚀 启动EnhancedFloatingWindowService...")
+            EnhancedFloatingWindowService.start(this)
+            Log.d(TAG, "✅ EnhancedFloatingWindowService started")
+
+            Log.d(TAG, "🎉 所有服务启动完成")
+            Toast.makeText(this, R.string.floating_assistant_started, Toast.LENGTH_SHORT).show()
+
+            // 延迟一小段时间再关闭，确保服务完全启动
+            android.os.Handler(mainLooper).postDelayed({
+                Log.d(TAG, "🏁 FloatingLauncherActivity finish")
+                finish()
+            }, 1000)
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 服务启动失败", e)
+            Toast.makeText(this, "服务启动失败: ${e.message}", Toast.LENGTH_LONG).show()
+            finish()
+        }
     }
     
     /**
