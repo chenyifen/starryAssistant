@@ -7,20 +7,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.border
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -32,7 +24,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.delay
 import androidx.compose.material3.MaterialTheme
-import com.ai.voice.ui.floating.DragTouchHandler
+// 移除拖拽处理器导入 - Hyundai IT版本不需要拖拽功能
 import com.ai.voice.ui.floating.FloatingOrbConfig
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.components.FloatingTextDisplay
@@ -44,12 +36,13 @@ import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.util.DebugLogger
 
 /**
- * 可拖动的悬浮球组件
+ * 悬浮球组件（Hyundai IT版本）
  * 
  * 特性：
  * - 使用WindowManager创建系统级悬浮窗
- * - 支持拖动和点击
+ * - 固定在屏幕左下角，不支持拖动
  * - 集成Lottie动画
+ * - 显示ASR和TTS文本
  * - FLAG_NOT_FOCUSABLE避免抢焦点
  */
 class DraggableFloatingOrb(
@@ -75,25 +68,9 @@ class DraggableFloatingOrb(
     private var lastUiState: VoiceAssistantUIState? = null
     private var lastDisplayText = ""
     
-    // 拖拽处理器
-    private var dragTouchHandler: DragTouchHandler? = null
-    
-    // 边缘吸附状态
-    private var isAtEdge = false
-    
-    // 位置保存 - Hyundai IT版本：固定在左下角
-    // X坐标：16dp边距（约48px）
-    // Y坐标：屏幕高度-悬浮球高度-底部导航栏高度-16dp边距
-    private var savedX = 48
-    private var savedY = calculateBottomLeftY()
-    
-    // 拖拽状态 - Hyundai IT版本：禁用拖拽
-    private val isDragging = mutableStateOf(false)
-    private val isLongPressing = mutableStateOf(false)
-    
-    // 点击回调 - Hyundai IT版本：禁用点击交互（保留变量但不设置）
-    var onOrbClick: (() -> Unit)? = null
-    var onOrbLongPress: (() -> Unit)? = null
+    // Hyundai IT版本：悬浮球固定在左下角，不支持拖拽、点击、吸附等操作
+    private val fixedX = 48  // 左边距16dp（约48px）
+    private val fixedY = calculateBottomLeftY()  // 动态计算底部Y坐标
     
     // VoiceAssistantStateProvider监听
     private var stateProvider: VoiceAssistantStateProvider? = null
@@ -171,8 +148,6 @@ class DraggableFloatingOrb(
                     // 在Composable内部读取状态，以便触发重组
                     val asrText by currentAsrText
                     val ttsText by currentTtsText
-                    val dragging by isDragging
-                    val longPressing by isLongPressing
                     
                     Box(
                         modifier = Modifier
@@ -182,14 +157,7 @@ class DraggableFloatingOrb(
                         FloatingOrbContent(
                             animationStateManager = animationStateManager,
                             currentAsrText = asrText,
-                            currentTtsText = ttsText,
-                            isAtEdge = isAtEdge,
-                            isDragging = dragging,
-                            isLongPressing = longPressing,
-                            onOrbClick = { handleOrbClick() },
-                            onOrbLongPress = { handleOrbLongPress() },
-                            onDragStart = { handleDragStart() },
-                            onDragEnd = { handleDragEnd() }
+                            currentTtsText = ttsText
                         )
                     }
                 }
@@ -201,19 +169,8 @@ class DraggableFloatingOrb(
             floatingView = composeView
             isShowing = true
             
-            // 初始化拖拽处理器
-            dragTouchHandler = DragTouchHandler(context, windowManager, composeView).apply {
-                onOrbClick = { handleOrbClick() }
-                onOrbLongPress = { handleOrbLongPress() }
-                onDragStart = { handleDragStart() }
-                onDragEnd = { handleDragEnd() }
-                onEdgeStateChanged = { atEdge -> setEdgeState(atEdge) }
-            }
-            
-            // 在ComposeView上设置触摸监听器
-            composeView.setOnTouchListener { _, event ->
-                dragTouchHandler?.onTouchEvent(event) ?: false
-            }
+            // Hyundai IT版本：移除所有触摸交互（拖动、点击、吸附等）
+            // 悬浮球仅用于显示，不接受任何用户交互
             
             // 默认设置为待机状态
             animationStateManager.setIdle()
@@ -290,10 +247,10 @@ class DraggableFloatingOrb(
             width = calculateWindowWidth()
             height = calculateWindowHeight()
             
-            // 窗口位置 - 使用保存的位置
+            // 窗口位置 - Hyundai IT版本：固定在左下角
             gravity = Gravity.TOP or Gravity.START
-            x = savedX // 使用保存的X位置
-            y = savedY // 使用保存的Y位置
+            x = fixedX // 固定X位置：16dp左边距
+            y = fixedY // 固定Y位置：动态计算底部位置
         }
     }
     
@@ -304,7 +261,7 @@ class DraggableFloatingOrb(
         // 使用固定宽度，足够容纳最长的文本气泡（280dp + padding）
         val maxTextWidth = 280 // TextBubble的最大宽度
         val padding = 32 // 左右各16dp的padding
-        val orbWidth = if (isAtEdge) FloatingOrbConfig.edgeOrbSizePx else FloatingOrbConfig.orbSizePx
+        val orbWidth = FloatingOrbConfig.orbSizePx
         
         // 取悬浮球宽度和文本区域宽度的最大值
         return maxOf(orbWidth.toInt(), maxTextWidth + padding)
@@ -314,12 +271,7 @@ class DraggableFloatingOrb(
      * 计算窗口高度 - 动态适配内容
      */
     private fun calculateWindowHeight(): Int {
-        val orbHeight = if (isAtEdge) FloatingOrbConfig.edgeOrbSizePx else FloatingOrbConfig.orbSizePx
-        
-        // 边缘吸附时只显示小图标
-        if (isAtEdge) {
-            return (orbHeight * 0.6f).toInt()
-        }
+        val orbHeight = FloatingOrbConfig.orbSizePx
         
         var totalHeight = orbHeight.toInt()
         val spacing = 8 // dp转px的间距
@@ -337,164 +289,9 @@ class DraggableFloatingOrb(
         return totalHeight
     }
     
-    /**
-     * 处理悬浮球点击
-     * Hyundai IT版本：点击回调已禁用，此方法为空操作
-     */
-    private fun handleOrbClick() {
-        // Hyundai IT版本：不执行任何操作
-        // onOrbClick?.invoke()
-        DebugLogger.logUI(TAG, "💤 Orb click ignored (interaction disabled)")
-    }
     
-    /**
-     * 处理悬浮球长按
-     * Hyundai IT版本：长按回调已禁用，此方法为空操作
-     */
-    private fun handleOrbLongPress() {
-        // Hyundai IT版本：不执行任何操作
-        // addHapticFeedback()
-        // updateDragState(longPressing = true)
-        // onOrbLongPress?.invoke()
-        DebugLogger.logUI(TAG, "💤 Orb long press ignored (interaction disabled)")
-    }
+    // 移除updatePosition方法 - Hyundai IT版本悬浮球固定位置
     
-    /**
-     * 处理拖动开始
-     */
-    private fun handleDragStart() {
-        // 拖拽时不改变动画状态，保持当前状态
-        
-        // 添加震动反馈
-        addHapticFeedback()
-        
-        // 更新UI状态
-        updateDragState(dragging = true, longPressing = true)
-    }
-    
-    /**
-     * 处理拖动结束
-     */
-    private fun handleDragEnd() {
-        // 拖拽结束后恢复原来的动画状态（不强制设为待机）
-        
-        // 添加震动反馈
-        addHapticFeedback()
-        
-        // 更新UI状态
-        updateDragState(dragging = false, longPressing = false)
-    }
-    
-    /**
-     * 吸附到最近的边缘
-     */
-    private fun snapToNearestEdge(layoutParams: WindowManager.LayoutParams, screenWidth: Int, screenHeight: Int) {
-        val centerX = layoutParams.x + calculateWindowWidth() / 2
-        val centerY = layoutParams.y + calculateWindowHeight() / 2
-        
-        val distanceToLeft = centerX
-        val distanceToRight = screenWidth - centerX
-        val distanceToTop = centerY
-        val distanceToBottom = screenHeight - centerY
-        
-        val minDistance = minOf(distanceToLeft, distanceToRight, distanceToTop, distanceToBottom)
-        
-        when (minDistance) {
-            distanceToLeft -> {
-                // 吸附到左边缘
-                layoutParams.x = 0
-            }
-            distanceToRight -> {
-                // 吸附到右边缘
-                layoutParams.x = screenWidth - calculateWindowWidth()
-            }
-            distanceToTop -> {
-                // 吸附到顶部边缘
-                layoutParams.y = 0
-            }
-            distanceToBottom -> {
-                // 吸附到底部边缘
-                layoutParams.y = screenHeight - calculateWindowHeight()
-            }
-        }
-        
-        try {
-            windowManager.updateViewLayout(floatingView, layoutParams)
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Failed to snap to edge: ${e.message}")
-        }
-    }
-    
-    /**
-     * 添加触觉反馈
-     */
-    private fun addHapticFeedback() {
-        try {
-            floatingView?.let { view ->
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    view.performHapticFeedback(android.view.HapticFeedbackConstants.GESTURE_START)
-                } else {
-                    view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                }
-            }
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Haptic feedback failed: ${e.message}")
-        }
-    }
-    
-    /**
-     * 更新悬浮球位置
-     */
-    fun updatePosition(x: Int, y: Int) {
-        floatingView?.let { view ->
-            val layoutParams = view.layoutParams as WindowManager.LayoutParams
-            layoutParams.x = x
-            layoutParams.y = y
-            windowManager.updateViewLayout(view, layoutParams)
-            
-            // 同时更新保存的位置
-            savedX = x
-            savedY = y
-        }
-    }
-    
-    /**
-     * 设置边缘吸附状态
-     */
-    fun setEdgeState(atEdge: Boolean) {
-        if (isAtEdge != atEdge) {
-            isAtEdge = atEdge
-            
-            // 更新窗口布局参数以适应新的尺寸
-            if (isShowing) {
-                val currentView = floatingView
-                if (currentView != null) {
-                    // 保存当前位置
-                    val layoutParams = currentView.layoutParams as WindowManager.LayoutParams
-                    val currentX = layoutParams.x
-                    val currentY = layoutParams.y
-                    
-                    // 更新窗口高度
-                    layoutParams.height = calculateWindowHeight()
-                    
-                    try {
-                        windowManager.updateViewLayout(currentView, layoutParams)
-                    } catch (e: Exception) {
-                        DebugLogger.logUI(TAG, "❌ Failed to update window layout: ${e.message}")
-                        // 如果更新失败，回退到重新创建视图
-                        hide()
-                        show()
-                        updatePosition(currentX, currentY)
-                    }
-                }
-            }
-        }
-    }
-    
-    /**
-     * 获取当前是否在边缘
-     */
-    fun isAtEdge(): Boolean = isAtEdge
     
     /**
      * 设置VoiceAssistantStateProvider监听
@@ -538,30 +335,32 @@ class DraggableFloatingOrb(
         val uiStateChanged = lastUiState != state.uiState
         val displayTextChanged = lastDisplayText != state.displayText
         
-        // 更新文本状态（过滤空文本变化）
-        // 注意：如果新文本为空且旧文本也为空，则不触发更新
-        val shouldUpdateAsr = asrTextChanged && !(state.asrText.isEmpty() && currentAsrText.value.isEmpty())
-        val shouldUpdateTts = ttsTextChanged && !(state.ttsText.isEmpty() && currentTtsText.value.isEmpty())
-        
-        if (shouldUpdateAsr) {
+        // 修复：允许所有文本变化（包括空文本），确保文本能正确显示和清理
+        // 只要文本发生变化就更新，包括：
+        // 1. 从空到有文本（显示文本）
+        // 2. 从有文本到空（清理文本）
+        // 3. 文本内容变化（更新文本）
+        if (asrTextChanged) {
+            DebugLogger.logUI(TAG, "📝 更新ASR文本: '${state.asrText}' (之前: '${currentAsrText.value}')")
             currentAsrText.value = state.asrText
         }
-        
-        if (shouldUpdateTts) {
+
+        if (ttsTextChanged) {
+            DebugLogger.logUI(TAG, "🤖 更新TTS文本: '${state.ttsText}' (之前: '${currentTtsText.value}')")
             currentTtsText.value = state.ttsText
         }
         
         // 性能优化：智能更新策略
         when {
             // 情况1：仅文本变化 - 使用文本就地更新，避免refreshUI()
-            (shouldUpdateAsr || shouldUpdateTts) && !uiStateChanged && !displayTextChanged -> {
+            (asrTextChanged || ttsTextChanged) && !uiStateChanged && !displayTextChanged -> {
                 updateTextOnly()
             }
             
             // 情况2：UI状态或显示文本变化 - 需要完整UI更新
             uiStateChanged || displayTextChanged -> {
                 updateUIState(state)
-                if (shouldUpdateAsr || shouldUpdateTts) {
+                if (asrTextChanged || ttsTextChanged) {
                     updateTextOnly()
                 }
             }
@@ -642,66 +441,29 @@ class DraggableFloatingOrb(
         }
     }
     
-    /**
-     * 更新拖拽状态
-     */
-    private fun updateDragState(dragging: Boolean = isDragging.value, longPressing: Boolean = isLongPressing.value) {
-        if (isDragging.value != dragging || isLongPressing.value != longPressing) {
-            isDragging.value = dragging
-            isLongPressing.value = longPressing
-            
-            // Compose会自动检测MutableState变化并重组，无需手动刷新
-        }
-    }
-    
 }
 
 /**
- * 悬浮球内容组件 (包含Lottie动画和下方的ASR/TTS文本显示)
+ * 悬浮球内容组件 (包含Lottie动画和右侧的ASR/TTS文本显示)
+ * Hyundai IT版本：简化版，无交互功能
  */
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
     currentAsrText: String,
-    currentTtsText: String,
-    isAtEdge: Boolean = false,
-    isDragging: Boolean = false,
-    isLongPressing: Boolean = false,
-    onOrbClick: () -> Unit,
-    onOrbLongPress: () -> Unit,
-    onDragStart: () -> Unit,
-    onDragEnd: () -> Unit
+    currentTtsText: String
 ) {
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
     
     // 性能优化：使用 remember 缓存计算结果
-    val shouldShowText = remember(currentAsrText, currentTtsText, isAtEdge) {
-        !isAtEdge && (currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty())
+    val shouldShowText = remember(currentAsrText, currentTtsText) {
+        currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
     }
     
-    // 性能优化：使用 derivedStateOf 优化动画尺寸计算
-    val animationSize by remember {
-        derivedStateOf {
-            if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeDp else FloatingOrbConfig.animationSizeDp
-        }
-    }
-    
-    val animationSizeInt by remember {
-        derivedStateOf {
-            if (isAtEdge) FloatingOrbConfig.edgeAnimationSizeInt else FloatingOrbConfig.animationSizeInt
-        }
-    }
-    
-    // 简化的动画效果 - 只保留必要的拖拽反馈
-    val scale by animateFloatAsState(
-        targetValue = if (isDragging) 1.05f else 1.0f, // 只在拖拽时轻微放大
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "scale"
-    )
+    // 固定动画尺寸（不再有边缘状态）
+    val animationSize = FloatingOrbConfig.animationSizeDp
+    val animationSizeInt = FloatingOrbConfig.animationSizeInt
 
     // Hyundai IT版本：水平布局 - 悬浮球在左，文本在右
     Row(
@@ -709,36 +471,21 @@ private fun FloatingOrbContent(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.wrapContentSize() // 自适应大小
     ) {
-        // 悬浮球 - 左侧
+        // 悬浮球 - 左侧（无交互）
         Box(
-            modifier = Modifier
-                .size(animationSize) // 使用缓存的动画尺寸
-                .scale(scale) // 只在拖拽时轻微缩放
-                .clickable { onOrbClick() } // 只有这个区域可以点击（实际已禁用）
-                .let { modifier ->
-                    // 只在拖拽时添加60%透明度的白色边框
-                    if (isDragging) {
-                        modifier.border(
-                            width = 2.dp,
-                            color = Color.White.copy(alpha = 0.6f), // 60%透明度的白色
-                            shape = CircleShape
-                        )
-                    } else {
-                        modifier
-                    }
-                },
+            modifier = Modifier.size(animationSize),
             contentAlignment = Alignment.Center
         ) {
             // Lottie动画
             LottieAnimationController(
                 animationState = animationState,
                 displayText = displayText,
-                size = animationSizeInt // 使用缓存的动画尺寸
+                size = animationSizeInt
             )
         }
         
-        // ASR/TTS文本显示区域 - 右侧（Hyundai IT版本）
-        if (!isAtEdge && shouldShowText) {
+        // ASR/TTS文本显示区域 - 右侧
+        if (shouldShowText) {
             FloatingTextDisplay(
                 userText = currentAsrText,
                 aiText = currentTtsText,
