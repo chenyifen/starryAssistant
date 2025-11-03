@@ -91,9 +91,9 @@ class DraggableFloatingOrb(
     private val isDragging = mutableStateOf(false)
     private val isLongPressing = mutableStateOf(false)
     
-    // 点击回调 - Hyundai IT版本：禁用点击交互
-    // var onOrbClick: (() -> Unit)? = null
-    // var onOrbLongPress: (() -> Unit)? = null
+    // 点击回调 - Hyundai IT版本：禁用点击交互（保留变量但不设置）
+    var onOrbClick: (() -> Unit)? = null
+    var onOrbLongPress: (() -> Unit)? = null
     
     // VoiceAssistantStateProvider监听
     private var stateProvider: VoiceAssistantStateProvider? = null
@@ -323,23 +323,24 @@ class DraggableFloatingOrb(
     
     /**
      * 处理悬浮球点击
+     * Hyundai IT版本：点击回调已禁用，此方法为空操作
      */
     private fun handleOrbClick() {
-        onOrbClick?.invoke()
+        // Hyundai IT版本：不执行任何操作
+        // onOrbClick?.invoke()
+        DebugLogger.logUI(TAG, "💤 Orb click ignored (interaction disabled)")
     }
     
     /**
      * 处理悬浮球长按
+     * Hyundai IT版本：长按回调已禁用，此方法为空操作
      */
     private fun handleOrbLongPress() {
-        // 添加震动反馈
-        addHapticFeedback()
-        
-        // 长按时不改变动画状态，保持当前状态
-        // 更新UI状态
-        updateDragState(longPressing = true)
-        
-        onOrbLongPress?.invoke()
+        // Hyundai IT版本：不执行任何操作
+        // addHapticFeedback()
+        // updateDragState(longPressing = true)
+        // onOrbLongPress?.invoke()
+        DebugLogger.logUI(TAG, "💤 Orb long press ignored (interaction disabled)")
     }
     
     /**
