@@ -1,0 +1,8 @@
+
+com.ai.voice.skills.device_control.DeviceControlInstrumentationTest:.
+
+Time: 6.516
+
+OK (1 test)
+
+

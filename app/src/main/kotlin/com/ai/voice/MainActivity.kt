@@ -227,6 +227,10 @@ class MainActivity : BaseActivity() {
             PermissionHelper.requestBasicPermissions(this)
         }
         
+        // Hyundai IT版本：模型已内置，无需外部存储权限检查
+        Log.d(TAG, "✅ Hyundai IT版本 - 模型已内置，跳过存储权限检查")
+        
+        /* 原始存储权限检查已禁用
         // 检查外部存储权限并主动请求
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             if (!Environment.isExternalStorageManager()) {
@@ -243,6 +247,7 @@ class MainActivity : BaseActivity() {
         // 记录权限状态
         val hasModelAccess = PermissionHelper.hasModelAccessPermissions(this)
         Log.d(TAG, "模型访问权限状态: ${if (hasModelAccess) "已授予" else "缺失"}")
+        */
     }
     
     
@@ -267,6 +272,8 @@ class MainActivity : BaseActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         
         when (requestCode) {
+            // Hyundai IT版本：已禁用存储权限处理
+            /* 
             PermissionHelper.REQUEST_MANAGE_EXTERNAL_STORAGE -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if (Environment.isExternalStorageManager()) {
@@ -276,6 +283,7 @@ class MainActivity : BaseActivity() {
                     }
                 }
             }
+            */
             REQUEST_OVERLAY_PERMISSION -> {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (Settings.canDrawOverlays(this)) {
