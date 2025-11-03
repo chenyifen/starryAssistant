@@ -85,14 +85,31 @@ echo ""
 echo "🔍 获取应用进程信息..."
 sleep 2  # 等待应用完全启动
 
-app_pid=$(adb shell ps | grep "$package_name" | awk '{print $2}' | head -1)
+# 尝试多种方式获取进程ID
+app_pid=$(adb shell ps | grep "$package_name" | grep -v grep | awk '{print $2}' | head -1)
+
+# 如果上面的命令失败，尝试另一种方式
+if [ -z "$app_pid" ]; then
+    app_pid=$(adb shell ps | grep "$package_name" | awk 'NR==1{print $2}')
+fi
+
+# 最后尝试通过pidof命令（如果设备支持）
+if [ -z "$app_pid" ]; then
+    app_pid=$(adb shell pidof "$package_name" 2>/dev/null)
+fi
 if [ -n "$app_pid" ]; then
     echo "📱 应用进程ID: $app_pid"
     echo "💡 可以使用以下命令监控特定进程:"
     echo "   adb shell top -p $app_pid"
     echo "   adb shell dumpsys meminfo $app_pid"
+
+    # 启动日志监控（只过滤特定进程的日志）
+    echo ""
+    echo "📋 启动应用日志监控..."
+    echo "💡 按Ctrl+C停止日志监控"
+    adb logcat | grep "$app_pid"
 else
     echo "⚠️ 未能获取应用进程ID，应用可能未完全启动"
+    echo "💡 尝试手动启动应用日志监控:"
+    echo "   adb logcat | grep \"$package_name\""
 fi
-
-adb logcat | grep $app_pid
