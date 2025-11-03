@@ -149,6 +149,7 @@
             android:name=".ui.floating.EnhancedFloatingWindowService"
             android:enabled="true"
             android:exported="false"
+            android:foregroundServiceType="microphone"
             android:label="Enhanced Floating Assistant" />
 
         <!-- 自动化测试广播接收器 -->
