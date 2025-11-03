@@ -81,21 +81,35 @@ class DraggableFloatingOrb(
     // 边缘吸附状态
     private var isAtEdge = false
     
-    // 位置保存 - 用于hide/show时恢复位置
-    private var savedX = 100
-    private var savedY = 200
+    // 位置保存 - Hyundai IT版本：固定在左下角
+    // X坐标：16dp边距（约48px）
+    // Y坐标：屏幕高度-悬浮球高度-底部导航栏高度-16dp边距
+    private var savedX = 48
+    private var savedY = calculateBottomLeftY()
     
-    // 拖拽状态 - 使用MutableState以便Compose能检测变化
+    // 拖拽状态 - Hyundai IT版本：禁用拖拽
     private val isDragging = mutableStateOf(false)
     private val isLongPressing = mutableStateOf(false)
     
-    // 点击回调
-    var onOrbClick: (() -> Unit)? = null
-    var onOrbLongPress: (() -> Unit)? = null
+    // 点击回调 - Hyundai IT版本：禁用点击交互
+    // var onOrbClick: (() -> Unit)? = null
+    // var onOrbLongPress: (() -> Unit)? = null
     
     // VoiceAssistantStateProvider监听
     private var stateProvider: VoiceAssistantStateProvider? = null
     private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
+    
+    /**
+     * 计算左下角Y坐标
+     */
+    private fun calculateBottomLeftY(): Int {
+        val displayMetrics = context.resources.displayMetrics
+        val screenHeight = displayMetrics.heightPixels
+        val orbHeight = 240 // 悬浮球高度（约80dp）
+        val bottomMargin = 48 // 底部边距（约16dp）
+        val navigationBarHeight = 144 // 导航栏高度（约48dp）
+        return screenHeight - orbHeight - bottomMargin - navigationBarHeight
+    }
     
     /**
      * 显示悬浮球

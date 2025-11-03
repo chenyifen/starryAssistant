@@ -78,7 +78,8 @@ enum class VoiceAssistantState {
 class EnhancedFloatingWindowService : Service(), 
     LifecycleOwner, 
     ViewModelStoreOwner, 
-    SavedStateRegistryOwner {
+    SavedStateRegistryOwner,
+    WakeWordCallback {  // 实现唤醒词回调接口
     
     private val TAG = "EnhancedFloatingWindowService"
     
@@ -116,6 +117,10 @@ class EnhancedFloatingWindowService : Service(),
         // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
         
+        // 注册唤醒词回调（接收WakeService的唤醒通知）
+        WakeWordCallbackManager.registerCallback(this)
+        DebugLogger.logUI(TAG, "✅ Registered wake word callback")
+        
         // 启动WakeService（现在由悬浮球服务管理）
         startWakeService()
         
@@ -137,8 +142,9 @@ class EnhancedFloatingWindowService : Service(),
         // 初始化组件
         initializeComponents()
         
-        // 显示悬浮球
-        showFloatingOrb()
+        // Hyundai IT版本：启动时不显示悬浮球，等待唤醒触发
+        // showFloatingOrb() // 注释掉自动显示
+        DebugLogger.logUI(TAG, "💤 服务已启动，等待唤醒词触发...")
         
         // 监听设置变化
         observeSettings()
@@ -154,6 +160,10 @@ class EnhancedFloatingWindowService : Service(),
     
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
+        
+        // 取消注册唤醒词回调
+        WakeWordCallbackManager.unregisterCallback(this)
+        DebugLogger.logUI(TAG, "✅ Unregistered wake word callback")
         
         // 取消注册自动化测试接收器
         unregisterAutoTestReceiver()
@@ -203,17 +213,18 @@ class EnhancedFloatingWindowService : Service(),
             onContractToOrb = { handleContractToOrb() }
         }
         
-        // 创建悬浮球
+        // 创建悬浮球 - Hyundai IT版本：禁用点击交互
         floatingOrb = DraggableFloatingOrb(
             context = this,
             lifecycleOwner = this,
             viewModelStoreOwner = this,
             savedStateRegistryOwner = this
-        ).apply {
-            // 设置点击回调
-            onOrbClick = { handleOrbClick() }
-            onOrbLongPress = { handleOrbLongPress() }
-        }
+        )
+        // 已移除点击回调设置，悬浮球不可交互
+        // .apply {
+        //     onOrbClick = { handleOrbClick() }
+        //     onOrbLongPress = { handleOrbLongPress() }
+        // }
     }
     
     /**
@@ -325,17 +336,46 @@ class EnhancedFloatingWindowService : Service(),
         floatingOrb?.getAnimationStateManager()?.setIdle()
     }
     
+    // ========================================
+    // WakeWordCallback 接口实现
+    // ========================================
+    
+    /**
+     * 当检测到唤醒词时调用（WakeWordCallback接口）
+     */
+    override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
+        DebugLogger.logUI(TAG, "🎯 Wake word detected: '$wakeWord' (confidence: $confidence)")
+        handleVoiceWakeUp()
+    }
+    
+    override fun onWakeWordListeningStarted() {
+        DebugLogger.logUI(TAG, "👂 Wake word listening started")
+    }
+    
+    override fun onWakeWordListeningStopped() {
+        DebugLogger.logUI(TAG, "🛑 Wake word listening stopped")
+    }
+    
+    override fun onWakeWordError(error: Throwable) {
+        DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
+    }
+    
     /**
      * 处理语音唤醒
+     * Hyundai IT版本：显示悬浮球并保持IDLE动画，开始ASR监听
      */
-    fun handleVoiceWakeUp() {
-        DebugLogger.logUI(TAG, "🎤 Voice wake up detected")
+    private fun handleVoiceWakeUp() {
+        DebugLogger.logUI(TAG, "🎤 Voice wake up detected - 显示悬浮球并开始ASR")
         
-        // 触发唤醒词动画
-        floatingOrb?.getAnimationStateManager()?.triggerWakeWord(LottieAnimationTexts.WAKE_WORD_DETECTED)
+        // 显示悬浮球（如果尚未显示）
+        floatingOrb?.show()
         
-        // 自动展开到半屏
-        assistantUIController?.expandToHalfScreen()
+        // 设置为IDLE动画状态（简化版本，不再使用WAKE_WORD动画）
+        floatingOrb?.getAnimationStateManager()?.setIdle()
+        DebugLogger.logUI(TAG, "🎭 Animation set to IDLE state (simplified)")
+        
+        // 启动ASR监听（不展开半屏）
+        startVoiceRecognition()
     }
     
     

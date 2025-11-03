@@ -162,7 +162,14 @@
 
 ---
 
-## 任务4: 动画状态映射简化
+## 任务4: 动画状态映射简化 ✅ 已完成
+
+**完成时间**: 2025-11-03 23:42  
+**完成情况**: 
+- ✅ 服务启动时不再自动显示悬浮球，等待唤醒触发
+- ✅ 唤醒后显示悬浮球并保持IDLE动画状态
+- ✅ 移除了复杂的WAKE_WORD动画切换，简化为统一使用IDLE动画
+- ✅ 修改了`EnhancedFloatingWindowService.handleVoiceWakeUp()`方法
 
 ### 输入
 - 现有的`LottieAnimationManager`和`LottieAnimationState`
