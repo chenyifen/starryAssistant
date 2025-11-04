@@ -67,14 +67,13 @@ fun FloatingTextDisplay(
         
         Column(
             modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .wrapContentWidth()
                 .graphicsLayer {
                     alpha = animatedVisibility
                     scaleX = 0.8f + (0.2f * animatedVisibility)
                     scaleY = 0.8f + (0.2f * animatedVisibility)
                 },
-            horizontalAlignment = Alignment.CenterHorizontally,
+            horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // 用户文本（第一行）
@@ -146,7 +145,7 @@ private fun TextBubble(
             color = textColor,
             fontSize = 14.sp,
             fontWeight = if (isUser) FontWeight.Normal else FontWeight.Medium,
-            textAlign = TextAlign.Center,
+            textAlign = TextAlign.Start,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             lineHeight = 18.sp

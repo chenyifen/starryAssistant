@@ -210,9 +210,7 @@ class EnhancedFloatingWindowService : Service(),
             viewModelStoreOwner = this,
             savedStateRegistryOwner = this
         ).apply {
-            // 设置点击回调
-            onOrbClick = { handleOrbClick() }
-            onOrbLongPress = { handleOrbLongPress() }
+            // 悬浮球已设置为不可点击，无需设置回调
         }
     }
     
