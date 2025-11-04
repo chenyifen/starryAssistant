@@ -1,0 +1,157 @@
+input_source:
+  - open the? input source window
+  - show input source
+  - input source
+  - display input source
+  - show input source menu
+  - open input source menu
+  - input source menu
+  - show sources
+  - open source window
+  - source selection
+  - select source
+  - source window
+  - input menu
+  - show input menu
+  - input selection
+  - select input
+  - change input
+  - switch input
+  - input options
+  - source options
+  - display sources
+  - view sources
+  - show input sources
+
+hdmi_one:
+  - switch to hdmi one
+  - go to hdmi one
+  - hdmi one
+  - connect to hdmi one
+  - change to hdmi one
+  - select hdmi one
+  - use hdmi one
+  - turn on hdmi one
+  - switch to h d m i one
+  - go to h d m i one
+  - hdmi port one
+  - hdmi input one
+  - first hdmi
+  - hdmi number one
+  - activate hdmi one
+  - enable hdmi one
+  - hdmi one input
+  - open hdmi one
+  - hdmi channel one
+  - hdmi source one
+
+hdmi_two:
+  - switch to hdmi two
+  - go to hdmi two
+  - hdmi two
+  - connect to hdmi two
+  - change to hdmi two
+  - select hdmi two
+  - use hdmi two
+  - turn on hdmi two
+  - switch to h d m i two
+  - go to h d m i two
+  - hdmi port two
+  - hdmi input two
+  - second hdmi
+  - hdmi number two
+  - activate hdmi two
+  - enable hdmi two
+  - hdmi two input
+  - open hdmi two
+  - hdmi channel two
+  - hdmi source two
+
+dp_port:
+  - switch to dp port?
+  - go to dp port?
+  - dp port?
+  - connect to dp port?
+  - change to dp port?
+  - display port?
+  - switch to display port?
+  - go to display port?
+  - select dp port?
+  - use dp port?
+  - d p port?
+  - d p
+  - displayport
+  - display port
+  - dp
+  - activate dp
+  - enable dp
+  - dp input
+  - displayport input
+  - turn on dp
+  - connect dp
+  - select display port
+
+front_hdmi:
+  - switch to front hdmi
+  - go to front hdmi
+  - front hdmi
+  - connect to front hdmi
+  - change to front hdmi
+  - select front hdmi
+  - use front hdmi
+  - turn on front hdmi
+  - front panel hdmi
+  - front h d m i
+  - hdmi front
+  - front side hdmi
+  - front port hdmi
+  - front input hdmi
+  - activate front hdmi
+  - enable front hdmi
+  - open front hdmi
+  - front facing hdmi
+
+front_usb_c:
+  - switch to front usb c
+  - go to front usb c
+  - front usb c
+  - connect to front usb c
+  - change to front usb c
+  - select front usb c
+  - use front usb c
+  - turn on front usb c
+  - front panel usb c
+  - usb c
+  - usb type c
+  - front u s b c
+  - u s b c
+  - front usbc
+  - usbc
+  - front port usb c
+  - front input usb c
+  - activate front usb c
+  - enable front usb c
+  - open front usb c
+  - front facing usb c
+  - front side usb c
+  - type c
+  - front type c
+
+ops:
+  - switch to ops
+  - go to ops
+  - ops
+  - connect to ops
+  - change to ops
+  - select ops
+  - use ops
+  - turn on ops
+  - o p s
+  - ops input
+  - ops port
+  - activate ops
+  - enable ops
+  - open ops
+  - ops mode
+  - ops system
+

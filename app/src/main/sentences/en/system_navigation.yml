@@ -2,12 +2,31 @@ home_screen:
   - go home
   - go to home
   - go to home screen
+  - go to the? home screen
   - home screen
   - return home
   - return to home
+  - return to home screen
   - home
   - main screen
   - go to main screen
+  - go to the? main screen
+  - home page
+  - main page
+  - go to home page
+  - back to home
+  - back to home screen
+  - back to main screen
+  - navigate home
+  - navigate to home
+  - show home screen
+  - display home screen
+  - home menu
+  - main menu
+  - go back home
+  - go back to home
+  - starting screen
+  - start screen
 
 go_back:
   - go back
@@ -17,6 +36,20 @@ go_back:
   - go to previous page
   - return
   - go back to previous page
+  - back button
+  - go to last page
+  - previous screen
+  - return to previous
+  - navigate back
+  - back page
+  - last page
+  - go to previous screen
+  - previous menu
+  - back screen
+  - return to last page
+  - step back
+  - go backward
+  - move back
 
 screenshot:
   - take screenshot
@@ -26,20 +59,58 @@ screenshot:
   - capture the screen
   - screen capture
   - save screenshot
+  - take screen shot
+  - screen shot
+  - save screen
+  - save the? screen
+  - capture
+  - capture image
+  - screen image
+  - save screen image
+  - take picture of screen
+  - screenshot now
+  - capture now
+  - snap screenshot
+  - snap screen
+  - grab screenshot
+  - grab screen
 
 note_mode:
   - note mode
   - switch to note mode
+  - change to note mode
   - enable note mode
   - turn on note mode
   - activate note mode
+  - go to note mode
+  - enter note mode
+  - note taking mode
+  - writing mode
+  - annotation mode
+  - annotate mode
+  - pen mode
+  - drawing mode
+  - whiteboard mode
+  - board mode
+  - start note mode
+  - launch note mode
 
 window_mode:
   - window mode
   - switch to window mode
+  - change to window mode
   - enable window mode
   - turn on window mode
   - activate window mode
+  - go to window mode
+  - enter window mode
+  - windowed mode
+  - multi window mode
+  - split window mode
+  - window view
+  - window display
+  - start window mode
+  - launch window mode
 
 wifi_connect:
   - connect to wifi
@@ -52,4 +123,20 @@ wifi_connect:
   - wifi connection
   - connect to wireless network
   - open wifi
+  - wifi
+  - wireless
+  - wireless network
+  - wifi network
+  - connect wifi network
+  - turn wifi on
+  - switch wifi on
+  - activate wifi
+  - wifi on
+  - wireless connection
+  - wireless settings
+  - network settings
+  - wifi setup
+  - setup wifi
+  - configure wifi
+  - wifi config
 
