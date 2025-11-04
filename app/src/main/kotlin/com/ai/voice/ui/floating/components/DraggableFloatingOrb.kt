@@ -112,7 +112,8 @@ class DraggableFloatingOrb(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(Color.Transparent)
+                            .background(Color.Transparent),
+                        contentAlignment = Alignment.BottomStart
                     ) {
                         FloatingOrbContent(
                             animationStateManager = animationStateManager,
@@ -199,8 +200,8 @@ class DraggableFloatingOrb(
             width = WindowManager.LayoutParams.WRAP_CONTENT
             height = WindowManager.LayoutParams.WRAP_CONTENT
             
-            // 窗口位置 - 固定左下角，不需要x和y坐标
-            gravity = Gravity.BOTTOM or Gravity.START
+            // 窗口位置 - 固定左下角，添加左边距和底边距
+            gravity = Gravity.BOTTOM or Gravity.LEFT
             x = 0
             y = 0
         }
