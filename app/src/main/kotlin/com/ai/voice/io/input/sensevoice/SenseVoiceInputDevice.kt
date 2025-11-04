@@ -202,11 +202,6 @@ class SenseVoiceInputDevice private constructor(
                 return
             }
             
-            // 暂时禁用VAD，避免模型兼容性问题导致崩溃
-            Log.w(TAG, "⚠️ VAD暂时禁用，使用能量检测代替")
-            vad = null
-            
-            /*
             // 创建VAD (如果可用)
             val vadConfig = VadModelManager.createVadConfig(appContext)
             if (vadConfig != null) {
@@ -222,8 +217,10 @@ class SenseVoiceInputDevice private constructor(
                     Log.w(TAG, "⚠️ VAD初始化失败，将使用简单能量检测", e)
                     vad = null
                 }
+            } else {
+                Log.w(TAG, "⚠️ VAD配置不可用，将使用简单能量检测")
+                vad = null
             }
-            */
             
             Log.d(TAG, "✅ SenseVoice识别器初始化成功")
             isInitialized.set(true)
