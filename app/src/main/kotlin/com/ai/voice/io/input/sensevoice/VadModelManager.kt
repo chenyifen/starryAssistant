@@ -17,6 +17,7 @@ object VadModelManager {
     
     // VAD模型路径配置
     private const val ASSETS_VAD_PATH = "models/vad"                            // withModels渠道
+    private const val ASSETS_ROOT_VAD_PATH = "silero_vad.onnx"                  // 🆕 assets根目录下的VAD模型
     private const val VAD_MODEL_FILE = "silero_vad.onnx"
     
     // 获取外部存储VAD路径（使用 ModelPathManager）
@@ -41,7 +42,7 @@ object VadModelManager {
             if (modelPaths != null) {
                 if (modelPaths.isFromAssets) {
                     // 检查Assets中的模型
-                    context.assets.open("models/vad/$VAD_MODEL_FILE").use { true }
+                    context.assets.open(modelPaths.modelPath).use { true }
                 } else {
                     // 检查外部存储中的模型
                     File(modelPaths.modelPath).exists()
@@ -57,30 +58,37 @@ object VadModelManager {
     
     /**
      * 获取VAD模型路径
+     * 🆕 优先级：1. assets根目录的silero_vad.onnx 2. models/vad/silero_vad.onnx 3. 外部存储
      */
     fun getVadModelPaths(context: Context): VadModelPaths? {
         return try {
-            // 检查构建变体，决定优先级
-            val buildType = context.packageName.contains("withModels") || 
-                           context.applicationInfo.sourceDir.contains("withModels")
-            
-            if (buildType) {
-                // withModels变体：优先使用Assets
-                Log.d(TAG, "🏷️ 检测到withModels变体，优先使用Assets模型")
-                try {
-                    context.assets.open("$ASSETS_VAD_PATH/$VAD_MODEL_FILE").use {
-                        Log.d(TAG, "✅ 使用Assets中的VAD模型: $ASSETS_VAD_PATH/$VAD_MODEL_FILE")
-                        return VadModelPaths(
-                            modelPath = "$ASSETS_VAD_PATH/$VAD_MODEL_FILE",
-                            isFromAssets = true
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "withModels变体中未找到Assets VAD模型，尝试外部存储")
+            // 🆕 优先级1：优先检查assets根目录下的silero_vad.onnx
+            try {
+                context.assets.open(ASSETS_ROOT_VAD_PATH).use {
+                    Log.d(TAG, "✅ 使用Assets根目录下的VAD模型: $ASSETS_ROOT_VAD_PATH")
+                    return VadModelPaths(
+                        modelPath = ASSETS_ROOT_VAD_PATH,
+                        isFromAssets = true
+                    )
                 }
+            } catch (e: Exception) {
+                Log.d(TAG, "Assets根目录下未找到VAD模型，尝试其他路径")
             }
             
-            // main渠道或Assets失败：检查外部存储
+            // 优先级2：检查models/vad/silero_vad.onnx
+            try {
+                context.assets.open("$ASSETS_VAD_PATH/$VAD_MODEL_FILE").use {
+                    Log.d(TAG, "✅ 使用Assets中的VAD模型: $ASSETS_VAD_PATH/$VAD_MODEL_FILE")
+                    return VadModelPaths(
+                        modelPath = "$ASSETS_VAD_PATH/$VAD_MODEL_FILE",
+                        isFromAssets = true
+                    )
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Assets/${ASSETS_VAD_PATH}下未找到VAD模型，尝试外部存储")
+            }
+            
+            // 优先级3：检查外部存储
             if (PermissionHelper.hasExternalStoragePermission(context)) {
                 val externalVadDir = getExternalVadDir(context)
                 val externalModelFile = File(externalVadDir, VAD_MODEL_FILE)
@@ -95,21 +103,6 @@ object VadModelManager {
                 }
             } else {
                 Log.d(TAG, "无外部存储权限，无法访问外部VAD模型")
-            }
-            
-            // 如果不是withModels变体，再尝试Assets作为备选
-            if (!buildType) {
-                try {
-                    context.assets.open("$ASSETS_VAD_PATH/$VAD_MODEL_FILE").use {
-                        Log.d(TAG, "✅ 使用Assets中的VAD模型作为备选: $ASSETS_VAD_PATH/$VAD_MODEL_FILE")
-                        return VadModelPaths(
-                            modelPath = "$ASSETS_VAD_PATH/$VAD_MODEL_FILE",
-                            isFromAssets = true
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.d(TAG, "Assets中也未找到VAD模型")
-                }
             }
             
             Log.e(TAG, "❌ 未找到可用的VAD模型")
