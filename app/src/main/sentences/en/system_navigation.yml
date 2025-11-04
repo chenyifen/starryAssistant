@@ -1,0 +1,55 @@
+home_screen:
+  - go home
+  - go to home
+  - go to home screen
+  - home screen
+  - return home
+  - return to home
+  - home
+  - main screen
+  - go to main screen
+
+go_back:
+  - go back
+  - back
+  - previous
+  - previous page
+  - go to previous page
+  - return
+  - go back to previous page
+
+screenshot:
+  - take screenshot
+  - take a screenshot
+  - screenshot
+  - capture screen
+  - capture the screen
+  - screen capture
+  - save screenshot
+
+note_mode:
+  - note mode
+  - switch to note mode
+  - enable note mode
+  - turn on note mode
+  - activate note mode
+
+window_mode:
+  - window mode
+  - switch to window mode
+  - enable window mode
+  - turn on window mode
+  - activate window mode
+
+wifi_connect:
+  - connect to wifi
+  - connect wifi
+  - open wifi settings
+  - wifi settings
+  - connect to wireless
+  - turn on wifi
+  - enable wifi
+  - wifi connection
+  - connect to wireless network
+  - open wifi
+
