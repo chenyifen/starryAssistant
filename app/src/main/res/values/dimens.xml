@@ -8,24 +8,6 @@
     <!-- 悬浮球动画实际大小 -->
     <dimen name="floating_orb_animation_size">96dp</dimen>
     
-    <!-- 悬浮球边缘吸附时的大小 (通常比正常大小小一些) -->
-    <dimen name="floating_orb_edge_size">144dp</dimen>
-    
-    <!-- 悬浮球边缘吸附时的动画大小 -->
-    <dimen name="floating_orb_edge_animation_size">115dp</dimen>
-    
-    <!-- 悬浮球拖拽相关配置 -->
-    
-    <!-- 点击阈值 (超过此距离视为拖拽而非点击) -->
-    <dimen name="floating_orb_click_threshold">10dp</dimen>
-    
-    <!-- 边缘吸附阈值 (距离屏幕边缘多近时自动吸附) -->
-    <dimen name="floating_orb_edge_snap_threshold">100dp</dimen>
-    
-    <!-- 悬浮球默认位置 -->
-    <dimen name="floating_orb_default_x">100dp</dimen>
-    <dimen name="floating_orb_default_y">200dp</dimen>
-    
     <!-- 悬浮球文本显示相关 -->
     
     <!-- 悬浮球下方文本与悬浮球的间距 -->

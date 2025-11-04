@@ -190,13 +190,6 @@ class DraggableFloatingOrb(
         if (!isShowing) return
         
         try {
-            // 保存当前位置
-            floatingView?.let { view ->
-                val layoutParams = view.layoutParams as WindowManager.LayoutParams
-                savedX = layoutParams.x
-                savedY = layoutParams.y
-            }
-            
             // 清理状态监听
             cleanupStateProviderListener()
             

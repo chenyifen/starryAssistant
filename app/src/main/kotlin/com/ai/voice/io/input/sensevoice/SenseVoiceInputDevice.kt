@@ -693,11 +693,9 @@ class SenseVoiceInputDevice private constructor(
             
             // 取消录制协程
             recordingJob?.cancel()
-            recordingJob = null
             
             // 取消VAD协程
             vadJob?.cancel()
-            vadJob = null
             
             // 关闭样本通道
             try {
@@ -756,6 +754,11 @@ class SenseVoiceInputDevice private constructor(
             
             // 释放音频焦点（Android 15+ 必需）
             releaseAudioFocus()
+            
+            // 清空音频缓冲区（避免残留数据）
+            audioBuffer.clear()
+            
+            Log.d(TAG, "✅ 录制资源已清理")
             
         } catch (e: Exception) {
             Log.e(TAG, "❌ 清理AudioRecord资源失败", e)
@@ -1221,10 +1224,46 @@ class SenseVoiceInputDevice private constructor(
      * 停止监听并处理最终结果
      */
     private suspend fun stopListeningAndProcess() {
+        Log.d(TAG, "🛑 停止监听并处理最终结果")
+        
+        // 🔥 关键修复：先设置标志，停止接收新数据
         isListening.set(false)
+        
+        // 🔥 关闭样本通道，防止新数据进入
+        try {
+            samplesChannel.close()
+            Log.d(TAG, "✅ 已关闭样本通道")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ 关闭样本通道失败", e)
+        }
+        
+        // 🔥 等待VAD协程处理完剩余数据并退出
+        try {
+            vadJob?.cancel()
+            vadJob?.join()
+            vadJob = null
+            Log.d(TAG, "✅ VAD协程已退出")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ 等待VAD协程退出失败", e)
+        }
+        
+        // 🔥 停止录制（这会取消录制协程）
         stopRecording()
         
-        // 处理最终识别结果
+        // 🔥 等待录制协程完全退出并清理资源
+        try {
+            recordingJob?.join()
+            recordingJob = null
+            // 清理AudioRecord资源
+            cleanupAudioRecord()
+            Log.d(TAG, "✅ 录制协程已退出并清理资源")
+        } catch (e: Exception) {
+            Log.w(TAG, "⚠️ 等待录制协程退出失败", e)
+            // 即使等待失败也要清理
+            cleanupAudioRecord()
+        }
+        
+        // 🔥 现在安全处理最终识别结果
         performFinalRecognition()
     }
     
@@ -1348,7 +1387,7 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
-     * 停止录制音频
+     * 停止录制
      */
     private fun stopRecording() {
         if (!isRecording.get()) {
@@ -1358,24 +1397,11 @@ class SenseVoiceInputDevice private constructor(
         Log.d(TAG, "🔇 停止录制音频...")
         isRecording.set(false)
         
-        // 取消录制协程，但不立即清理（等待协程优雅退出）
+        // 取消录制协程
         recordingJob?.cancel()
         
-        // 在协程中异步等待并清理
-        scope.launch {
-            try {
-                // 等待录制协程完成（最多500ms）
-                withTimeoutOrNull(500L) {
-                    recordingJob?.join()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "等待录制协程退出异常: ${e.message}")
-            } finally {
-                recordingJob = null
-                cleanupAudioRecord()
-                Log.d(TAG, "✅ 录制资源已清理")
-            }
-        }
+        // 注意：实际的资源清理会在协程退出后异步执行
+        // 不在这里等待，避免阻塞调用者
     }
     
     /**
