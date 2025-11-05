@@ -21,8 +21,6 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kotlinx.coroutines.delay
 import com.ai.voice.ui.floating.FloatingOrbConfig
 import com.ai.voice.ui.floating.VoiceAssistantUIState
-import com.ai.voice.ui.floating.components.FloatingTextDisplay
-import com.ai.voice.ui.floating.components.LottieAnimationController
 import com.ai.voice.ui.floating.components.LottieAnimationStateManager
 import com.ai.voice.ui.floating.state.VoiceAssistantFullState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
@@ -68,6 +66,26 @@ class DraggableFloatingOrb(
     private var stateProvider: VoiceAssistantStateProvider? = null
     private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
     
+    // 配置项：是否启用ASR文本过滤（只保留英语和韩语，去除标点符号）
+    var filterAsrTextEnabled: Boolean = true
+    
+    /**
+     * 过滤ASR文本：只保留英语和韩语字符，去除所有标点符号
+     * @param text 原始文本
+     * @return 过滤后的文本
+     */
+    private fun filterAsrText(text: String): String {
+        return text.filter { char ->
+            // 英语字符：a-z, A-Z, 0-9
+            val isEnglish = char in 'a'..'z' || char in 'A'..'Z' || char in '0'..'9'
+            // 韩语字符：Hangul Syllables (AC00-D7AF)
+            val isKorean = char.code in 0xAC00..0xD7AF
+            // 保留空格
+            val isSpace = char == ' '
+            isEnglish || isKorean || isSpace
+        }
+    }
+    
     /**
      * 显示悬浮球
      */
@@ -108,7 +126,13 @@ class DraggableFloatingOrb(
                         val resultList = AsrHandler.getResultList()
                         if (resultList.isNotEmpty()) {
                             // 显示最新的结果文本
-                            val latestText = resultList.last()
+                            var latestText = resultList.last()
+                            
+                            // 如果启用过滤，则过滤文本
+                            if (filterAsrTextEnabled) {
+                                latestText = filterAsrText(latestText)
+                            }
+                            
                             if (currentAsrText.value != latestText) {
                                 currentAsrText.value = latestText
                             }
@@ -276,7 +300,13 @@ class DraggableFloatingOrb(
         val shouldUpdateTts = ttsTextChanged && !(state.ttsText.isEmpty() && currentTtsText.value.isEmpty())
         
         if (shouldUpdateAsr) {
-            currentAsrText.value = state.asrText
+            // 如果启用过滤，则过滤文本
+            val textToSet = if (filterAsrTextEnabled) {
+                filterAsrText(state.asrText)
+            } else {
+                state.asrText
+            }
+            currentAsrText.value = textToSet
         }
         
         if (shouldUpdateTts) {

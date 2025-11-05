@@ -38,7 +38,7 @@ object AsrHandler {
     private val resultList: MutableList<String> = mutableListOf()
     
     // 静音超时配置
-    private const val SILENCE_TIMEOUT_MS = 10000L // 10秒静音超时
+    private const val SILENCE_TIMEOUT_MS = 4000L // 静音超时
     private var lastSpeechDetectedTime = System.currentTimeMillis()
     private var contextForStop: Context? = null
     private var silenceTimeoutCallback: (() -> Unit)? = null
