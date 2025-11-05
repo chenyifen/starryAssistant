@@ -1,5 +1,6 @@
 package com.ai.voice.skills.device_control
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -28,6 +29,18 @@ abstract class BaseDeviceControlSkill {
         // 广播Action常量（与服务端保持一致）
         private const val ACTION_DEVICE_CONTROL = "com.xiaozhi.DEVICE_CONTROL"
         private const val EXTRA_COMMAND = "command"
+        
+        // EasiNote白板广播常量
+        private const val ACTION_BOARD = "com.ifpdos.dasr.BOARD"
+        private const val EXTRA_ID = "id"
+        private const val BOARD_PACKAGE = "com.seewo.easinote"
+        
+        // EasiNote退出广播常量
+        private const val ACTION_ASK_CLOSE_APP = "com.ifpdos.action.ASK_CLOSE_APP"
+        private const val KEY_PACKAGE = "package"
+        
+        // EasiNote Activity
+        private const val BOARD_ACTIVITY = "com.seewo.easinote.PlainWhiteboardActivity"
     }
 
     // ==================== 电源和音量控制 ====================
@@ -302,48 +315,138 @@ abstract class BaseDeviceControlSkill {
 
     // ==================== 白板工具 ====================
     
+    /**
+     * 打开白板（Note）
+     */
     fun executeWhiteboard(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "whiteboard")
+        try {
+            Log.d(TAG, "打开白板")
+            val intent = Intent().apply {
+                component = ComponentName(BOARD_PACKAGE, BOARD_ACTIVITY)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            ctx.android.startActivity(intent)
+            val response = getLocalizedResponse(ctx, "화이트보드를 여는 중입니다", "Opening whiteboard")
+            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            return StringOutput(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "打开白板失败", e)
+            val errorResponse = getLocalizedResponse(ctx, "화이트보드 열기 실패", "Failed to open whiteboard")
+            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            return StringOutput(errorResponse)
+        }
+    }
+    
+    /**
+     * 退出白板（Note）
+     */
+    fun executeExitWhiteboard(ctx: SkillContext): SkillOutput {
+        try {
+            Log.d(TAG, "退出白板")
+            val intent = Intent(ACTION_ASK_CLOSE_APP).apply {
+                putExtra(KEY_PACKAGE, BOARD_PACKAGE)
+            }
+            ctx.android.sendBroadcast(intent)
+            val response = getLocalizedResponse(ctx, "화이트보드를 종료하는 중입니다", "Closing whiteboard")
+            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            return StringOutput(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "退出白板失败", e)
+            val errorResponse = getLocalizedResponse(ctx, "화이트보드 종료 실패", "Failed to close whiteboard")
+            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            return StringOutput(errorResponse)
+        }
+    }
+
+    /**
+     * 发送白板控制广播
+     */
+    private fun sendBoardBroadcast(ctx: SkillContext, id: Int, koreanMsg: String, englishMsg: String, koreanError: String, englishError: String): SkillOutput {
+        try {
+            Log.d(TAG, "发送白板控制广播: id=$id")
+            val intent = Intent(ACTION_BOARD).apply {
+                putExtra(EXTRA_ID, id)
+                setPackage(BOARD_PACKAGE)
+            }
+            ctx.android.sendBroadcast(intent)
+            
+            val response = getLocalizedResponse(ctx, koreanMsg, englishMsg)
+            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            return StringOutput(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "发送白板控制广播失败: id=$id", e)
+            val errorResponse = getLocalizedResponse(ctx, koreanError, englishError)
+            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            return StringOutput(errorResponse)
+        }
     }
 
     fun executeSaveWhiteboard(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "save_whiteboard")
+        return sendBoardBroadcast(ctx, 32, "저장 중입니다", "Saving...", "저장 실패", "Failed to save")
     }
 
     fun executeRedPen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "red_pen")
+        return sendBoardBroadcast(ctx, 33, "빨간 펜으로 변경", "Switching to red pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeBluePen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "blue_pen")
+        return sendBoardBroadcast(ctx, 35, "파란 펜으로 변경", "Switching to blue pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeWhitePen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "white_pen")
+        return sendBoardBroadcast(ctx, 37, "흰 펜으로 변경", "Switching to white pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeBlackPen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "black_pen")
+        return sendBoardBroadcast(ctx, 38, "검은 펜으로 변경", "Switching to black pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeEraser(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "eraser")
+        return sendBoardBroadcast(ctx, 39, "지우개 모드로 변경", "Switching to eraser mode", "모드 변경 실패", "Failed to switch mode")
     }
 
     fun executeDeleteAll(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "delete_all")
+        return sendBoardBroadcast(ctx, 40, "화면을 지우는 중입니다", "Clearing screen...", "지우기 실패", "Failed to clear")
     }
 
     fun executeHighlightPen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "highlight_pen")
+        return sendBoardBroadcast(ctx, 41, "형광펜 모드로 변경", "Switching to highlighter mode", "모드 변경 실패", "Failed to switch mode")
     }
 
     fun executeFountainPen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "fountain_pen")
+        return sendBoardBroadcast(ctx, 42, "만년필 모드로 변경", "Switching to fountain pen mode", "모드 변경 실패", "Failed to switch mode")
     }
 
     fun executeBrushPen(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "brush_pen")
+        return sendBoardBroadcast(ctx, 43, "붓펜 모드로 변경", "Switching to brush pen mode", "모드 변경 실패", "Failed to switch mode")
+    }
+    
+    /**
+     * 添加页面
+     */
+    fun executeAddPage(ctx: SkillContext): SkillOutput {
+        return sendBoardBroadcast(ctx, 28, "페이지를 추가하는 중입니다", "Adding page...", "페이지 추가 실패", "Failed to add page")
+    }
+    
+    /**
+     * 删除当前页
+     */
+    fun executeDeletePage(ctx: SkillContext): SkillOutput {
+        return sendBoardBroadcast(ctx, 29, "현재 페이지를 삭제하는 중입니다", "Deleting current page...", "페이지 삭제 실패", "Failed to delete page")
+    }
+    
+    /**
+     * 下一页
+     */
+    fun executeNextPage(ctx: SkillContext): SkillOutput {
+        return sendBoardBroadcast(ctx, 30, "다음 페이지로 이동", "Going to next page", "페이지 이동 실패", "Failed to navigate")
+    }
+    
+    /**
+     * 上一页
+     */
+    fun executePreviousPage(ctx: SkillContext): SkillOutput {
+        return sendBoardBroadcast(ctx, 31, "이전 페이지로 이동", "Going to previous page", "페이지 이동 실패", "Failed to navigate")
     }
 
     // ==================== 系统导航和功能 ====================
@@ -412,7 +515,7 @@ abstract class BaseDeviceControlSkill {
     }
 
     fun executeWindowMode(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "window_mode")
+        return executeInputSource(ctx)
     }
 
     fun executeWifiConnect(ctx: SkillContext): SkillOutput {
@@ -451,10 +554,6 @@ abstract class BaseDeviceControlSkill {
         } catch (e: Exception) {
             Log.e(TAG, "发送广播失败: $command", e)
             val errorResponse = getLocalizedResponse(ctx, "실행 실패", "Execution failed")
-            
-            // 🆕 错误时也显示Toast
-            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
-            
             return StringOutput(errorResponse)
         }
     }
