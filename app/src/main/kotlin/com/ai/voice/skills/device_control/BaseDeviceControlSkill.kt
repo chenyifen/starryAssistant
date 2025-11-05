@@ -75,7 +75,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行音量增加命令")
             AudioHelper.getInstance().volumeUp()
-            val response = getLocalizedResponse(ctx, "볼륨이 증가했습니다", "Volume increased")
+            val response = getLocalizedResponse(ctx, "볼륨을 높였습니다", "Volume increased")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "音量增加失败", e)
@@ -88,7 +88,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行音量减小命令")
             AudioHelper.getInstance().volumeDown()
-            val response = getLocalizedResponse(ctx, "볼륨이 감소했습니다", "Volume decreased")
+            val response = getLocalizedResponse(ctx, "볼륨을 낮췄습니다", "Volume decreased")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "音量减小失败", e)
@@ -101,11 +101,11 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行静音命令")
             AudioHelper.getInstance().changeMuteStatus()
-            val response = getLocalizedResponse(ctx, "음소거되었습니다", "Muted")
+            val response = getLocalizedResponse(ctx, "음소거 상태를 변경했습니다", "Mute status changed")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "静音失败", e)
-            val errorResponse = getLocalizedResponse(ctx, "음소거 실패", "Failed to mute")
+            val errorResponse = getLocalizedResponse(ctx, "음소거 변경 실패", "Failed to change mute status")
             return StringOutput(errorResponse)
         }
     }
@@ -382,71 +382,71 @@ abstract class BaseDeviceControlSkill {
     }
 
     fun executeSaveWhiteboard(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 32, "저장 중입니다", "Saving...", "저장 실패", "Failed to save")
+        return sendBoardBroadcast(ctx, 32, "저장했습니다", "Saved", "저장 실패", "Failed to save")
     }
 
     fun executeRedPen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 33, "빨간 펜으로 변경", "Switching to red pen", "펜 변경 실패", "Failed to switch pen")
+        return sendBoardBroadcast(ctx, 33, "빨간 펜으로 변경했습니다", "Switched to red pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeBluePen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 35, "파란 펜으로 변경", "Switching to blue pen", "펜 변경 실패", "Failed to switch pen")
+        return sendBoardBroadcast(ctx, 35, "파란 펜으로 변경했습니다", "Switched to blue pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeWhitePen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 37, "흰 펜으로 변경", "Switching to white pen", "펜 변경 실패", "Failed to switch pen")
+        return sendBoardBroadcast(ctx, 37, "흰 펜으로 변경했습니다", "Switched to white pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeBlackPen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 38, "검은 펜으로 변경", "Switching to black pen", "펜 변경 실패", "Failed to switch pen")
+        return sendBoardBroadcast(ctx, 38, "검은 펜으로 변경했습니다", "Switched to black pen", "펜 변경 실패", "Failed to switch pen")
     }
 
     fun executeEraser(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 39, "지우개 모드로 변경", "Switching to eraser mode", "모드 변경 실패", "Failed to switch mode")
+        return sendBoardBroadcast(ctx, 39, "지우개 모드로 변경했습니다", "Switched to eraser mode", "모드 변경 실패", "Failed to switch mode")
     }
 
     fun executeDeleteAll(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 40, "화면을 지우는 중입니다", "Clearing screen...", "지우기 실패", "Failed to clear")
+        return sendBoardBroadcast(ctx, 40, "화면을 지웠습니다", "Screen cleared", "지우기 실패", "Failed to clear")
     }
 
     fun executeHighlightPen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 41, "형광펜 모드로 변경", "Switching to highlighter mode", "모드 변경 실패", "Failed to switch mode")
+        return sendBoardBroadcast(ctx, 41, "형광펜 모드로 변경했습니다", "Switched to highlighter mode", "모드 변경 실패", "Failed to switch mode")
     }
 
     fun executeFountainPen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 42, "만년필 모드로 변경", "Switching to fountain pen mode", "모드 변경 실패", "Failed to switch mode")
+        return sendBoardBroadcast(ctx, 42, "만년필 모드로 변경했습니다", "Switched to fountain pen mode", "모드 변경 실패", "Failed to switch mode")
     }
 
     fun executeBrushPen(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 43, "붓펜 모드로 변경", "Switching to brush pen mode", "모드 변경 실패", "Failed to switch mode")
+        return sendBoardBroadcast(ctx, 43, "붓펜 모드로 변경했습니다", "Switched to brush pen mode", "모드 변경 실패", "Failed to switch mode")
     }
     
     /**
      * 添加页面
      */
     fun executeAddPage(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 28, "페이지를 추가하는 중입니다", "Adding page...", "페이지 추가 실패", "Failed to add page")
+        return sendBoardBroadcast(ctx, 28, "페이지를 추가했습니다", "Page added", "페이지 추가 실패", "Failed to add page")
     }
     
     /**
      * 删除当前页
      */
     fun executeDeletePage(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 29, "현재 페이지를 삭제하는 중입니다", "Deleting current page...", "페이지 삭제 실패", "Failed to delete page")
+        return sendBoardBroadcast(ctx, 29, "현재 페이지를 삭제했습니다", "Current page deleted", "페이지 삭제 실패", "Failed to delete page")
     }
     
     /**
      * 下一页
      */
     fun executeNextPage(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 30, "다음 페이지로 이동", "Going to next page", "페이지 이동 실패", "Failed to navigate")
+        return sendBoardBroadcast(ctx, 30, "다음 페이지로 이동했습니다", "Moved to next page", "페이지 이동 실패", "Failed to navigate")
     }
     
     /**
      * 上一页
      */
     fun executePreviousPage(ctx: SkillContext): SkillOutput {
-        return sendBoardBroadcast(ctx, 31, "이전 페이지로 이동", "Going to previous page", "페이지 이동 실패", "Failed to navigate")
+        return sendBoardBroadcast(ctx, 31, "이전 페이지로 이동했습니다", "Moved to previous page", "페이지 이동 실패", "Failed to navigate")
     }
 
     // ==================== 系统导航和功能 ====================
@@ -488,7 +488,7 @@ abstract class BaseDeviceControlSkill {
     fun executeGoBack(ctx: SkillContext): SkillOutput {
         try {
             sendKeyEvent(ctx, KeyEvent.KEYCODE_BACK)
-            val response = getLocalizedResponse(ctx, "뒤로 가기", "Going back")
+            val response = getLocalizedResponse(ctx, "뒤로 갑니다", "Going back")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "返回失败", e)
@@ -501,7 +501,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行截图命令")
             SystemHelper.getInstance().takeScreenShot("")
-            val response = getLocalizedResponse(ctx, "스크린샷 찍는 중", "Taking screenshot")
+            val response = getLocalizedResponse(ctx, "스크린샷을 찍었습니다", "Screenshot taken")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "截图失败", e)
@@ -511,7 +511,7 @@ abstract class BaseDeviceControlSkill {
     }
 
     fun executeNoteMode(ctx: SkillContext): SkillOutput {
-        return sendBroadcast(ctx, "note_mode")
+        return executeWhiteboard(ctx)
     }
 
     fun executeWindowMode(ctx: SkillContext): SkillOutput {
