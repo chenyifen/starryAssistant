@@ -142,6 +142,20 @@ eraser:
   - wipe
   - wipe tool
   - clean tool
+  - eraser mode
+  - switch eraser
+  - change eraser
+  - select the? eraser
+  - use the? eraser
+  - switch the? eraser
+  - change the? eraser
+  - eraser now
+  - switch to erase
+  - change to erase
+  - erase mode now
+  - erasing tool
+  - deletion tool
+  - removal tool
 
 delete_all:
   - delete all
@@ -214,4 +228,107 @@ brush_pen:
   - use paint brush
   - select paint brush
   - brushing tool
+
+add_page:
+  - add page
+  - add a page
+  - add new page
+  - create page
+  - create a page
+  - create new page
+  - new page
+  - add one page
+  - insert page
+  - insert a page
+  - add another page
+  - make new page
+  - make a page
+  - add page now
+  - create new page now
+  - add one more page
+  - page add
+  - add the? page
+  - page creation
+  - new page creation
+
+delete_page:
+  - delete page
+  - delete current page
+  - delete this page
+  - remove page
+  - remove current page
+  - remove this page
+  - delete the? page
+  - remove the? page
+  - delete current
+  - remove current
+  - delete this
+  - remove this
+  - delete the? current page
+  - remove the? current page
+  - page delete
+  - page remove
+  - erase page
+  - erase current page
+  - erase this page
+  - delete one page
+  - remove one page
+
+next_page:
+  - next page
+  - go to next page
+  - go next page
+  - move to next page
+  - move next page
+  - next
+  - go next
+  - move next
+  - switch to next page
+  - switch next page
+  - navigate next
+  - navigate to next
+  - next slide
+  - go to next slide
+  - forward
+  - go forward
+  - move forward
+  - page forward
+  - forward page
+  - flip to next
+  - turn to next
+  - turn page
+  - flip page
+  - next one
+  - go to next
+  - page next
+
+previous_page:
+  - previous page
+  - go to previous page
+  - go previous page
+  - move to previous page
+  - move previous page
+  - previous
+  - go previous
+  - move previous
+  - switch to previous page
+  - switch previous page
+  - navigate previous
+  - navigate to previous
+  - previous slide
+  - go to previous slide
+  - back
+  - go back
+  - move back
+  - page back
+  - back page
+  - flip to previous
+  - turn to previous
+  - turn page back
+  - flip page back
+  - previous one
+  - go to previous
+  - page previous
+  - last page
+  - go to last page
 
