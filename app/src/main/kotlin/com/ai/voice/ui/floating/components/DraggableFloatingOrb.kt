@@ -27,6 +27,7 @@ import com.ai.voice.ui.floating.components.LottieAnimationStateManager
 import com.ai.voice.ui.floating.state.VoiceAssistantFullState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.util.DebugLogger
+import com.ai.voice.util.AsrHandler
 
 /**
  * 悬浮球组件（简化版 - 不可拖动、不可点击）
@@ -55,6 +56,9 @@ class DraggableFloatingOrb(
     // 当前文本状态 - 使用MutableState以便Compose能检测变化
     private val currentAsrText = mutableStateOf("")
     private val currentTtsText = mutableStateOf("")
+    
+    // 监听 AsrHandler 结果列表变化
+    private var lastResultListSize = 0
     
     // 性能优化：状态缓存
     private var lastUiState: VoiceAssistantUIState? = null
@@ -95,6 +99,21 @@ class DraggableFloatingOrb(
                     // 延迟100ms，让主线程有时间处理其他任务
                     kotlinx.coroutines.delay(100)
                     isFullyInitialized = true
+                }
+                
+                // 监听 AsrHandler 结果列表变化
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        kotlinx.coroutines.delay(100) // 每100ms检查一次
+                        val resultList = AsrHandler.getResultList()
+                        if (resultList.isNotEmpty()) {
+                            // 显示最新的结果文本
+                            val latestText = resultList.last()
+                            if (currentAsrText.value != latestText) {
+                                currentAsrText.value = latestText
+                            }
+                        }
+                    }
                 }
                 
                 if (!isFullyInitialized) {
