@@ -201,3 +201,4 @@ adb logcat | grep avc  # 查看SELinux拒绝日志
 
 
 
+

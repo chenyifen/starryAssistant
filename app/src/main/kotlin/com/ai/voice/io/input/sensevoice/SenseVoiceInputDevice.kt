@@ -52,8 +52,9 @@ class SenseVoiceInputDevice private constructor(
         
         // VAD和录制控制参数
         private const val VAD_FRAME_SIZE = 512 // VAD处理帧大小 (32ms @ 16kHz)
-        private const val SPEECH_TIMEOUT_MS = 4000L // 🔄 静音4秒后由状态机处理回到待唤醒
-        private const val MAX_RECORDING_DURATION_MS = 30000L // 🔥 最长录制时间15秒（给复杂命令更多时间）
+        private const val COMMAND_TRIGGER_TIMEOUT_MS = 1000L // 🆕 1秒静音触发命令识别
+        private const val IDLE_TIMEOUT_MS = 10000L // 🆕 10秒静音转为idle状态
+        private const val MAX_RECORDING_DURATION_MS = 180000L // 🔥 最长录制时间30秒
         private const val MIN_SPEECH_DURATION_MS = 500L // 最短有效语音时间
         private const val INITIAL_GRACE_PERIOD_MS = 800L // 🆕 唤醒后初始缓冲期，避免唤醒词尾音误触发（增加到800ms）
         
@@ -149,6 +150,8 @@ class SenseVoiceInputDevice private constructor(
     private var isWaitingForEarlyStop = false   // 是否正在等待提前停止
     // 🆕 标记：静音超时且无识别内容时已发送None事件，避免重复触发
     private var hasEmittedNoneOnSilence = false
+    private var hasTriggeredCommand = false // 🆕 是否已触发命令识别
+    private var commandTriggerTime = 0L // 🆕 命令触发时间
     
     // 协程作用域 - 使用可重新创建的作用域
     private var scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -202,25 +205,28 @@ class SenseVoiceInputDevice private constructor(
                 return
             }
             
+            // 🚫 VAD已禁用，使用简单能量检测
             // 创建VAD (如果可用)
-            val vadConfig = VadModelManager.createVadConfig(appContext)
-            if (vadConfig != null) {
-                try {
-                    val vadModelPaths = VadModelManager.getVadModelPaths(appContext)
-                    vad = if (vadModelPaths?.isFromAssets == true) {
-                        Vad(assetManager = appContext.assets, config = vadConfig)
-                    } else {
-                        Vad(config = vadConfig)
-                    }
-                    Log.d(TAG, "✅ VAD初始化成功")
-                } catch (e: Exception) {
-                    Log.w(TAG, "⚠️ VAD初始化失败，将使用简单能量检测", e)
-                    vad = null
-                }
-            } else {
-                Log.w(TAG, "⚠️ VAD配置不可用，将使用简单能量检测")
-                vad = null
-            }
+            // val vadConfig = VadModelManager.createVadConfig(appContext)
+            // if (vadConfig != null) {
+            //     try {
+            //         val vadModelPaths = VadModelManager.getVadModelPaths(appContext)
+            //         vad = if (vadModelPaths?.isFromAssets == true) {
+            //             Vad(assetManager = appContext.assets, config = vadConfig)
+            //         } else {
+            //             Vad(config = vadConfig)
+            //         }
+            //         Log.d(TAG, "✅ VAD初始化成功")
+            //     } catch (e: Exception) {
+            //         Log.w(TAG, "⚠️ VAD初始化失败，将使用简单能量检测", e)
+            //         vad = null
+            //     }
+            // } else {
+            //     Log.w(TAG, "⚠️ VAD配置不可用，将使用简单能量检测")
+            //     vad = null
+            // }
+            vad = null
+            Log.d(TAG, "🚫 VAD已禁用，将使用简单能量检测")
             
             Log.d(TAG, "✅ SenseVoice识别器初始化成功")
             isInitialized.set(true)
@@ -306,12 +312,8 @@ class SenseVoiceInputDevice private constructor(
         Log.d(TAG, "🛑 停止语音监听...")
         isListening.set(false)
         
-        // 停止录制
+        // 🔥 立即停止录制（同步清理）
         stopRecording()
-        
-        // 取消VAD任务
-        vadJob?.cancel()
-        vadJob = null
         
         // 释放麦克风资源
         scope.launch {
@@ -326,6 +328,8 @@ class SenseVoiceInputDevice private constructor(
         // TTS状态通过canRecord()自动处理，无需监听器
         
         _uiState.value = SttState.Loaded
+        
+        Log.d(TAG, "✅ 停止监听完成")
     }
     
     /**
@@ -465,15 +469,23 @@ class SenseVoiceInputDevice private constructor(
         
         // 请求麦克风资源
         scope.launch {
+            // 🔥 确保之前的状态完全清理（防止卡住）
+            if (isRecording.get() || recordingJob != null || vadJob != null) {
+                Log.w(TAG, "⚠️ 检测到残留状态，先清理...")
+                cleanupAudioRecord()
+                delay(100) // 等待清理完成
+            }
+            
             val granted = AudioResourceManager.requestMicrophone(
                 AudioResourceManager.AudioOwner.ASR_DEVICE
             )
             
             if (!granted) {
-                Log.w(TAG, "❌ 无法获取麦克风资源（TTS正在播放）")
+                Log.w(TAG, "❌ 无法获取麦克风资源")
                 withContext(Dispatchers.Main) {
                     _uiState.value = SttState.ErrorLoading(Exception("音频资源被占用"))
                 }
+                isListening.set(false)
                 return@launch
             }
             
@@ -483,6 +495,8 @@ class SenseVoiceInputDevice private constructor(
             
             // 重置VAD和音频状态
             hasEmittedNoneOnSilence = false
+            hasTriggeredCommand = false // 🆕 重置命令触发标记
+            commandTriggerTime = 0L // 🆕 重置命令触发时间
             resetVadState()
             
             withContext(Dispatchers.Main) {
@@ -596,10 +610,22 @@ class SenseVoiceInputDevice private constructor(
      */
     private suspend fun startRecording(): Boolean {
         try {
-            // 防止同一实例重复启动录制
+            // 🔥 关键修复：确保之前的录制完全停止
             if (isRecording.get()) {
-                Log.w(TAG, "⚠️ 实例 ${this.hashCode()} 已在录制中，忽略重复启动")
-                return true
+                Log.w(TAG, "⚠️ 检测到录制仍在进行，先强制停止")
+                // 立即停止并清理
+                isRecording.set(false)
+                recordingJob?.cancel()
+                vadJob?.cancel()
+                cleanupAudioRecord()
+                // 等待一下确保清理完成
+                delay(100)
+            }
+            
+            // 再次检查，确保完全停止
+            if (isRecording.get()) {
+                Log.e(TAG, "❌ 录制状态异常，无法启动新录制")
+                return false
             }
             
             // Android 15+ 必须先请求音频焦点
@@ -696,13 +722,17 @@ class SenseVoiceInputDevice private constructor(
             vadJob?.cancel()
             vadJob = null
             
-            // 关闭样本通道
+            // 🔥 关闭样本通道（如果正在使用）
             try {
-                samplesChannel.close()
+                if (!samplesChannel.isClosedForSend) {
+                    samplesChannel.close()
+                }
                 // 重新创建通道以供下次使用
                 samplesChannel = Channel(capacity = Channel.UNLIMITED)
             } catch (e: Exception) {
-                Log.w(TAG, "关闭样本通道失败", e)
+                Log.w(TAG, "关闭样本通道失败: ${e.message}")
+                // 即使失败也重新创建通道
+                samplesChannel = Channel(capacity = Channel.UNLIMITED)
             }
             
             // 清理AudioRecord
@@ -774,12 +804,12 @@ class SenseVoiceInputDevice private constructor(
         try {
             while (isRecording.get() && !Thread.currentThread().isInterrupted && !currentCoroutineContext().job.isCancelled) {
                 try {
-                    // 检查是否可以录音（TTS播放时暂停）
-                    if (!AudioResourceManager.canRecord()) {
-                        // TTS正在播放，暂停录音但不退出循环
-                        delay(50) // 等待50ms再检查
-                        continue
-                    }
+                    // 🆕 移除：不再检查TTS播放状态，允许TTS播放时也继续录音
+                    // if (!AudioResourceManager.canRecord()) {
+                    //     // TTS正在播放，暂停录音但不退出循环
+                    //     delay(50) // 等待50ms再检查
+                    //     continue
+                    // }
                     
                     val currentAudioRecord = audioRecord
                     if (currentAudioRecord == null) {
@@ -932,10 +962,25 @@ class SenseVoiceInputDevice private constructor(
                             speechStartTime = currentTime
                             Log.d(TAG, "🎤 检测到语音开始")
                             
+                            // 🆕 检测到新语音时，重置命令触发标记（允许连续命令）
+                            if (hasTriggeredCommand) {
+                                Log.d(TAG, "🔄 检测到新语音，重置命令触发标记")
+                                hasTriggeredCommand = false
+                                commandTriggerTime = 0L
+                            }
+                            
                             // 不发送状态文本，避免干扰真实的ASR结果显示
                             // 语音开始事件由UI状态管理器处理
                         }
+                        // 🆕 每次检测到语音时，更新最后语音时间（重置静音计时）
+                        val previousLastSpeechTime = lastSpeechTime
                         lastSpeechTime = currentTime
+                        if (previousLastSpeechTime > 0) {
+                            val previousSilenceDuration = currentTime - previousLastSpeechTime
+                            if (previousSilenceDuration > 1000) { // 只有之前的静音时间超过1秒才记录日志
+                                Log.d(TAG, "🔄 检测到新语音，重置静音计时（之前静音${previousSilenceDuration}ms）")
+                            }
+                        }
                         
                         // 🆕 渐进式识别：首次快速响应（0.5秒），后续提高质量（0.7秒）
                         val elapsed = currentTime - lastPartialRecognitionTime
@@ -951,44 +996,36 @@ class SenseVoiceInputDevice private constructor(
                         }
                         
                     } else if (speechDetected) {
-                        // 🆕 优先检查：是否满足提前结束条件
-                        if (isWaitingForEarlyStop && stablePartialConfirmTime > 0) {
-                            val confirmElapsed = currentTime - stablePartialConfirmTime
-                            if (confirmElapsed >= EARLY_STOP_CONFIRM_DELAY_MS) {
-                                // 确认等待时间到了，再次检查是否还有语音
-                                if (!hasRecentSpeech(EARLY_STOP_CONFIRM_DELAY_MS / 2)) {
-                                    Log.i(TAG, "⚡️ 确认提前结束: Partial='$lastStablePartialText', 确认延迟=${confirmElapsed}ms")
-                                    stopListeningAndProcess()
-                                    break
-                                } else {
-                                    // 用户还在说话，取消提前结束
-                                    Log.d(TAG, "⚠️ 取消提前结束: 用户还在说话")
-                                    isWaitingForEarlyStop = false
-                                    stablePartialConfirmTime = 0L
+                        val silenceDuration = currentTime - lastSpeechTime
+                        
+                        // 🆕 步骤1：检查1秒静音超时，触发命令识别但不停止监听
+                        if (silenceDuration >= COMMAND_TRIGGER_TIMEOUT_MS && !hasTriggeredCommand) {
+                            if (partialText.isNotBlank()) {
+                                // 有识别文本，触发命令识别
+                                Log.d(TAG, "⚡️ 检测到1秒静音，触发命令识别 (partialText='$partialText')")
+                                hasTriggeredCommand = true
+                                commandTriggerTime = currentTime
+                                
+                                // 🆕 在后台触发命令识别，但不停止监听
+                                scope.launch {
+                                    triggerCommandRecognition()
                                 }
+                            } else {
+                                // 🆕 无识别文本，保持静默，继续监听（不发送None事件，避免上层停止ASR）
+                                Log.d(TAG, "🔇 检测到1秒静音但无识别文本，保持监听直到10秒静音")
+                                hasEmittedNoneOnSilence = true // 标记已处理，避免重复日志
                             }
                         }
                         
-                        // 检查是否静音超时（使用动态超时）
-                        val silenceDuration = currentTime - lastSpeechTime
-                        val timeoutMs = getDynamicTimeout()
-                        if (silenceDuration > timeoutMs) {
-                            if (partialText.isBlank()) {
-                                // 无任何有效识别结果，静音超时交由状态机处理：仅发送None，不在设备层停止监听
-                                if (!hasEmittedNoneOnSilence) {
-                                    Log.d(TAG, "🔇 检测到静音超时(${timeoutMs}ms)，由状态机接管回到待唤醒 (partialText='')")
-                                    withContext(Dispatchers.Main) {
-                                        eventListener?.invoke(InputEvent.None)
-                                    }
-                                    hasEmittedNoneOnSilence = true
-                                }
-                                // 保持监听，由上层状态机决定是否停止与复位
-                            } else {
-                                // 已有部分识别内容，静音超时则结束监听并进行最终识别
-                                Log.d(TAG, "🔇 静音超时(${timeoutMs}ms)，存在部分识别，停止监听并处理最终结果 (partialText='$partialText')")
-                                stopListeningAndProcess()
-                                break
-                            }
+                        // 🆕 步骤2：检查10秒静音超时，停止监听并转为idle
+                        // 注意：只有连续静音10秒才会触发，如果用户再次说话，lastSpeechTime会被更新，静音时长会重新计算
+                        if (silenceDuration >= IDLE_TIMEOUT_MS) {
+                            Log.d(TAG, "🔇 检测到连续10秒静音超时（${silenceDuration}ms），停止监听并转为idle")
+                            stopListeningAndProcess()
+                            break
+                        } else if (silenceDuration >= 2000 && silenceDuration % 2000 < 100) {
+                            // 🆕 每2秒记录一次静音时长，方便调试（只在静音时长超过2秒时记录）
+                            Log.d(TAG, "⏱️ 当前静音时长: ${silenceDuration}ms / ${IDLE_TIMEOUT_MS}ms")
                         }
                     }
                     
@@ -1083,7 +1120,10 @@ class SenseVoiceInputDevice private constructor(
                     Log.d(TAG, "⏭️ Recognizer不可用，跳过Partial识别")
                     return
                 }
-                recognizer.recognize(audioData)
+                val recognizedText = recognizer.recognize(audioData)
+                // 🔥 添加详细的识别结果打印
+                Log.d(TAG, "🎤 [Partial识别] 输入音频: ${audioData.size}样本 (${String.format("%.2f", audioData.size / SAMPLE_RATE.toFloat())}秒), 识别结果: \"$recognizedText\"")
+                recognizedText
             }
             
             // 🔥 优化过滤逻辑：保留韩文单字，但过滤纯标点
@@ -1092,21 +1132,21 @@ class SenseVoiceInputDevice private constructor(
                                !newText.matches(Regex("^[.。,，!！?？]+$")) && // 纯标点
                                hasValidContent(newText) // 包含字母或韩文字符
             
+            // 🆕 只要识别结果有意义且与当前partialText不同，就更新UI
+            // 即使partialText不为空（命令识别后保留了文本），新的识别结果也应该立即更新
             if (isMeaningful && newText != partialText) {
                 val oldText = partialText
                 partialText = newText
                 partialRecognitionCount++ // 增加识别计数
                 
-                // 参考SherpaOnnxSimulateAsr的结果管理策略
+                // 🔥 添加文本更新日志
+                Log.d(TAG, "📝 [文本更新] Partial文本变更: '$oldText' → '$partialText' (计数: #${partialRecognitionCount})")
+                
+                // 🆕 无论之前是否添加过Partial结果，都发送新的Partial事件更新UI
+                // 这样用户在命令执行后继续说话时，能立即看到新的识别结果
                 withContext(Dispatchers.Main) {
-                    if (!isPartialResultAdded) {
-                        // 首次添加部分结果
-                        eventListener?.invoke(InputEvent.Partial(partialText))
-                        isPartialResultAdded = true
-                    } else {
-                        // 更新现有部分结果
-                        eventListener?.invoke(InputEvent.Partial(partialText))
-                    }
+                    eventListener?.invoke(InputEvent.Partial(partialText))
+                    Log.d(TAG, "📤 发送Partial事件更新UI: '$partialText'")
                 }
                 
                 val audioDuration = audioData.size / SAMPLE_RATE.toFloat()
@@ -1178,28 +1218,6 @@ class SenseVoiceInputDevice private constructor(
         }
     }
     
-    /**
-     * 🆕 动态获取静音超时时间
-     * 根据是否有识别结果，动态调整超时时间
-     * 优化：韩语命令需要更长的超时时间
-     */
-    private fun getDynamicTimeout(): Long {
-        val timeSinceStart = System.currentTimeMillis() - asrStartTime
-        
-        // 如果还在初始缓冲期内，使用长超时
-        if (timeSinceStart < INITIAL_GRACE_PERIOD_MS) {
-            return SPEECH_TIMEOUT_MS
-        }
-        
-        // 🔥 优化：有识别结果后快速结束，提高响应速度
-        return if (partialText.length >= 3) {
-            1200L  // 有识别结果，1.2秒超时（快速响应）
-        } else if (partialText.length >= 1) {
-            1800L  // 有部分识别，1.8秒超时（中等响应）
-        } else {
-            SPEECH_TIMEOUT_MS  // 无识别结果，使用配置的超时时间（4秒）
-        }
-    }
     
     /**
      * 🆕 检查是否应该触发提前结束
@@ -1227,6 +1245,208 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
+     * 🆕 触发命令识别（1.5秒静音时调用，不停止监听）
+     * 发送Final事件但不停止音频监听，继续监听直到10秒静音
+     * 只使用当前语音段的音频，避免重复识别
+     */
+    private suspend fun triggerCommandRecognition() {
+        try {
+            // 检查是否有足够的语音数据
+            if (!audioBuffer.hasMinimumAudio(0.1f) || !speechDetected) {
+                Log.d(TAG, "⚠️ 音频数据不足，跳过命令识别")
+                return
+            }
+            
+            // 检查语音时长是否足够
+            val speechDuration = System.currentTimeMillis() - speechStartTime
+            if (speechDuration < MIN_SPEECH_DURATION_MS) {
+                Log.d(TAG, "⚠️ 语音时长太短 (${speechDuration}ms)，跳过命令识别")
+                return
+            }
+            
+            // 🆕 计算相对于ASR启动的时间
+            val currentTimeMs = System.currentTimeMillis()
+            val speechStartTimeMs = speechStartTime - asrStartTime
+            val speechEndTimeMs = currentTimeMs - asrStartTime
+            
+            // 🆕 只获取当前语音段的音频数据（避免包含之前已处理的音频）
+            val audioData = audioBuffer.getCurrentSpeechSegmentAudio(
+                speechStartTimeMs = speechStartTimeMs,
+                currentTimeMs = speechEndTimeMs
+            )
+            
+            if (audioData.isEmpty()) {
+                Log.w(TAG, "⚠️ 当前语音段音频为空，跳过命令识别")
+                return
+            }
+            
+            val audioSamples = audioData.size
+            Log.d(TAG, "🚀 触发命令识别，当前语音段音频长度: ${audioSamples}样本 (${speechDuration}ms)")
+            
+            // 🔥 使用互斥锁保护recognizer访问
+            val finalText = recognizerMutex.withLock {
+                val recognizer = senseVoiceRecognizer
+                if (recognizer == null) {
+                    Log.w(TAG, "⚠️ Recognizer不可用，跳过命令识别")
+                    return
+                }
+                val recognizedText = recognizer.recognize(audioData)
+                // 🔥 添加详细的识别结果打印
+                Log.d(TAG, "🎤 [命令识别] 输入音频: ${audioData.size}样本 (${String.format("%.2f", audioData.size / SAMPLE_RATE.toFloat())}秒), 识别结果: \"$recognizedText\"")
+                recognizedText
+            }
+            
+            DebugLogger.logRecognition(TAG, "命令识别结果: \"$finalText\"")
+            Log.d(TAG, "🔍 命令识别结果详情: 长度=${finalText.length}, 是否空白=${finalText.isBlank()}")
+            
+            // 🆕 检查并分割多个命令
+            val commands = splitMultipleCommands(finalText)
+            
+            if (commands.isEmpty()) {
+                // 🔥 过滤无意义的最终识别结果
+                val isMeaningful = finalText.isNotBlank() && 
+                                   finalText != "." && 
+                                   finalText.length > 1 &&
+                                   !finalText.matches(Regex("^[.。,，!！?？]+$"))
+                
+                if (isMeaningful) {
+                    Log.d(TAG, "✅ 发送Final事件（单命令）: \"$finalText\"，继续监听...")
+                    withContext(Dispatchers.Main) {
+                        eventListener?.invoke(InputEvent.Final(listOf(Pair(finalText, 1.0f))))
+                    }
+                    // 🆕 标记当前语音段的音频已处理
+                    markCurrentSpeechSegmentAsProcessed(speechStartTimeMs, speechEndTimeMs)
+                } else {
+                    if (finalText.isNotBlank()) {
+                        Log.d(TAG, "⏭️ 跳过无意义的命令识别结果: \"$finalText\"")
+                    } else {
+                        Log.d(TAG, "⚠️ 命令识别结果为空")
+                    }
+                }
+            } else {
+                // 🆕 多个命令，分别发送
+                Log.d(TAG, "✅ 检测到${commands.size}个命令，逐个发送")
+                commands.forEachIndexed { index, command ->
+                    Log.d(TAG, "  [命令${index + 1}] \"$command\"")
+                    withContext(Dispatchers.Main) {
+                        eventListener?.invoke(InputEvent.Final(listOf(Pair(command, 1.0f))))
+                    }
+                    // 每个命令之间短暂延迟，避免处理过快
+                    if (index < commands.size - 1) {
+                        kotlinx.coroutines.delay(100)
+                    }
+                }
+                // 🆕 标记当前语音段的音频已处理
+                markCurrentSpeechSegmentAsProcessed(speechStartTimeMs, speechEndTimeMs)
+            }
+            
+            // 🆕 命令识别后，重置状态但保持监听
+            // 不清空整个音频缓冲区，只标记已处理的部分
+            speechDetected = false
+            speechStartTime = 0L
+            lastSpeechTime = System.currentTimeMillis() // 更新最后语音时间，避免立即触发
+            // 🆕 不清空partialText，保留最后一次识别结果在UI上显示
+            // 如果用户继续说话，新的Partial识别会覆盖它并更新UI
+            // partialText = "" // 不清空，保留显示
+            partialRecognitionCount = 0
+            isPartialResultAdded = false // 🆕 重置Partial结果添加标记，允许新的Partial事件及时更新UI
+            
+            Log.d(TAG, "✅ 命令识别完成，继续监听音频...")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 命令识别异常", e)
+            hasTriggeredCommand = false // 重置标记，允许重试
+        }
+    }
+    
+    /**
+     * 🆕 分割多个命令（基于分隔符）
+     * 支持的分隔符：逗号、句号、然后、并且、再、接着等
+     */
+    private fun splitMultipleCommands(text: String): List<String> {
+        if (text.isBlank()) return emptyList()
+        
+        // 定义命令分隔符（支持中英文）
+        val separators = listOf(
+            "，", ",", // 逗号
+            "。", ".", // 句号
+            "然后", "接着", "再", "并且", "而且", // 中文连接词
+            "then", "and", "also", "next" // 英文连接词
+        )
+        
+        // 尝试分割文本
+        var currentText = text.trim()
+        val commands = mutableListOf<String>()
+        
+        // 先按标点符号分割
+        val parts = currentText.split(Regex("[，,。.]+"))
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        
+        // 再检查每个部分是否包含连接词
+        for (part in parts) {
+            var remainingPart = part
+            var hasMoreCommands = true
+            
+            while (hasMoreCommands && remainingPart.isNotBlank()) {
+                var earliestIndex = Int.MAX_VALUE
+                var earliestSeparator = ""
+                
+                // 找到最早出现的分隔符
+                for (separator in separators) {
+                    val index = remainingPart.indexOf(separator, ignoreCase = true)
+                    if (index >= 0 && index < earliestIndex) {
+                        earliestIndex = index
+                        earliestSeparator = separator
+                    }
+                }
+                
+                if (earliestIndex < Int.MAX_VALUE && earliestIndex > 0) {
+                    // 找到分隔符，提取前面的命令
+                    val command = remainingPart.substring(0, earliestIndex).trim()
+                    if (command.isNotBlank() && command.length >= 2) {
+                        commands.add(command)
+                    }
+                    // 继续处理剩余部分（跳过分隔符）
+                    remainingPart = remainingPart.substring(earliestIndex + earliestSeparator.length).trim()
+                } else {
+                    // 没有找到分隔符，剩余部分作为一个命令
+                    if (remainingPart.isNotBlank() && remainingPart.length >= 2) {
+                        commands.add(remainingPart)
+                    }
+                    hasMoreCommands = false
+                }
+            }
+        }
+        
+        // 如果没有分割出多个命令，返回空列表（走单命令流程）
+        return if (commands.size > 1) {
+            Log.d(TAG, "📋 文本分割结果: \"$text\" -> ${commands.size}个命令")
+            commands.forEachIndexed { index, cmd ->
+                Log.d(TAG, "   命令${index + 1}: \"$cmd\"")
+            }
+            commands
+        } else {
+            emptyList()
+        }
+    }
+    
+    /**
+     * 🆕 标记当前语音段的音频已处理
+     */
+    private fun markCurrentSpeechSegmentAsProcessed(startTimeMs: Long, endTimeMs: Long) {
+        val samplesPerMs = SAMPLE_RATE / 1000.0
+        val startSamples = (startTimeMs * samplesPerMs).toInt()
+        val endSamples = (endTimeMs * samplesPerMs).toInt()
+        val processedSamples = endSamples - startSamples
+        
+        if (processedSamples > 0) {
+            audioBuffer.markAsProcessed(processedSamples)
+            Log.d(TAG, "✅ 标记${processedSamples}个样本已处理 (${startTimeMs}ms - ${endTimeMs}ms)")
+        }
+    }
+    
+    /**
      * 停止监听并处理最终结果
      */
     private suspend fun stopListeningAndProcess() {
@@ -1238,12 +1458,12 @@ class SenseVoiceInputDevice private constructor(
     }
     
     /**
-     * 执行最终识别 (使用SenseVoice的方式)
+     * 执行最终识别 (10秒静音时调用，停止监听并转为idle)
      */
     private suspend fun performFinalRecognition() {
         try {
             // 检查是否有足够的语音数据
-            if (!audioBuffer.hasMinimumAudio(0.1f) || !speechDetected) {
+            if (!audioBuffer.hasMinimumAudio(0.1f)) {
                 withContext(Dispatchers.Main) {
                     eventListener?.invoke(InputEvent.None)
                 }
@@ -1251,22 +1471,74 @@ class SenseVoiceInputDevice private constructor(
                 return
             }
             
-            // 检查语音时长是否足够
-            val speechDuration = System.currentTimeMillis() - speechStartTime
-            if (speechDuration < MIN_SPEECH_DURATION_MS) {
-                Log.d(TAG, "语音时长太短 (${speechDuration}ms)，忽略")
+            // 检查语音时长是否足够（如果有检测到语音）
+            if (speechDetected) {
+                val speechDuration = System.currentTimeMillis() - speechStartTime
+                if (speechDuration < MIN_SPEECH_DURATION_MS) {
+                    Log.d(TAG, "语音时长太短 (${speechDuration}ms)，忽略")
+                    withContext(Dispatchers.Main) {
+                        eventListener?.invoke(InputEvent.None)
+                    }
+                    _uiState.value = SttState.Loaded
+                    return
+                }
+            }
+            
+            // 🔥 优化：优先使用未完成的语音段，避免重复识别已执行的命令
+            val audioData = if (speechDetected && speechStartTime > 0) {
+                // 有未完成的语音段，只识别这个语音段（避免包含已处理的音频）
+                val currentTimeMs = System.currentTimeMillis()
+                val speechStartTimeMs = speechStartTime - asrStartTime
+                val speechEndTimeMs = currentTimeMs - asrStartTime
+                
+                val segmentAudio = audioBuffer.getCurrentSpeechSegmentAudio(
+                    speechStartTimeMs = speechStartTimeMs,
+                    currentTimeMs = speechEndTimeMs
+                )
+                
+                if (segmentAudio.isNotEmpty()) {
+                    Log.d(TAG, "🚀 开始最终识别（10秒静音，未处理语音段），音频长度: ${segmentAudio.size}样本 (${String.format("%.2f", segmentAudio.size / SAMPLE_RATE.toFloat())}秒)")
+                    segmentAudio
+                } else {
+                    // 未处理语音段为空，检查是否有未处理的累积音频
+                    val accumulatedAudio = audioBuffer.getAccumulatedAudio()
+                    if (accumulatedAudio.isNotEmpty()) {
+                        Log.d(TAG, "🚀 开始最终识别（10秒静音，未处理累积音频），音频长度: ${accumulatedAudio.size}样本 (${String.format("%.2f", accumulatedAudio.size / SAMPLE_RATE.toFloat())}秒)")
+                        accumulatedAudio
+                    } else {
+                        Log.d(TAG, "⚠️ 没有未处理的音频，发送None事件")
+                        withContext(Dispatchers.Main) {
+                            eventListener?.invoke(InputEvent.None)
+                        }
+                        _uiState.value = SttState.Loaded
+                        return
+                    }
+                }
+            } else {
+                // 没有活动的语音段，使用未处理的累积音频
+                val accumulatedAudio = audioBuffer.getAccumulatedAudio()
+                if (accumulatedAudio.isEmpty()) {
+                    Log.d(TAG, "⚠️ 没有未处理的音频，发送None事件")
+                    withContext(Dispatchers.Main) {
+                        eventListener?.invoke(InputEvent.None)
+                    }
+                    _uiState.value = SttState.Loaded
+                    return
+                }
+                Log.d(TAG, "🚀 开始最终识别（10秒静音，未处理累积音频），音频长度: ${accumulatedAudio.size}样本 (${String.format("%.2f", accumulatedAudio.size / SAMPLE_RATE.toFloat())}秒)")
+                accumulatedAudio
+            }
+            
+            // 检查音频时长是否足够
+            val audioDurationSeconds = audioData.size / SAMPLE_RATE.toFloat()
+            if (audioDurationSeconds < MIN_SPEECH_DURATION_MS / 1000.0f) {
+                Log.d(TAG, "语音时长太短 (${String.format("%.2f", audioDurationSeconds)}秒)，忽略")
                 withContext(Dispatchers.Main) {
                     eventListener?.invoke(InputEvent.None)
                 }
                 _uiState.value = SttState.Loaded
                 return
             }
-            
-            val audioSamples = audioBuffer.getAccumulatedAudio().size
-            Log.d(TAG, "🚀 开始最终识别，音频长度: ${audioSamples}样本，语音时长: ${speechDuration}ms")
-            
-            // 使用AudioBuffer获取累积的音频数据
-            val audioData = audioBuffer.getAccumulatedAudio()
             
             // 🔥 使用互斥锁保护recognizer访问
             val finalText = recognizerMutex.withLock {
@@ -1275,7 +1547,10 @@ class SenseVoiceInputDevice private constructor(
                     Log.w(TAG, "⚠️ Recognizer不可用，跳过Final识别")
                     return
                 }
-                recognizer.recognize(audioData)
+                val recognizedText = recognizer.recognize(audioData)
+                // 🔥 添加详细的识别结果打印
+                Log.d(TAG, "🎤 [Final识别] 输入音频: ${audioData.size}样本 (${String.format("%.2f", audioData.size / SAMPLE_RATE.toFloat())}秒), 识别结果: \"$recognizedText\"")
+                recognizedText
             }
             
             DebugLogger.logRecognition(TAG, "最终识别结果: \"$finalText\"")
@@ -1289,8 +1564,20 @@ class SenseVoiceInputDevice private constructor(
             
             withContext(Dispatchers.Main) {
                 if (isMeaningful) {
-                    Log.d(TAG, "✅ 发送Final事件: \"$finalText\"")
+                    Log.d(TAG, "✅ 发送Final事件（10秒静音）: \"$finalText\"")
                     eventListener?.invoke(InputEvent.Final(listOf(Pair(finalText, 1.0f))))
+                    
+                    // 🔥 标记最终识别的音频已处理，避免重复识别
+                    if (speechDetected && speechStartTime > 0) {
+                        val speechStartTimeMs = speechStartTime - asrStartTime
+                        val speechEndTimeMs = System.currentTimeMillis() - asrStartTime
+                        markCurrentSpeechSegmentAsProcessed(speechStartTimeMs, speechEndTimeMs)
+                        Log.d(TAG, "✅ 已标记最终识别的语音段为已处理")
+                    } else {
+                        // 标记所有累积音频已处理
+                        audioBuffer.markAllAsProcessed()
+                        Log.d(TAG, "✅ 已标记所有累积音频为已处理")
+                    }
                 } else {
                     if (finalText.isNotBlank()) {
                         Log.d(TAG, "⏭️ 跳过无意义的最终结果: \"$finalText\"，发送None事件")
@@ -1298,6 +1585,9 @@ class SenseVoiceInputDevice private constructor(
                         Log.d(TAG, "⚠️ 识别结果为空，发送None事件")
                     }
                     eventListener?.invoke(InputEvent.None)
+                    
+                    // 即使无意义，也标记音频已处理，避免重复识别
+                    audioBuffer.markAllAsProcessed()
                 }
             }
             
@@ -1348,6 +1638,10 @@ class SenseVoiceInputDevice private constructor(
         stablePartialConfirmTime = 0L
         isWaitingForEarlyStop = false
         
+        // 🆕 重置命令触发相关状态
+        hasTriggeredCommand = false
+        commandTriggerTime = 0L
+        
         // 重置VAD状态
         try {
             vad?.reset()
@@ -1358,33 +1652,29 @@ class SenseVoiceInputDevice private constructor(
     
     /**
      * 停止录制音频
+     * 🔥 修复：改为同步清理，确保资源完全释放
      */
     private fun stopRecording() {
         if (!isRecording.get()) {
+            // 如果已经停止，确保资源已清理
+            if (recordingJob != null || vadJob != null || audioRecord != null) {
+                Log.d(TAG, "🔇 强制清理残留资源...")
+                cleanupAudioRecord()
+            }
             return
         }
         
         Log.d(TAG, "🔇 停止录制音频...")
         isRecording.set(false)
         
-        // 取消录制协程，但不立即清理（等待协程优雅退出）
+        // 🔥 立即取消所有协程
         recordingJob?.cancel()
+        vadJob?.cancel()
         
-        // 在协程中异步等待并清理
-        scope.launch {
-            try {
-                // 等待录制协程完成（最多500ms）
-                withTimeoutOrNull(500L) {
-                    recordingJob?.join()
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "等待录制协程退出异常: ${e.message}")
-            } finally {
-                recordingJob = null
-                cleanupAudioRecord()
-                Log.d(TAG, "✅ 录制资源已清理")
-            }
-        }
+        // 🔥 同步清理资源（不等待异步完成）
+        cleanupAudioRecord()
+        
+        Log.d(TAG, "✅ 录制资源已清理")
     }
     
     /**

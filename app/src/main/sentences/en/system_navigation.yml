@@ -139,4 +139,5 @@ wifi_connect:
   - setup wifi
   - configure wifi
   - wifi config
+  - settings
 

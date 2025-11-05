@@ -590,12 +590,12 @@ class WakeService : Service() {
             DebugLogger.logWakeWord(TAG, "🔄 Starting audio processing loop...")
             
             while (listening.get()) {
-                // 检查是否可以录音（TTS播放时暂停）
-                if (!AudioResourceManager.canRecord()) {
-                    // TTS正在播放，暂停唤醒词检测
-                    Thread.sleep(50)
-                    continue
-                }
+                    // 🆕 移除：不再检查TTS播放状态，允许TTS播放时也继续唤醒词检测
+                    // if (!AudioResourceManager.canRecord()) {
+                    //     // TTS正在播放，暂停唤醒词检测
+                    //     Thread.sleep(50)
+                    //     continue
+                    // }
                 
                 // 检查是否需要暂停AudioRecord以让ASR使用
                 if (audioRecordPaused.get()) {

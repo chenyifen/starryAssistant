@@ -52,7 +52,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         private const val BATCH_SIZE = 1
         
         // 检测阈值 - V31模型优化 (提高阈值以减少噪声和TTS误报)
-        private const val DETECTION_THRESHOLD = 0.65f
+        private const val DETECTION_THRESHOLD = 0.75f
     }
 
     private val _state: MutableStateFlow<WakeState>
@@ -89,7 +89,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     private var lastDetectionTime = 0L
     private val minAudioEnergy = 5e-5f  // 提高最小音频能量阈值(避免TTS回声)
     private val consecutiveThreshold = 3  // 提高连续检测次数
-    private val minDetectionInterval = 3000L  // 两次检测之间的最小间隔(ms)
+    private val minDetectionInterval = 1000L  // 两次检测之间的最小间隔(ms)
 
     init {
         DebugLogger.logWakeWord(TAG, "=".repeat(60))

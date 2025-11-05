@@ -233,6 +233,23 @@ class SpeechOutputDeviceWrapper @Inject constructor(
         Log.w(TAG, "Unexpected call to SpeechOutputDeviceWrapper.cleanup()")
     }
 
+    /**
+     * 🆕 设置ASR识别的语言
+     * 
+     * 当ASR识别出用户输入后，调用此方法设置识别语言
+     * 后续的TTS回复将优先使用该语言
+     * 
+     * @param locale ASR识别的语言，如果为null则清除设置
+     */
+    fun setAsrLocale(locale: java.util.Locale?) {
+        val device = wrappedSpeechDevice
+        if (device is LanguageDetectingSpeechDevice) {
+            device.setAsrLocale(locale)
+        } else {
+            Log.d(TAG, "⚠️ 当前TTS设备不是LanguageDetectingSpeechDevice，无法设置ASR语言")
+        }
+    }
+
     companion object {
         val TAG: String = SpeechOutputDeviceWrapper::class.simpleName!!
     }

@@ -76,15 +76,15 @@ object VadModelManager {
             }
             
             // 优先级2：检查models/vad/silero_vad.onnx
-            try {
-                context.assets.open("$ASSETS_VAD_PATH/$VAD_MODEL_FILE").use {
-                    Log.d(TAG, "✅ 使用Assets中的VAD模型: $ASSETS_VAD_PATH/$VAD_MODEL_FILE")
-                    return VadModelPaths(
-                        modelPath = "$ASSETS_VAD_PATH/$VAD_MODEL_FILE",
-                        isFromAssets = true
-                    )
-                }
-            } catch (e: Exception) {
+                try {
+                    context.assets.open("$ASSETS_VAD_PATH/$VAD_MODEL_FILE").use {
+                        Log.d(TAG, "✅ 使用Assets中的VAD模型: $ASSETS_VAD_PATH/$VAD_MODEL_FILE")
+                        return VadModelPaths(
+                            modelPath = "$ASSETS_VAD_PATH/$VAD_MODEL_FILE",
+                            isFromAssets = true
+                        )
+                    }
+                } catch (e: Exception) {
                 Log.d(TAG, "Assets/${ASSETS_VAD_PATH}下未找到VAD模型，尝试外部存储")
             }
             
