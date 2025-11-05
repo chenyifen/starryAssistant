@@ -23,6 +23,10 @@ import com.ai.voice.skills.device_control.BaseDeviceControlSkill
  * - highlight_pen: 切换到荧光笔
  * - fountain_pen: 切换到钢笔
  * - brush_pen: 切换到毛笔
+ * - add_page: 添加页面
+ * - delete_page: 删除当前页
+ * - next_page: 下一页
+ * - previous_page: 上一页
  */
 class WhiteboardToolsSkill(
     correspondingSkillInfo: SkillInfo,
@@ -47,6 +51,10 @@ class WhiteboardToolsSkill(
             is WhiteboardTools.HighlightPen -> baseSkill.executeHighlightPen(ctx)
             is WhiteboardTools.FountainPen -> baseSkill.executeFountainPen(ctx)
             is WhiteboardTools.BrushPen -> baseSkill.executeBrushPen(ctx)
+            is WhiteboardTools.AddPage -> baseSkill.executeAddPage(ctx)
+            is WhiteboardTools.DeletePage -> baseSkill.executeDeletePage(ctx)
+            is WhiteboardTools.NextPage -> baseSkill.executeNextPage(ctx)
+            is WhiteboardTools.PreviousPage -> baseSkill.executePreviousPage(ctx)
         }
     }
 }

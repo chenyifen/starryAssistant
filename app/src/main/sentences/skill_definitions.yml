@@ -46,6 +46,10 @@ skills:
       - id: highlight_pen
       - id: fountain_pen
       - id: brush_pen
+      - id: add_page
+      - id: delete_page
+      - id: next_page
+      - id: previous_page
 
   - id: system_navigation
     specificity: high
