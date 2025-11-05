@@ -49,6 +49,19 @@ class SkillEvaluatorImpl(
 
     private val skillRanker: SkillRanker
         get() = skillHandler.skillRanker.value
+    
+    /**
+     * 清理ASR识别文本，去除空格、标点等，提高技能匹配准确性
+     */
+    private fun cleanTextForSkillMatching(text: String): String {
+        return text.trim()
+            // 移除多个连续空格
+            .replace(Regex("\\s+"), " ")
+            // 移除常见的标点符号（保留韩文、中文、英文的基本字符）
+            .replace(Regex("[.,。，!！?？;；:：]"), "")
+            // 移除前后空格
+            .trim()
+    }
 
     private val _state = MutableStateFlow(
         InteractionLog(
@@ -106,9 +119,13 @@ class SkillEvaluatorImpl(
                     return
                 }
                 
+                // 🔥 清理文本：去除空格、标点等，提高技能匹配准确性
+                val cleanedUtterance = cleanTextForSkillMatching(firstUtterance)
+                Log.d(TAG, "🧹 文本清理: '$firstUtterance' -> '$cleanedUtterance'")
+                
                 // 🆕 检测ASR语言并设置到SkillContext（必须在技能执行前设置）
-                if (firstUtterance.isNotBlank()) {
-                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(firstUtterance, java.util.Locale.KOREAN)
+                if (cleanedUtterance.isNotBlank()) {
+                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(cleanedUtterance, java.util.Locale.KOREAN)
                     Log.d(TAG, "🎤 [Final] ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
                     skillContext.asrLocale = asrLocale
                 } else {
@@ -116,7 +133,7 @@ class SkillEvaluatorImpl(
                 }
                 
                 // 自动化测试：打印识别结果
-                Log.i("AutoTest", "ASR结果: $firstUtterance")
+                Log.i("AutoTest", "ASR结果: $cleanedUtterance")
                 
                 // 🆕 检查Partial是否已执行，以及Final文本是否与Partial不同
                 val (shouldSkip, partialText, partialSkillId) = partialExecutionMutex.withLock {
@@ -131,13 +148,13 @@ class SkillEvaluatorImpl(
                 
                 // 🆕 如果Partial已执行，检查Final文本是否与Partial不同
                 if (shouldSkip && partialText.isNotBlank()) {
-                    // 计算文本相似度（简单比较）
-                    val textsSimilar = firstUtterance.lowercase().contains(partialText.lowercase()) ||
-                                      partialText.lowercase().contains(firstUtterance.lowercase()) ||
-                                      firstUtterance.lowercase() == partialText.lowercase()
+                    // partialText已经是清理后的文本，直接比较
+                    val textsSimilar = cleanedUtterance.lowercase().contains(partialText.lowercase()) ||
+                                      partialText.lowercase().contains(cleanedUtterance.lowercase()) ||
+                                      cleanedUtterance.lowercase() == partialText.lowercase()
                     
                     if (textsSimilar) {
-                        Log.i(TAG, "⏭️ [Final] Partial已执行技能，Final文本与Partial相似，跳过重复执行 (Partial: '$partialText', Final: '$firstUtterance')")
+                        Log.i(TAG, "⏭️ [Final] Partial已执行技能，Final文本与Partial相似，跳过重复执行 (Partial: '$partialText', Final: '$cleanedUtterance')")
                         _state.value = _state.value.copy(pendingQuestion = null)
                         // 重置记录
                         partialExecutionMutex.withLock {
@@ -147,7 +164,7 @@ class SkillEvaluatorImpl(
                         return
                     } else {
                         // 🆕 Final文本与Partial不同，需要重新匹配和执行
-                        Log.i(TAG, "🔄 [Final] Partial已执行，但Final文本与Partial不同，重新匹配技能 (Partial: '$partialText' -> $partialSkillId, Final: '$firstUtterance')")
+                        Log.i(TAG, "🔄 [Final] Partial已执行，但Final文本与Partial不同，重新匹配技能 (Partial: '$partialText' -> $partialSkillId, Final: '$cleanedUtterance')")
                         // 继续执行，重新匹配Final阶段的技能
                     }
                 } else if (shouldSkip) {
@@ -159,7 +176,7 @@ class SkillEvaluatorImpl(
                 val updateStateStart = System.currentTimeMillis()
                 _state.value = _state.value.copy(
                     pendingQuestion = PendingQuestion(
-                        userInput = firstUtterance,
+                        userInput = firstUtterance, // UI显示原始文本
                         continuesLastInteraction = skillRanker.hasAnyBatches(),
                         skillBeingEvaluated = null,
                     )
@@ -167,7 +184,8 @@ class SkillEvaluatorImpl(
                 val updateStateTime = System.currentTimeMillis() - updateStateStart
                 Log.d(TAG, "⏱️ [性能] 状态更新耗时: ${updateStateTime}ms")
                 
-                evaluateMatchingSkill(utterances)
+                // 🔥 使用清理后的文本进行技能匹配
+                evaluateMatchingSkill(listOf(cleanedUtterance))
                 
                 val totalTime = System.currentTimeMillis() - startTime
                 Log.d(TAG, "⏱️ [性能] processInputEvent总耗时: ${totalTime}ms")
@@ -185,21 +203,24 @@ class SkillEvaluatorImpl(
             is InputEvent.Partial -> {
                 val utterance = event.utterance.trim()
                 
+                // 🔥 清理文本：去除空格、标点等，提高技能匹配准确性
+                val cleanedUtterance = cleanTextForSkillMatching(utterance)
+                
                 // 更新pending状态
                 _state.value = _state.value.copy(
                     pendingQuestion = PendingQuestion(
-                        userInput = utterance,
+                        userInput = utterance, // UI显示原始文本
                         continuesLastInteraction = skillRanker.hasAnyBatches(),
                         skillBeingEvaluated = null,
                     )
                 )
                 
                 // 🆕 Partial识别优化：尝试匹配技能
-                if (utterance.isNotEmpty()) {
-                    Log.d(TAG, "🔍 [Partial] 尝试匹配技能: '$utterance'")
+                if (cleanedUtterance.isNotEmpty()) {
+                    Log.d(TAG, "🔍 [Partial] 尝试匹配技能: '$cleanedUtterance'")
                     
                     try {
-                        val result = skillRanker.getBest(skillContext, utterance)
+                        val result = skillRanker.getBest(skillContext, cleanedUtterance)
                         
                         if (result != null) {
                             val score = result.score.scoreIn01Range()
@@ -221,19 +242,19 @@ class SkillEvaluatorImpl(
                                 
                                 if (shouldExecute) {
                                     // 🆕 检测ASR语言并设置到SkillContext（必须在技能执行前设置）
-                                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(utterance, java.util.Locale.KOREAN)
+                                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(cleanedUtterance, java.util.Locale.KOREAN)
                                     Log.d(TAG, "🎤 [Partial] ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
                                     skillContext.asrLocale = asrLocale
                                     
                                     // 🔥 修复：使用预匹配的技能，禁止fallback
                                     evaluateMatchingSkill(
-                                        utterances = listOf(utterance),
+                                        utterances = listOf(cleanedUtterance), // 🔥 使用清理后的文本
                                         preMatchedSkill = result,
                                         allowFallback = false
                                     )
-                                    // 🆕 记录Partial阶段执行的文本和技能ID
+                                    // 🆕 记录Partial阶段执行的文本和技能ID（保存清理后的文本用于后续比较）
                                     partialExecutionMutex.withLock {
-                                        partialExecutedText = utterance
+                                        partialExecutedText = cleanedUtterance
                                         partialExecutedSkillId = result.skill.correspondingSkillInfo.id
                                     }
                                 } else {
@@ -267,14 +288,17 @@ class SkillEvaluatorImpl(
     ) {
         val evalStartTime = System.currentTimeMillis()
         
+        // 🔥 清理所有utterances，确保技能匹配使用清理后的文本
+        val cleanedUtterances = utterances.map { cleanTextForSkillMatching(it) }
+        
         val (chosenInput, chosenSkill) = try {
             // 🔥 如果提供了预匹配技能，直接使用，避免重复评估
             if (preMatchedSkill != null) {
                 Log.d(TAG, "🎯 使用预匹配技能: ${preMatchedSkill.skill.correspondingSkillInfo.id}, 评分: ${preMatchedSkill.score.scoreIn01Range()}")
-                Pair(utterances[0], preMatchedSkill)
+                Pair(cleanedUtterances[0], preMatchedSkill)
             } else {
                 // 原有逻辑：尝试匹配技能
-                utterances.firstNotNullOfOrNull { input: String ->
+                cleanedUtterances.firstNotNullOfOrNull { input: String ->
                     val inputRankStart = System.currentTimeMillis()
                     Log.d(TAG, "🔍 尝试匹配输入: '$input'")
                     val result = skillRanker.getBest(skillContext, input)
@@ -289,7 +313,7 @@ class SkillEvaluatorImpl(
                     // 🔥 只有允许fallback时才使用fallback技能
                     if (allowFallback) {
                         Log.d(TAG, "⚠️ 无匹配技能，使用fallback")
-                        Pair(utterances[0], skillRanker.getFallbackSkill(skillContext, utterances[0]))
+                        Pair(cleanedUtterances[0], skillRanker.getFallbackSkill(skillContext, cleanedUtterances[0]))
                     } else {
                         Log.d(TAG, "❌ [Partial] 无匹配技能且禁止fallback，跳过执行")
                         return
@@ -372,9 +396,12 @@ class SkillEvaluatorImpl(
             }
 
             if (interactionPlan.reopenMicrophone) {
-                skillContext.speechOutputDevice.runWhenFinishedSpeaking {
-                    sttInputDevice.tryLoad(this::processInputEvent)
-                }
+                // 🔧 已禁用：不再使用 sttInputDevice，ASR 现在由 EnhancedFloatingWindowService 通过 AsrHandler 管理
+                // 如果需要重新打开麦克风，应该通知 EnhancedFloatingWindowService 重新启动 AsrHandler
+                // skillContext.speechOutputDevice.runWhenFinishedSpeaking {
+                //     sttInputDevice.tryLoad(this::processInputEvent)
+                // }
+                Log.d(TAG, "⏭️ 跳过自动重新打开麦克风（已改用 AsrHandler，由 EnhancedFloatingWindowService 管理）")
             }
 
         } catch (throwable: Throwable) {
