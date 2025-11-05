@@ -149,6 +149,9 @@ class EnhancedFloatingWindowService : Service(),
         // 监听设置变化
         observeSettings()
         
+        // 监听技能评估结果，匹配到技能后停止ASR并设置orb为idle
+        observeSkillEvaluation()
+        
         // 设置 AsrHandler Final识别结果回调，用于触发技能识别
         AsrHandler.setFinalResultCallback { finalText ->
             if (finalText.isNotBlank()) {
@@ -425,6 +428,40 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     // handleSkillEvaluatorState 方法已移除，现在完全由VoiceAssistantStateProvider统一处理
+    
+    /**
+     * 监听技能评估结果，匹配到技能后停止ASR并设置orb为idle
+     */
+    private fun observeSkillEvaluation() {
+        serviceScope.launch {
+            try {
+                skillEvaluator.state.collect { interactionLog ->
+                    val lastInteraction = interactionLog.interactions.lastOrNull()
+                    val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
+                    
+                    if (lastAnswer != null) {
+                        val skillInfo = lastInteraction?.skill
+                        val isFallbackSkill = skillInfo?.id == "text"
+                        
+                        // 如果匹配到具体技能（不是fallback），停止ASR并设置orb为idle
+                        if (!isFallbackSkill) {
+                            DebugLogger.logUI(TAG, "✅ 匹配到技能 (${skillInfo?.id})，停止ASR并设置orb为idle")
+                            
+                            // 停止 AsrHandler
+                            AsrHandler.stop(this@EnhancedFloatingWindowService)
+                            
+                            // 更新UI状态为IDLE并清空ASR和TTS文本
+                            voiceAssistantStateProvider.updateUIState(VoiceAssistantUIState.IDLE)
+                            voiceAssistantStateProvider.setASRText("")
+                            voiceAssistantStateProvider.setTTSText("")
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                DebugLogger.logUI(TAG, "❌ Skill evaluation observation failed: ${e.message}")
+            }
+        }
+    }
     
     /**
      * 监听设置变化

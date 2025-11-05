@@ -35,10 +35,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行关机命令")
             ScreenHelper.getInstance().turnOffPower()
-            return StringOutput("正在关闭电源")
+            val response = getLocalizedResponse(ctx, "전원을 끄는 중입니다", "Turning off power")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "关机失败", e)
-            return StringOutput("关机失败")
+            val errorResponse = getLocalizedResponse(ctx, "전원 끄기 실패", "Failed to turn off power")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -46,10 +48,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行开机命令")
             ScreenHelper.getInstance().turnOnPower()
-            return StringOutput("正在开启电源")
+            val response = getLocalizedResponse(ctx, "전원을 켜는 중입니다", "Turning on power")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "开机失败", e)
-            return StringOutput("开机失败")
+            val errorResponse = getLocalizedResponse(ctx, "전원 켜기 실패", "Failed to turn on power")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -57,10 +61,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行音量增加命令")
             AudioHelper.getInstance().volumeUp()
-            return StringOutput("音量已增加")
+            val response = getLocalizedResponse(ctx, "볼륨이 증가했습니다", "Volume increased")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "音量增加失败", e)
-            return StringOutput("音量增加失败")
+            val errorResponse = getLocalizedResponse(ctx, "볼륨 증가 실패", "Failed to increase volume")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -68,10 +74,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行音量减小命令")
             AudioHelper.getInstance().volumeDown()
-            return StringOutput("音量已减小")
+            val response = getLocalizedResponse(ctx, "볼륨이 감소했습니다", "Volume decreased")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "音量减小失败", e)
-            return StringOutput("音量减小失败")
+            val errorResponse = getLocalizedResponse(ctx, "볼륨 감소 실패", "Failed to decrease volume")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -79,10 +87,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行静音命令")
             AudioHelper.getInstance().changeMuteStatus()
-            return StringOutput("已静音")
+            val response = getLocalizedResponse(ctx, "음소거되었습니다", "Muted")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "静音失败", e)
-            return StringOutput("静音失败")
+            val errorResponse = getLocalizedResponse(ctx, "음소거 실패", "Failed to mute")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -92,10 +102,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "打开输入源选择")
             SystemHelper.getInstance().openInputSourceWindow(ctx.android)
-            return StringOutput("正在打开输入源选择")
+            val response = getLocalizedResponse(ctx, "입력 소스 선택을 여는 중입니다", "Opening input source selection")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开输入源选择失败", e)
-            return StringOutput("打开输入源选择失败")
+            val errorResponse = getLocalizedResponse(ctx, "입력 소스 선택 열기 실패", "Failed to open input source selection")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -103,10 +115,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 HDMI 1")
             SourceHelper.getInstance().switchToHDMI1()
-            return StringOutput("正在切换到 HDMI 1")
+            val response = getLocalizedResponse(ctx, "HDMI 1로 전환 중입니다", "Switching to HDMI 1")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
-            return StringOutput("切换失败")
+            val errorResponse = getLocalizedResponse(ctx, "전환 실패", "Failed to switch")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -114,10 +128,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 HDMI 2")
             SourceHelper.getInstance().switchToHDMI2()
-            return StringOutput("正在切换到 HDMI 2")
+            val response = getLocalizedResponse(ctx, "HDMI 2로 전환 중입니다", "Switching to HDMI 2")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
-            return StringOutput("切换失败")
+            val errorResponse = getLocalizedResponse(ctx, "전환 실패", "Failed to switch")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -125,10 +141,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 DP 端口")
             SourceHelper.getInstance().switchToDP()
-            return StringOutput("正在切换到 DP 端口")
+            val response = getLocalizedResponse(ctx, "DP 포트로 전환 중입니다", "Switching to DP port")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
-            return StringOutput("切换失败")
+            val errorResponse = getLocalizedResponse(ctx, "전환 실패", "Failed to switch")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -136,10 +154,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到前面板 HDMI")
             SourceHelper.getInstance().switchToFrontHDMI()
-            return StringOutput("正在切换到前面板 HDMI")
+            val response = getLocalizedResponse(ctx, "전면 패널 HDMI로 전환 중입니다", "Switching to front panel HDMI")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
-            return StringOutput("切换失败")
+            val errorResponse = getLocalizedResponse(ctx, "전환 실패", "Failed to switch")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -147,10 +167,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到前面板 USB-C")
             SourceHelper.getInstance().switchToFrontUSBC()
-            return StringOutput("正在切换到前面板 USB-C")
+            val response = getLocalizedResponse(ctx, "전면 패널 USB-C로 전환 중입니다", "Switching to front panel USB-C")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
-            return StringOutput("切换失败")
+            val errorResponse = getLocalizedResponse(ctx, "전환 실패", "Failed to switch")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -158,10 +180,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 OPS")
             SourceHelper.getInstance().switchToOPS()
-            return StringOutput("正在切换到 OPS")
+            val response = getLocalizedResponse(ctx, "OPS로 전환 중입니다", "Switching to OPS")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
-            return StringOutput("切换失败")
+            val errorResponse = getLocalizedResponse(ctx, "전환 실패", "Failed to switch")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -170,90 +194,108 @@ abstract class BaseDeviceControlSkill {
     fun executeGoogle(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().gotoGoogle(ctx.android)
-            return StringOutput("正在打开Google")
+            val response = getLocalizedResponse(ctx, "Google을 여는 중입니다", "Opening Google")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开Google失败", e)
-            return StringOutput("打开Google失败")
+            val errorResponse = getLocalizedResponse(ctx, "Google 열기 실패", "Failed to open Google")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeBrowser(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openBrowser(ctx.android)
-            return StringOutput("正在打开浏览器")
+            val response = getLocalizedResponse(ctx, "브라우저를 여는 중입니다", "Opening browser")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开浏览器失败", e)
-            return StringOutput("打开浏览器失败")
+            val errorResponse = getLocalizedResponse(ctx, "브라우저 열기 실패", "Failed to open browser")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executePlayStore(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openPlayStore(ctx.android)
-            return StringOutput("正在打开Play商店")
+            val response = getLocalizedResponse(ctx, "Play 스토어를 여는 중입니다", "Opening Play Store")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开Play商店失败", e)
-            return StringOutput("打开Play商店失败")
+            val errorResponse = getLocalizedResponse(ctx, "Play 스토어 열기 실패", "Failed to open Play Store")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeYoutube(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openYoutube(ctx.android)
-            return StringOutput("正在打开YouTube")
+            val response = getLocalizedResponse(ctx, "YouTube를 여는 중입니다", "Opening YouTube")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开YouTube失败", e)
-            return StringOutput("打开YouTube失败")
+            val errorResponse = getLocalizedResponse(ctx, "YouTube 열기 실패", "Failed to open YouTube")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeSettings(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openSettings(ctx.android)
-            return StringOutput("正在打开设置")
+            val response = getLocalizedResponse(ctx, "설정을 여는 중입니다", "Opening settings")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开设置失败", e)
-            return StringOutput("打开设置失败")
+            val errorResponse = getLocalizedResponse(ctx, "설정 열기 실패", "Failed to open settings")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeCamera(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openCamera(ctx.android)
-            return StringOutput("正在打开相机")
+            val response = getLocalizedResponse(ctx, "카메라를 여는 중입니다", "Opening camera")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开相机失败", e)
-            return StringOutput("打开相机失败")
+            val errorResponse = getLocalizedResponse(ctx, "카메라 열기 실패", "Failed to open camera")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeRecorder(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openRecorder(ctx.android)
-            return StringOutput("正在打开录音机")
+            val response = getLocalizedResponse(ctx, "녹음기를 여는 중입니다", "Opening recorder")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开录音机失败", e)
-            return StringOutput("打开录音机失败")
+            val errorResponse = getLocalizedResponse(ctx, "녹음기 열기 실패", "Failed to open recorder")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeEshare(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openEShare(ctx.android)
-            return StringOutput("正在打开E-Share")
+            val response = getLocalizedResponse(ctx, "E-Share를 여는 중입니다", "Opening E-Share")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开E-Share失败", e)
-            return StringOutput("打开E-Share失败")
+            val errorResponse = getLocalizedResponse(ctx, "E-Share 열기 실패", "Failed to open E-Share")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeFinder(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openFinder(ctx.android)
-            return StringOutput("正在打开文件管理器")
+            val response = getLocalizedResponse(ctx, "파일 관리자를 여는 중입니다", "Opening file manager")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开文件管理器失败", e)
-            return StringOutput("打开文件管理器失败")
+            val errorResponse = getLocalizedResponse(ctx, "파일 관리자 열기 실패", "Failed to open file manager")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -398,10 +440,12 @@ abstract class BaseDeviceControlSkill {
             intent.setPackage(ctx.android.packageName)
             ctx.android.sendBroadcast(intent)
             Log.d(TAG, "发送广播: $command")
-            return StringOutput("正在执行: $command")
+            val response = getLocalizedResponse(ctx, "명령 실행 중: $command", "Executing: $command")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "发送广播失败: $command", e)
-            return StringOutput("执行失败")
+            val errorResponse = getLocalizedResponse(ctx, "실행 실패", "Execution failed")
+            return StringOutput(errorResponse)
         }
     }
 
