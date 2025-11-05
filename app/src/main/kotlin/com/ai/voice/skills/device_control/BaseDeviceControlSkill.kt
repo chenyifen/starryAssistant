@@ -4,6 +4,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
@@ -327,12 +329,12 @@ abstract class BaseDeviceControlSkill {
             }
             ctx.android.startActivity(intent)
             val response = getLocalizedResponse(ctx, "화이트보드를 여는 중입니다", "Opening whiteboard")
-            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            showToastSafe(ctx.android, response)
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开白板失败", e)
             val errorResponse = getLocalizedResponse(ctx, "화이트보드 열기 실패", "Failed to open whiteboard")
-            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            showToastSafe(ctx.android, errorResponse)
             return StringOutput(errorResponse)
         }
     }
@@ -348,12 +350,12 @@ abstract class BaseDeviceControlSkill {
             }
             ctx.android.sendBroadcast(intent)
             val response = getLocalizedResponse(ctx, "화이트보드를 종료하는 중입니다", "Closing whiteboard")
-            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            showToastSafe(ctx.android, response)
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "退出白板失败", e)
             val errorResponse = getLocalizedResponse(ctx, "화이트보드 종료 실패", "Failed to close whiteboard")
-            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            showToastSafe(ctx.android, errorResponse)
             return StringOutput(errorResponse)
         }
     }
@@ -371,13 +373,38 @@ abstract class BaseDeviceControlSkill {
             ctx.android.sendBroadcast(intent)
             
             val response = getLocalizedResponse(ctx, koreanMsg, englishMsg)
-            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            // 确保在主线程显示 Toast，避免 BinderProxy 错误
+            showToastSafe(ctx.android, response)
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "发送白板控制广播失败: id=$id", e)
             val errorResponse = getLocalizedResponse(ctx, koreanError, englishError)
-            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            // 确保在主线程显示 Toast，避免 BinderProxy 错误
+            showToastSafe(ctx.android, errorResponse)
             return StringOutput(errorResponse)
+        }
+    }
+    
+    /**
+     * 安全地在主线程显示 Toast（避免 BinderProxy 错误）
+     */
+    private fun showToastSafe(context: Context, message: String) {
+        try {
+            if (Looper.myLooper() == Looper.getMainLooper()) {
+                // 已经在主线程
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            } else {
+                // 在后台线程，切换到主线程
+                Handler(Looper.getMainLooper()).post {
+                    try {
+                        Toast.makeText(context.applicationContext, message, Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "显示 Toast 失败", e)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "显示 Toast 失败", e)
         }
     }
 
@@ -547,8 +574,8 @@ abstract class BaseDeviceControlSkill {
             
             val response = getLocalizedResponse(ctx, "명령 실행 중: $command", "Executing: $command")
             
-            // 🆕 显示Toast提示
-            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            // 🆕 显示Toast提示（安全地显示，避免 BinderProxy 错误）
+            showToastSafe(ctx.android, response)
             
             return StringOutput(response)
         } catch (e: Exception) {
