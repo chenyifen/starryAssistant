@@ -89,15 +89,28 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = "android123"
+            keyAlias = "release"
+            keyPassword = "android123"
+        }
+    }
+
     buildTypes {
         debug {
             // 固定包名和应用名，不添加分支后缀
             resValue("string", "app_name", "VoiceAssistant")
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = false  // 暂时禁用资源压缩，避免模型文件压缩问题
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
             resValue("string", "app_name", "VoiceAssistant")
+            isDebuggable = false
+            isZipAlignEnabled = true
         }
     }
 
