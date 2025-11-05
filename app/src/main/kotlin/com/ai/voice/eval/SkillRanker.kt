@@ -158,15 +158,15 @@ class SkillRanker(
         
         // various thresholds for different specificity categories (high, medium and low)
         // first round
-        private const val HIGH_THRESHOLD_1 = 0.85f
+        private const val HIGH_THRESHOLD_1 = 0.8f
 
         // second round
-        private const val MEDIUM_THRESHOLD_2 = 0.90f
-        private const val HIGH_THRESHOLD_2 = 0.80f
+        private const val MEDIUM_THRESHOLD_2 = 0.80f
+        private const val HIGH_THRESHOLD_2 = 0.60f
 
         // third round
-        private const val LOW_THRESHOLD_3 = 0.90f
-        private const val MEDIUM_THRESHOLD_3 = 0.80f
-        private const val HIGH_THRESHOLD_3 = 0.70f
+        private const val LOW_THRESHOLD_3 = 0.80f
+        private const val MEDIUM_THRESHOLD_3 = 0.60f
+        private const val HIGH_THRESHOLD_3 = 0.50f
     }
 }
