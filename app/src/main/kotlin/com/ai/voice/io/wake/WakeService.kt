@@ -8,6 +8,8 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.media.AudioAttributes
@@ -39,14 +41,12 @@ import kotlinx.coroutines.runBlocking
 import com.ai.voice.MainActivity
 import com.ai.voice.MainActivity.Companion.ACTION_WAKE_WORD
 import com.ai.voice.R
-import com.ai.voice.di.SttInputDeviceWrapper
 import com.ai.voice.di.WakeDeviceWrapper
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.settings.datastore.UserSettings
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AudioDebugSaver
 import com.ai.voice.io.wake.WakeWordCallbackManager
-import com.ai.voice.io.AudioResourceManager
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -59,9 +59,8 @@ class WakeService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + job)
 
     private val listening = AtomicBoolean(false)
-    private val audioRecordPaused = AtomicBoolean(false) // 用于暂停AudioRecord以避免与ASR冲突
+    private val audioRecordPaused = AtomicBoolean(false) // 🔧 已废弃：不再使用，改用 AsrHandler.isStarted() 检查
     private var currentAudioRecord: AudioRecord? = null // 当前的AudioRecord实例
-    // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
     
     // 音频焦点管理（Android 15+ 必需）
     private var audioManager: AudioManager? = null
@@ -70,8 +69,7 @@ class WakeService : Service() {
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
-    @Inject
-    lateinit var sttInputDevice: SttInputDeviceWrapper
+    // @Inject lateinit var sttInputDevice: SttInputDeviceWrapper // 🔧 已禁用：不再使用，改用 AsrHandler
     @Inject
     lateinit var wakeDevice: WakeDeviceWrapper
     @Inject
@@ -81,14 +79,18 @@ class WakeService : Service() {
 
     private val handler = Handler(Looper.getMainLooper())
     private val releaseSttResourcesRunnable = Runnable {
-        if (MainActivity.isCreated <= 0) {
-            // if the main activity is neither visible nor in the background,
-            // then unload the STT after a while because it would be using resources uselessly
-            sttInputDevice.reinitializeToReleaseResources()
-        }
+        // 🔧 已禁用：不再使用 sttInputDevice，改用 AsrHandler
+        // if (MainActivity.isCreated <= 0) {
+        //     // if the main activity is neither visible nor in the background,
+        //     // then unload the STT after a while because it would be using resources uselessly
+        //     sttInputDevice.reinitializeToReleaseResources()
+        // }
     }
 
     private lateinit var notificationManager: NotificationManager
+    
+    // 🔧 临时调试：广播接收器，用于模拟唤醒词检测
+    private var debugWakeReceiver: BroadcastReceiver? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -112,12 +114,15 @@ class WakeService : Service() {
             }
         }
         
-        // TTS状态通过AudioResourceManager.canRecord()自动处理，无需监听器
+        // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
         
         // 启动时清理旧的音频调试文件
         if (DebugLogger.isAudioSaveEnabled()) {
             AudioDebugSaver.cleanupOldAudioFiles(this, 50)
         }
+        
+        // 🔧 临时调试：注册广播接收器，用于模拟唤醒词检测
+        registerDebugWakeReceiver()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -222,6 +227,9 @@ class WakeService : Service() {
     override fun onDestroy() {
         listening.set(false)
         
+        // 🔧 临时调试：注销广播接收器
+        unregisterDebugWakeReceiver()
+        
         // 通知回调：停止监听
         WakeWordCallbackManager.notifyListeningStopped()
         
@@ -231,17 +239,7 @@ class WakeService : Service() {
         // 释放音频焦点（Android 15+ 必需）
         releaseAudioFocus()
         
-        // 释放麦克风资源
-        scope.launch {
-            try {
-                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
-                DebugLogger.logWakeWord(TAG, "✅ 已释放麦克风资源")
-            } catch (e: Exception) {
-                DebugLogger.logWakeWordError(TAG, "❌ 释放麦克风资源失败", e)
-            }
-        }
-        
-        // TTS状态通过canRecord()自动处理，无需监听器
+        // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
         
         job.cancel()
         wakeDevice.reinitializeToReleaseResources()
@@ -516,17 +514,8 @@ class WakeService : Service() {
         DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
         DebugLogger.logWakeWord(TAG, "🔊 Wake word type: ${if (wakeDevice.isHeyDicio.value) "Hey Dicio" else "Custom"}")
         
-        // 请求麦克风资源
-        val granted = runBlocking {
-            AudioResourceManager.requestMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
-        }
-        
-        if (!granted) {
-            DebugLogger.logWakeWordError(TAG, "❌ 麦克风资源请求被拒绝")
-            return
-        }
-        
-        DebugLogger.logWakeWord(TAG, "✅ 成功获取麦克风资源")
+        // 🔧 不再使用 AudioResourceManager，直接创建 AudioRecord
+        // WakeService 通过检查 AsrHandler.isStarted() 来决定是否继续监听
         
         // 等待模型加载完成，最多等待30秒
         var waitCount = 0
@@ -590,32 +579,36 @@ class WakeService : Service() {
             DebugLogger.logWakeWord(TAG, "🔄 Starting audio processing loop...")
             
             while (listening.get()) {
-                    // 🆕 移除：不再检查TTS播放状态，允许TTS播放时也继续唤醒词检测
-                    // if (!AudioResourceManager.canRecord()) {
-                    //     // TTS正在播放，暂停唤醒词检测
-                    //     Thread.sleep(50)
-                    //     continue
-                    // }
-                
-                // 检查是否需要暂停AudioRecord以让ASR使用
-                if (audioRecordPaused.get()) {
-                    DebugLogger.logWakeWord(TAG, "⏸️ AudioRecord paused for ASR, waiting...")
-                    while (audioRecordPaused.get() && listening.get()) {
-                        Thread.sleep(50) // 短暂等待
+                // 🔧 检查 AsrHandler 是否正在运行，如果正在运行则暂停监听
+                // 使用 AsrHandler.isStarted() 的取反值来决定是否继续监听
+                if (com.ai.voice.util.AsrHandler.isStarted()) {
+                    DebugLogger.logWakeWord(TAG, "⏸️ AsrHandler 正在运行，暂停唤醒词检测...")
+                    // 暂停 AudioRecord
+                    if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                        try {
+                            ar.stop()
+                            DebugLogger.logWakeWord(TAG, "🛑 AudioRecord stopped for AsrHandler")
+                        } catch (e: Exception) {
+                            DebugLogger.logWakeWordError(TAG, "❌ Failed to stop AudioRecord for AsrHandler", e)
+                        }
+                    }
+                    // 等待 AsrHandler 停止
+                    while (com.ai.voice.util.AsrHandler.isStarted() && listening.get()) {
+                        Thread.sleep(100) // 每100ms检查一次
                     }
                     if (!listening.get()) {
-                        DebugLogger.logWakeWord(TAG, "🛑 Listening stopped while paused")
+                        DebugLogger.logWakeWord(TAG, "🛑 Listening stopped while waiting for AsrHandler")
                         break
                     }
-                    DebugLogger.logWakeWord(TAG, "▶️ AudioRecord resumed, continuing wake word detection")
+                    DebugLogger.logWakeWord(TAG, "▶️ AsrHandler 已停止，恢复唤醒词检测")
                     
-                    // 重新启动AudioRecord（如果之前被停止了）
+                    // 重新启动AudioRecord
                     if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                         try {
                             ar.startRecording()
-                            DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR pause")
+                            DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after AsrHandler")
                         } catch (e: Exception) {
-                            DebugLogger.logWakeWordError(TAG, "❌ Failed to restart AudioRecord after ASR", e)
+                            DebugLogger.logWakeWordError(TAG, "❌ Failed to restart AudioRecord after AsrHandler", e)
                             break
                         }
                     }
@@ -628,7 +621,8 @@ class WakeService : Service() {
                 }
 
                 // 只有在AudioRecord正在录制时才读取数据
-                if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING && !audioRecordPaused.get()) {
+                // 且 AsrHandler 未运行时才继续监听
+                if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING && !com.ai.voice.util.AsrHandler.isStarted()) {
                     val bytesRead = ar.read(audio, 0, audio.size)
                     frameCount++
                     
@@ -686,15 +680,7 @@ class WakeService : Service() {
             // 释放音频焦点（Android 15+ 必需）
             releaseAudioFocus()
             
-            // 释放麦克风资源（如果还没被释放）
-            runBlocking {
-                try {
-                    AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
-                    DebugLogger.logWakeWord(TAG, "✅ listenForWakeWord结束，已释放麦克风资源")
-                } catch (e: Exception) {
-                    DebugLogger.logWakeWordError(TAG, "❌ 释放麦克风资源失败", e)
-                }
-            }
+            // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
         }
     }
 
@@ -703,12 +689,6 @@ class WakeService : Service() {
         
         // 🔧 取消之前的恢复任务，避免重复唤醒导致状态混乱
         handler.removeCallbacks(releaseSttResourcesRunnable)
-        
-        // 🔧 重置audioRecordPaused标志，确保状态一致
-        if (audioRecordPaused.get()) {
-            DebugLogger.logWakeWord(TAG, "⚠️ 检测到audioRecordPaused=true，重置为false")
-            audioRecordPaused.set(false)
-        }
         
         // 通知所有注册的回调
         WakeWordCallbackManager.notifyWakeWordDetected()
@@ -729,38 +709,15 @@ class WakeService : Service() {
         intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
         DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
 
-        // 🔧 改为同步释放麦克风资源，确保释放完成后再启动ASR
-        runBlocking {
-            try {
-                AudioResourceManager.releaseMicrophone(AudioResourceManager.AudioOwner.WAKE_SERVICE)
-                DebugLogger.logWakeWord(TAG, "✅ 已释放麦克风资源，让ASR使用")
-            } catch (e: Exception) {
-                DebugLogger.logWakeWordError(TAG, "❌ 释放麦克风资源失败", e)
-            }
-        }
+        // 🔧 不再使用 AudioResourceManager 释放资源
+        // WakeService 通过检查 AsrHandler.isStarted() 来决定是否暂停监听
+        // AsrHandler 和 WakeService 各自管理自己的 AudioRecord
 
-        // Start listening and pass STT events to the skill evaluator.
-        // Note that this works even if the MainActivity is opened later!
-        DebugLogger.logVoiceRecognition(TAG, "🎤 Starting STT input device...")
-        
-        // 直接启动ASR，不需要协调器检查
-        val sttStarted = sttInputDevice.tryLoad(skillEvaluator::processInputEvent)
-        DebugLogger.logVoiceRecognition(TAG, "STT device start result: $sttStarted")
-        
-        // 延迟暂停WakeService，让ASR先初始化完成（300ms足够启动AudioRecord）
-        scope.launch {
-            delay(300)
-            pauseAudioRecordForASR()
-        }
-
-        // 🔧 ASR完成后恢复WakeService，但不释放STT资源（保持设备状态）
-        val resumeWakeServiceRunnable = Runnable {
-            // 只恢复WakeService的AudioRecord，不释放STT资源
-            DebugLogger.logVoiceRecognition(TAG, "📱 保持STT设备状态，只恢复WakeService")
-            resumeAudioRecordAfterASR()
-        }
-        handler.postDelayed(resumeWakeServiceRunnable, RELEASE_STT_RESOURCES_MILLIS)
-        DebugLogger.logVoiceRecognition(TAG, "⏰ Scheduled WakeService resume in ${RELEASE_STT_RESOURCES_MILLIS}ms (不释放STT资源)")
+        // 🔧 已禁用：不再使用 SenseVoiceInputDevice，改为使用 AsrHandler
+        // ASR 现在由 EnhancedFloatingWindowService 通过 AsrHandler 管理
+        // EnhancedFloatingWindowService.onWakeWordDetected() 会调用 AsrHandler.start()
+        // WakeService 会在 listenForWakeWord() 循环中检查 AsrHandler.isStarted() 来决定是否暂停
+        DebugLogger.logVoiceRecognition(TAG, "⏭️ 跳过 STT 输入设备启动（已改用 AsrHandler，由 EnhancedFloatingWindowService 管理）")
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0) {
             // start the activity directly on versions prior to Android 10,
@@ -1005,5 +962,47 @@ class WakeService : Service() {
         private const val ACTION_STOP_WAKE_SERVICE =
             "org.stypox.dicio.io.wake.WakeService.ACTION_STOP"
         private const val RELEASE_STT_RESOURCES_MILLIS = 1000L * 10 // 10 seconds - 缩短时间以快速恢复WakeService
+        
+        // 🔧 临时调试：广播 action，用于模拟唤醒词检测
+        const val ACTION_DEBUG_WAKE_WORD =
+            "org.stypox.dicio.io.wake.WakeService.ACTION_DEBUG_WAKE_WORD"
+    }
+    
+    /**
+     * 🔧 临时调试：注册广播接收器，用于模拟唤醒词检测
+     * 发送广播：adb shell am broadcast -a org.stypox.dicio.io.wake.WakeService.ACTION_DEBUG_WAKE_WORD
+     */
+    private fun registerDebugWakeReceiver() {
+        debugWakeReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == ACTION_DEBUG_WAKE_WORD) {
+                    DebugLogger.logWakeWord(TAG, "🔧 [DEBUG] 收到调试唤醒广播，模拟唤醒词检测")
+                    onWakeWordDetected()
+                }
+            }
+        }
+        
+        val filter = IntentFilter(ACTION_DEBUG_WAKE_WORD)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(debugWakeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            registerReceiver(debugWakeReceiver, filter)
+        }
+        DebugLogger.logWakeWord(TAG, "🔧 [DEBUG] 调试唤醒广播接收器已注册")
+    }
+    
+    /**
+     * 🔧 临时调试：注销广播接收器
+     */
+    private fun unregisterDebugWakeReceiver() {
+        debugWakeReceiver?.let {
+            try {
+                unregisterReceiver(it)
+                DebugLogger.logWakeWord(TAG, "🔧 [DEBUG] 调试唤醒广播接收器已注销")
+            } catch (e: Exception) {
+                DebugLogger.logWakeWord(TAG, "⚠️ [DEBUG] 注销广播接收器失败: ${e.message}")
+            }
+        }
+        debugWakeReceiver = null
     }
 }

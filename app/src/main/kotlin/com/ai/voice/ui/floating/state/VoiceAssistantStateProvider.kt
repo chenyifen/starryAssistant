@@ -6,7 +6,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import org.dicio.skill.skill.SkillOutput
 import com.ai.voice.di.SpeechOutputDeviceWrapper
-import com.ai.voice.di.SttInputDeviceWrapper
+// import com.ai.voice.di.SttInputDeviceWrapper // 🔧 已禁用：不再使用，改用 AsrHandler
 import com.ai.voice.di.SkillContextInternal
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.io.input.InputEvent
@@ -16,6 +16,7 @@ import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.home.InteractionLog
 import com.ai.voice.util.DebugLogger
+import com.ai.voice.util.AsrHandler
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,7 +31,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class VoiceAssistantStateProvider @Inject constructor(
-    private val sttInputDeviceWrapper: SttInputDeviceWrapper,
+    // private val sttInputDeviceWrapper: SttInputDeviceWrapper, // 🔧 已禁用：不再使用，改用 AsrHandler
     private val skillEvaluator: SkillEvaluator,
     private val speechOutputDeviceWrapper: SpeechOutputDeviceWrapper,
     private val skillContext: SkillContextInternal
@@ -98,10 +99,30 @@ class VoiceAssistantStateProvider @Inject constructor(
      * 直接监听底层服务
      */
     private fun observeServices() {
+        // 🔧 已禁用：不再监听 sttInputDeviceWrapper，改用 AsrHandler
         // 1. 监听STT状态变化
+        // scope.launch {
+        //     sttInputDeviceWrapper.uiState.collect { sttState ->
+        //         handleSttStateChange(sttState)
+        //     }
+        // }
+        
+        // 🔧 改为监听 AsrHandler 状态变化
         scope.launch {
-            sttInputDeviceWrapper.uiState.collect { sttState ->
-                handleSttStateChange(sttState)
+            while (true) {
+                kotlinx.coroutines.delay(200) // 每200ms检查一次
+                val isAsrStarted = AsrHandler.isStarted()
+                if (isAsrStarted) {
+                    // AsrHandler 正在运行，设置为 LISTENING 状态
+                    if (_currentState.uiState != VoiceAssistantUIState.LISTENING) {
+                        updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
+                    }
+                } else {
+                    // AsrHandler 已停止，如果没有其他活动，设置为 IDLE
+                    if (_currentState.uiState == VoiceAssistantUIState.LISTENING) {
+                        updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+                    }
+                }
             }
         }
         
@@ -273,8 +294,9 @@ class VoiceAssistantStateProvider @Inject constructor(
                 )
                 
                 try {
-                    sttInputDeviceWrapper.stopListening()
-                    DebugLogger.logUI(TAG, "✅ 已停止STT监听")
+                    // 🔧 已禁用：不再使用 sttInputDeviceWrapper，改用 AsrHandler
+                    // sttInputDeviceWrapper.stopListening()
+                    DebugLogger.logUI(TAG, "⏭️ 跳过停止STT监听（已改用 AsrHandler）")
                 } catch (e: Exception) {
                     DebugLogger.logUI(TAG, "⚠️ 停止STT失败: ${e.message}")
                 }
@@ -781,26 +803,26 @@ class VoiceAssistantStateProvider @Inject constructor(
                 scope.launch {
                     delay(1000) // 延迟1秒后清空TTS文本
                     
-                    // 🆕 检查ASR是否仍在监听
-                    val sttState = sttInputDeviceWrapper.uiState.value
-                    
-                    if (sttState is SttState.Listening) {
-                        // ASR仍在监听，只清空TTS文本，保持LISTENING状态
-                        updateState(
-                            uiState = VoiceAssistantUIState.LISTENING,
-                            ttsText = "",
-                            displayText = "LISTENING"
-                        )
-                        DebugLogger.logUI(TAG, "🔄 TTS播放完成，ASR仍在监听，保持LISTENING状态")
-                    } else {
-                        // ASR已停止（10秒静音超时），切换到IDLE
-                        updateState(
-                            uiState = VoiceAssistantUIState.IDLE,
-                            ttsText = "",
-                            displayText = ""
-                        )
-                        DebugLogger.logUI(TAG, "🧹 TTS播放完成，ASR已停止，切换回IDLE状态")
-                    }
+                // 🆕 检查ASR是否仍在监听（使用 AsrHandler）
+                val isAsrStarted = AsrHandler.isStarted()
+                
+                if (isAsrStarted) {
+                    // ASR仍在监听，只清空TTS文本，保持LISTENING状态
+                    updateState(
+                        uiState = VoiceAssistantUIState.LISTENING,
+                        ttsText = "",
+                        displayText = "LISTENING"
+                    )
+                    DebugLogger.logUI(TAG, "🔄 TTS播放完成，ASR仍在监听，保持LISTENING状态")
+                } else {
+                    // ASR已停止（10秒静音超时），切换到IDLE
+                    updateState(
+                        uiState = VoiceAssistantUIState.IDLE,
+                        ttsText = "",
+                        displayText = ""
+                    )
+                    DebugLogger.logUI(TAG, "🧹 TTS播放完成，ASR已停止，切换回IDLE状态")
+                }
                 }
             }
         } catch (e: Exception) {
@@ -808,8 +830,8 @@ class VoiceAssistantStateProvider @Inject constructor(
             // 如果设置失败，使用延迟清理作为备用方案
             scope.launch {
                 delay(2000)
-                val sttState = sttInputDeviceWrapper.uiState.value
-                if (sttState is SttState.Listening) {
+                val isAsrStarted = AsrHandler.isStarted()
+                if (isAsrStarted) {
                     updateState(
                         uiState = VoiceAssistantUIState.LISTENING,
                         ttsText = "",

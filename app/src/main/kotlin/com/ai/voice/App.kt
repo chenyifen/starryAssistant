@@ -10,6 +10,7 @@ import dagger.hilt.android.HiltAndroidApp
 import com.ai.voice.activation.ActivationManager
 import com.ai.voice.activation.ActivationCodeGenerator
 import com.ai.voice.util.checkPermissions
+import com.ai.voice.util.AsrHandler
 
 // IMPORTANT NOTE: beware of this nasty bug related to allowBackup=true
 // https://medium.com/p/924c91bafcac
@@ -22,6 +23,10 @@ class App : Application() {
         // 初始化激活模块 (独立的功能模块)
         // ⚠️ 注意: 这是一个可选的模块,如果不需要可以删除整个 activation package
         ActivationManager.initialize(this)
+        
+        // 初始化 AsrHandler（应用启动时预先初始化，避免首次唤醒时的延迟）
+        Log.i(TAG, "🚀 开始初始化 AsrHandler...")
+        AsrHandler.initialize(this)
         
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkPermissions(this, Manifest.permission.POST_NOTIFICATIONS)

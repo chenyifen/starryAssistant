@@ -26,7 +26,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import com.ai.voice.io.input.InputEvent
-import com.ai.voice.di.SttInputDeviceWrapper
 import com.ai.voice.ui.home.InteractionLog
 import org.dicio.skill.context.SkillContext
 import com.ai.voice.di.WakeDeviceWrapper
@@ -41,8 +40,10 @@ import com.ai.voice.ui.floating.components.DraggableFloatingOrb
 import com.ai.voice.ui.floating.components.LottieAnimationState
 import com.ai.voice.ui.floating.components.LottieAnimationTexts
 import com.ai.voice.ui.floating.state.VoiceAssistantFullState
+import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.util.DebugLogger
+import com.ai.voice.util.AsrHandler
 import com.ai.voice.settings.datastore.UserSettings
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.collectLatest
@@ -78,12 +79,13 @@ enum class VoiceAssistantState {
 class EnhancedFloatingWindowService : Service(), 
     LifecycleOwner, 
     ViewModelStoreOwner, 
-    SavedStateRegistryOwner {
+    SavedStateRegistryOwner,
+    WakeWordCallback {
     
     private val TAG = "EnhancedFloatingWindowService"
     
     // 依赖注入
-    @Inject lateinit var sttInputDeviceWrapper: SttInputDeviceWrapper
+    // @Inject lateinit var sttInputDeviceWrapper: SttInputDeviceWrapper // 🔧 已禁用：不再使用，改用 AsrHandler
     @Inject lateinit var wakeDeviceWrapper: WakeDeviceWrapper
     @Inject lateinit var skillEvaluator: SkillEvaluator
     @Inject lateinit var voiceAssistantStateProvider: VoiceAssistantStateProvider
@@ -108,6 +110,9 @@ class EnhancedFloatingWindowService : Service(),
     
     // 自动化测试相关
     private var autoTestReceiver: BroadcastReceiver? = null
+    
+    // AsrHandler 相关
+    private var lastResultListSize = 0
     
     override fun onCreate() {
         super.onCreate()
@@ -137,11 +142,17 @@ class EnhancedFloatingWindowService : Service(),
         // 初始化组件
         initializeComponents()
         
+        // 注册 WakeWordCallback
+        WakeWordCallbackManager.registerCallback(this)
+        
         // 显示悬浮球
         showFloatingOrb()
         
         // 监听设置变化
         observeSettings()
+        
+        // 监听 AsrHandler 结果列表变化
+        observeAsrResults()
         
         // 注册自动化测试接收器
         registerAutoTestReceiver()
@@ -154,6 +165,15 @@ class EnhancedFloatingWindowService : Service(),
     
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
+        
+        // 取消注册 WakeWordCallback
+        WakeWordCallbackManager.unregisterCallback(this)
+        
+        // 停止 AsrHandler
+        AsrHandler.stop(this)
+        
+        // 清除静音超时回调
+        AsrHandler.setSilenceTimeoutCallback(null)
         
         // 取消注册自动化测试接收器
         unregisterAutoTestReceiver()
@@ -274,11 +294,10 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     /**
-     * 启动语音识别
+     * 启动语音识别（已禁用，改用 AsrHandler）
      */
     private fun startVoiceRecognition() {
-        DebugLogger.logUI(TAG, "🎤 Starting voice recognition...")
-        DebugLogger.logUI(TAG, "📡 Current STT device: ${sttInputDeviceWrapper.javaClass.simpleName}")
+        DebugLogger.logUI(TAG, "🎤 Starting voice recognition with AsrHandler...")
         
         // 检查麦克风权限
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
@@ -288,33 +307,63 @@ class EnhancedFloatingWindowService : Service(),
             return
         }
         
-        // 启动 STT 输入设备
+        // 使用 AsrHandler 启动识别
         try {
-            DebugLogger.logUI(TAG, "🔌 Attempting to start STT input device...")
-            val sttStarted = sttInputDeviceWrapper.tryLoad(skillEvaluator::processInputEvent)
+            // 设置静音超时回调（仅用于更新 Orb 状态，不用于停止 AsrHandler）
+            AsrHandler.setSilenceTimeoutCallback {
+                DebugLogger.logUI(TAG, "⏰ AsrHandler 检测到连续静音10秒，重置 Orb 状态")
+                floatingOrb?.getAnimationStateManager()?.setIdle()
+            }
             
-            if (sttStarted) {
-                DebugLogger.logUI(TAG, "✅ STT input device started successfully")
+            val started = AsrHandler.start(this)
+            if (started) {
+                DebugLogger.logUI(TAG, "✅ AsrHandler started successfully")
                 floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.LISTENING)
             } else {
-                DebugLogger.logUI(TAG, "❌ STT input device failed to start")
+                DebugLogger.logUI(TAG, "❌ AsrHandler failed to start")
                 floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
             }
         } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error starting STT: ${e.message}")
+            DebugLogger.logUI(TAG, "❌ Error starting AsrHandler: ${e.message}")
             floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
         }
     }
     
     /**
-     * 处理收缩到悬浮球
+     * 监听 AsrHandler 结果列表变化，进行技能匹配
+     */
+    private fun observeAsrResults() {
+        serviceScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(200) // 每200ms检查一次
+                val resultList = AsrHandler.getResultList()
+                
+                // 如果有新的结果，进行技能匹配
+                if (resultList.size > lastResultListSize) {
+                    val newResults = resultList.subList(lastResultListSize, resultList.size)
+                    for (resultText in newResults) {
+                        if (resultText.isNotBlank()) {
+                            DebugLogger.logUI(TAG, "🔍 检测到新的 ASR 结果，进行技能匹配: $resultText")
+                            // 创建 Final 事件进行技能匹配
+                            val finalEvent = InputEvent.Final(listOf(Pair(resultText, 1.0f)))
+                            skillEvaluator.processInputEvent(finalEvent)
+                        }
+                    }
+                    lastResultListSize = resultList.size
+                }
+            }
+        }
+    }
+    
+    /**
+     * 处理收缩到悬浮球（已禁用 sttInputDeviceWrapper）
      */
     private fun handleContractToOrb() {
         DebugLogger.logUI(TAG, "📉 Contracting to orb")
         
-        // 停止 STT 录音
-        sttInputDeviceWrapper.stopListening()
-        DebugLogger.logUI(TAG, "⏹️ STT recording stopped")
+        // 停止 AsrHandler
+        AsrHandler.stop(this)
+        DebugLogger.logUI(TAG, "⏹️ AsrHandler stopped")
         
         // 重新显示悬浮球
         floatingOrb?.show()
@@ -324,16 +373,31 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     /**
-     * 处理语音唤醒
+     * 处理语音唤醒 - WakeWordCallback 实现
      */
-    fun handleVoiceWakeUp() {
-        DebugLogger.logUI(TAG, "🎤 Voice wake up detected")
+    override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
+        DebugLogger.logUI(TAG, "🎤 Wake word detected: $wakeWord (confidence: $confidence)")
+        
+        // 显示悬浮球
+        showFloatingOrb()
         
         // 触发唤醒词动画
         floatingOrb?.getAnimationStateManager()?.triggerWakeWord(LottieAnimationTexts.WAKE_WORD_DETECTED)
         
-        // 自动展开到半屏
-        assistantUIController?.expandToHalfScreen()
+        // 启动 AsrHandler
+        startVoiceRecognition()
+    }
+    
+    override fun onWakeWordListeningStarted() {
+        DebugLogger.logUI(TAG, "👂 Wake word listening started")
+    }
+    
+    override fun onWakeWordListeningStopped() {
+        DebugLogger.logUI(TAG, "👂 Wake word listening stopped")
+    }
+    
+    override fun onWakeWordError(error: Throwable) {
+        DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
     }
     
     
