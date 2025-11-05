@@ -18,23 +18,12 @@ import com.ai.voice.di.SkillContextImpl
 import com.ai.voice.di.SkillContextInternal
 import com.ai.voice.settings.datastore.UserSettings
 import com.ai.voice.settings.datastore.UserSettingsModule
-import com.ai.voice.skills.calculator.CalculatorInfo
-import com.ai.voice.skills.current_time.CurrentTimeInfo
 import com.ai.voice.skills.power_control.PowerControlInfo
 import com.ai.voice.skills.input_source.InputSourceControlInfo
 import com.ai.voice.skills.app_launcher.AppLauncherInfo
 import com.ai.voice.skills.whiteboard_tools.WhiteboardToolsInfo
 import com.ai.voice.skills.system_navigation.SystemNavigationInfo
 import com.ai.voice.skills.fallback.text.TextFallbackInfo
-import com.ai.voice.skills.listening.ListeningInfo
-import com.ai.voice.skills.lyrics.LyricsInfo
-import com.ai.voice.skills.media.MediaInfo
-import com.ai.voice.skills.navigation.NavigationInfo
-import com.ai.voice.skills.open.OpenInfo
-import com.ai.voice.skills.search.SearchInfo
-// import com.ai.voice.skills.telephone.TelephoneInfo  // 已禁用：不再需要电话和通讯录权限
-import com.ai.voice.skills.timer.TimerInfo
-import com.ai.voice.skills.weather.WeatherInfo
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -46,17 +35,6 @@ class SkillHandler @Inject constructor(
 ) {
     // TODO improve id handling (maybe just use an int that can point to an Android resource)
     val allSkillInfoList = listOf(
-        WeatherInfo,
-        SearchInfo,
-        LyricsInfo,
-        OpenInfo,
-        CalculatorInfo,
-        NavigationInfo,
-        // TelephoneInfo,  // 已禁用：不再需要电话和通讯录权限
-        TimerInfo,
-        CurrentTimeInfo,
-        MediaInfo,
-        ListeningInfo(dataStore),
         PowerControlInfo,
         InputSourceControlInfo,
         AppLauncherInfo,
