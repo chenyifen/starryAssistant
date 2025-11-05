@@ -247,6 +247,10 @@ object AsrHandler {
         // 保存 context 用于静音超时后调用 stop
         contextForStop = context
         
+        // 🔥 重置静音检测时间（确保重新启动时不会立即触发静音超时）
+        lastSpeechDetectedTime = System.currentTimeMillis()
+        Log.d(TAG, "🔄 重置静音检测时间")
+        
         isStarted = true
         Log.i(TAG, "✅ 启动 doAsr...")
         doAsr(context)
