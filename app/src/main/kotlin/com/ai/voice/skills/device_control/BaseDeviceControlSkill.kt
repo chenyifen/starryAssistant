@@ -6,6 +6,7 @@ import android.media.AudioManager
 import android.provider.Settings
 import android.util.Log
 import android.view.KeyEvent
+import android.widget.Toast
 import com.ifpdos.sdklib.hyundaiit.api.audio.AudioHelper
 import com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper
 import com.ifpdos.sdklib.hyundaiit.api.source.SourceHelper
@@ -440,11 +441,20 @@ abstract class BaseDeviceControlSkill {
             intent.setPackage(ctx.android.packageName)
             ctx.android.sendBroadcast(intent)
             Log.d(TAG, "发送广播: $command")
+            
             val response = getLocalizedResponse(ctx, "명령 실행 중: $command", "Executing: $command")
+            
+            // 🆕 显示Toast提示
+            Toast.makeText(ctx.android, response, Toast.LENGTH_SHORT).show()
+            
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "发送广播失败: $command", e)
             val errorResponse = getLocalizedResponse(ctx, "실행 실패", "Execution failed")
+            
+            // 🆕 错误时也显示Toast
+            Toast.makeText(ctx.android, errorResponse, Toast.LENGTH_SHORT).show()
+            
             return StringOutput(errorResponse)
         }
     }
