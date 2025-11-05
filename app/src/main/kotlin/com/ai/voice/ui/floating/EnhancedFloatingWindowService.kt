@@ -111,8 +111,6 @@ class EnhancedFloatingWindowService : Service(),
     // 自动化测试相关
     private var autoTestReceiver: BroadcastReceiver? = null
     
-    // AsrHandler 相关
-    private var lastResultListSize = 0
     
     override fun onCreate() {
         super.onCreate()
@@ -151,8 +149,15 @@ class EnhancedFloatingWindowService : Service(),
         // 监听设置变化
         observeSettings()
         
-        // 监听 AsrHandler 结果列表变化
-        observeAsrResults()
+        // 设置 AsrHandler Final识别结果回调，用于触发技能识别
+        AsrHandler.setFinalResultCallback { finalText ->
+            if (finalText.isNotBlank()) {
+                DebugLogger.logUI(TAG, "🔍 Final识别完成，触发技能识别: $finalText")
+                // 创建 Final 事件进行技能匹配
+                val finalEvent = InputEvent.Final(listOf(Pair(finalText, 1.0f)))
+                skillEvaluator.processInputEvent(finalEvent)
+            }
+        }
         
         // 注册自动化测试接收器
         registerAutoTestReceiver()
@@ -172,8 +177,9 @@ class EnhancedFloatingWindowService : Service(),
         // 停止 AsrHandler
         AsrHandler.stop(this)
         
-        // 清除静音超时回调
+        // 清除所有回调
         AsrHandler.setSilenceTimeoutCallback(null)
+        AsrHandler.setFinalResultCallback(null)
         
         // 取消注册自动化测试接收器
         unregisterAutoTestReceiver()
@@ -326,32 +332,6 @@ class EnhancedFloatingWindowService : Service(),
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Error starting AsrHandler: ${e.message}")
             floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
-        }
-    }
-    
-    /**
-     * 监听 AsrHandler 结果列表变化，进行技能匹配
-     */
-    private fun observeAsrResults() {
-        serviceScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(200) // 每200ms检查一次
-                val resultList = AsrHandler.getResultList()
-                
-                // 如果有新的结果，进行技能匹配
-                if (resultList.size > lastResultListSize) {
-                    val newResults = resultList.subList(lastResultListSize, resultList.size)
-                    for (resultText in newResults) {
-                        if (resultText.isNotBlank()) {
-                            DebugLogger.logUI(TAG, "🔍 检测到新的 ASR 结果，进行技能匹配: $resultText")
-                            // 创建 Final 事件进行技能匹配
-                            val finalEvent = InputEvent.Final(listOf(Pair(resultText, 1.0f)))
-                            skillEvaluator.processInputEvent(finalEvent)
-                        }
-                    }
-                    lastResultListSize = resultList.size
-                }
-            }
         }
     }
     
