@@ -12,18 +12,12 @@ import org.dicio.skill.skill.SkillInfo
 import org.dicio.skill.skill.SkillOutput
 import com.ai.voice.io.input.SttState
 import com.ai.voice.io.wake.WakeState
-import com.ai.voice.skills.calculator.CalculatorInfo
 import com.ai.voice.skills.fallback.text.TextFallbackOutput
-import com.ai.voice.skills.lyrics.LyricsInfo
-import com.ai.voice.skills.media.MediaInfo
-import com.ai.voice.skills.navigation.NavigationInfo
-import com.ai.voice.skills.navigation.NavigationOutput
-// import com.ai.voice.skills.telephone.ConfirmCallOutput  // 已移除电话功能
-// import com.ai.voice.skills.telephone.ConfirmedCallOutput
-// import com.ai.voice.skills.telephone.TelephoneInfo
-import com.ai.voice.skills.timer.TimerInfo
-import com.ai.voice.skills.timer.TimerOutput
-import com.ai.voice.skills.weather.WeatherInfo
+import com.ai.voice.skills.power_control.PowerControlInfo
+import com.ai.voice.skills.input_source.InputSourceControlInfo
+import com.ai.voice.skills.app_launcher.AppLauncherInfo
+import com.ai.voice.skills.whiteboard_tools.WhiteboardToolsInfo
+import com.ai.voice.skills.system_navigation.SystemNavigationInfo
 import com.ai.voice.ui.home.Interaction
 import com.ai.voice.ui.home.InteractionLog
 import com.ai.voice.ui.home.PendingQuestion
@@ -39,10 +33,11 @@ class UserInputPreviews : CollectionPreviewParameterProvider<String>(listOf(
 ))
 
 class SkillInfoPreviews : CollectionPreviewParameterProvider<SkillInfo>(listOf(
-    WeatherInfo,
-    CalculatorInfo,
-    // TelephoneInfo,  // 已移除电话功能
-    MediaInfo,
+    PowerControlInfo,
+    InputSourceControlInfo,
+    AppLauncherInfo,
+    WhiteboardToolsInfo,
+    SystemNavigationInfo,
     object : SkillInfo("test") {
         override fun name(context: Context) = "Long name lorem ipsum dolor sit amet, consectetur"
         override fun sentenceExample(context: Context) = "Long sentence ".repeat(20)
@@ -80,41 +75,16 @@ class InteractionLogPreviews : CollectionPreviewParameterProvider<InteractionLog
     InteractionLog(
         listOf(
             Interaction(
-                skill = NavigationInfo,
+                skill = PowerControlInfo,
                 questionsAnswers = listOf(
-                    QuestionAnswer("Take me to Paris", NavigationOutput("Paris"))
-                )
-            ),
-            Interaction(
-                skill = TimerInfo,
-                questionsAnswers = listOf(
-                    QuestionAnswer(
-                        "Set a timer",
-                        TimerOutput.SetAskDuration { TextFallbackOutput(askToRepeat = true) }
-                    )
+                    QuestionAnswer("전원 켜줘", TextFallbackOutput(askToRepeat = false)),
                 )
             )
         ),
         PendingQuestion(
-            userInput = "Twenty",
-            continuesLastInteraction = true,
-            skillBeingEvaluated = null,
-        ),
-    ),
-    // 已移除电话功能的示例
-    InteractionLog(
-        listOf(
-            Interaction(
-                skill = LyricsInfo,
-                questionsAnswers = listOf(
-                    QuestionAnswer("lyrics i'm working on a dream", TextFallbackOutput(askToRepeat = false)),
-                )
-            )
-        ),
-        PendingQuestion(
-            userInput = "what's the weather",
+            userInput = "화이트보드 열기",
             continuesLastInteraction = false,
-            skillBeingEvaluated = WeatherInfo,
+            skillBeingEvaluated = WhiteboardToolsInfo,
         ),
     ),
 ))

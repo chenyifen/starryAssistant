@@ -52,15 +52,17 @@ import com.ai.voice.R
 import com.ai.voice.di.SkillContextImpl
 import com.ai.voice.eval.SkillHandler
 import com.ai.voice.settings.datastore.UserSettingsModule.Companion.newDataStoreForPreviews
-import com.ai.voice.skills.lyrics.LyricsInfo
-import com.ai.voice.skills.search.SearchInfo
-import com.ai.voice.skills.weather.WeatherInfo
 import com.ai.voice.ui.theme.AppTheme
 import com.ai.voice.ui.util.SkillInfoPreviews
 import com.ai.voice.util.ShareUtils
 import com.ai.voice.util.getNonGrantedPermissions
 import com.ai.voice.util.commaJoinPermissions
 import com.ai.voice.util.requestAnyPermission
+import com.ai.voice.skills.power_control.PowerControlInfo
+import com.ai.voice.skills.input_source.InputSourceControlInfo
+import com.ai.voice.skills.app_launcher.AppLauncherInfo
+import com.ai.voice.skills.whiteboard_tools.WhiteboardToolsInfo
+import com.ai.voice.skills.system_navigation.SystemNavigationInfo
 
 const val DICIO_NUMBERS_LINK = "https://github.com/Stypox/dicio-numbers"
 
@@ -337,7 +339,7 @@ private fun ThreeSkillSettingsItemsPreview() {
         ) {
             item {
                 SkillSettingsItem(
-                    skill = WeatherInfo,
+                    skill = PowerControlInfo,
                     isAvailable = true,
                     enabled = true,
                     setEnabled = {},
@@ -347,7 +349,7 @@ private fun ThreeSkillSettingsItemsPreview() {
             }
             item {
                 SkillSettingsItem(
-                    skill = SearchInfo,
+                    skill = InputSourceControlInfo,
                     isAvailable = true,
                     enabled = false,
                     setEnabled = {},
@@ -357,7 +359,7 @@ private fun ThreeSkillSettingsItemsPreview() {
             }
             item {
                 SkillSettingsItem(
-                    skill = LyricsInfo,
+                    skill = AppLauncherInfo,
                     isAvailable = false,
                     enabled = true,
                     setEnabled = {},

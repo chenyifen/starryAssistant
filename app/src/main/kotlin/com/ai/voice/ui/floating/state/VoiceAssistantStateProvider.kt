@@ -370,103 +370,29 @@ class VoiceAssistantStateProvider @Inject constructor(
             // 根据具体的技能输出类型创建相应的SimpleResult
             // 首先尝试精确匹配已知的技能输出类
             when (skillOutput) {
-                // 天气技能 - 精确匹配
-                is com.ai.voice.skills.weather.WeatherOutput.Success -> {
-                    SimpleResultBuilder.weather(
-                        location = skillOutput.city,
-                        temperature = skillOutput.temp.toInt(),
-                        condition = skillOutput.description
-                    )
-                }
-                is com.ai.voice.skills.weather.WeatherOutput.Failed -> {
-                    SimpleResultBuilder.error("无法获取${skillOutput.city}的天气信息")
-                }
-                
-                // 时间技能 - 精确匹配
-                is com.ai.voice.skills.current_time.CurrentTimeOutput -> {
-                    SimpleResultBuilder.time(speechText)
-                }
-                
-                // 计算器技能 - 精确匹配
-                is com.ai.voice.skills.calculator.CalculatorOutput -> {
-                    // 尝试从语音输出中提取计算表达式和结果
-                    val parts = speechText.split("等于", "是", "=", "equals")
-                    if (parts.size >= 2) {
-                        val expression = parts[0].trim()
-                        val result = parts[1].trim()
-                        SimpleResultBuilder.calculation(expression, result)
-                    } else {
-                        SimpleResultBuilder.calculation("计算", speechText)
-                    }
-                }
-                
-                // 导航技能 - 精确匹配
-                is com.ai.voice.skills.navigation.NavigationOutput -> {
-                    SimpleResultBuilder.appAction("导航", "地图导航", speechText.contains("导航"))
-                }
-                
-                // 媒体控制技能 - 精确匹配
-                is com.ai.voice.skills.media.MediaOutput -> {
-                    val action = when {
-                        speechText.contains("播放", ignoreCase = true) -> "播放"
-                        speechText.contains("暂停", ignoreCase = true) -> "暂停"
-                        speechText.contains("上一", ignoreCase = true) -> "上一首"
-                        speechText.contains("下一", ignoreCase = true) -> "下一首"
-                        else -> "媒体控制"
-                    }
-                    SimpleResultBuilder.appAction("媒体", action, !speechText.contains("没有"))
-                }
-                
-                // 应用启动技能 - 精确匹配
-                is com.ai.voice.skills.open.OpenOutput -> {
-                    val success = !speechText.contains("无法") && !speechText.contains("未知")
-                    SimpleResultBuilder.appAction("应用", "打开应用", success)
-                }
-                
-                // 电话技能已移除
+                // 已删除的技能已移除
                 
                 // 其他技能使用模糊匹配
                 else -> {
                     // 基于类名进行模糊匹配作为备用方案
                     when {
-                        skillClassName.contains("Weather", ignoreCase = true) -> {
-                            SimpleResultBuilder.info("天气信息", speechText)
+                        skillClassName.contains("Power", ignoreCase = true) -> {
+                            SimpleResultBuilder.appAction("电源", "控制", true)
                         }
-                        skillClassName.contains("Time", ignoreCase = true) -> {
-                            SimpleResultBuilder.time(speechText)
+                        skillClassName.contains("Input", ignoreCase = true) || skillClassName.contains("Source", ignoreCase = true) -> {
+                            SimpleResultBuilder.appAction("输入源", "切换", true)
                         }
-                        skillClassName.contains("Calculator", ignoreCase = true) || skillClassName.contains("Math", ignoreCase = true) -> {
-                            SimpleResultBuilder.calculation("计算", speechText)
+                        skillClassName.contains("App", ignoreCase = true) || skillClassName.contains("Launcher", ignoreCase = true) -> {
+                            SimpleResultBuilder.appAction("应用", "启动", true)
                         }
-                        skillClassName.contains("Timer", ignoreCase = true) -> {
-                            SimpleResultBuilder.info("定时器", speechText)
+                        skillClassName.contains("Whiteboard", ignoreCase = true) -> {
+                            SimpleResultBuilder.appAction("白板", "工具", true)
                         }
-                        skillClassName.contains("Open", ignoreCase = true) || skillClassName.contains("App", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("应用", "打开", true)
-                        }
-                        skillClassName.contains("Search", ignoreCase = true) -> {
-                            SimpleResultBuilder.info("搜索", speechText)
-                        }
-                        skillClassName.contains("Navigation", ignoreCase = true) -> {
-                            SimpleResultBuilder.info("导航", speechText)
-                        }
-                        skillClassName.contains("Telephone", ignoreCase = true) || skillClassName.contains("Phone", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("电话", "拨打", true)
-                        }
-                        skillClassName.contains("Media", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("媒体", "控制", true)
-                        }
-                        skillClassName.contains("Lyrics", ignoreCase = true) -> {
-                            SimpleResultBuilder.info("歌词", speechText)
-                        }
-                        skillClassName.contains("Listening", ignoreCase = true) -> {
-                            SimpleResultBuilder.info("监听控制", speechText)
-                        }
-                        skillClassName.contains("Fallback", ignoreCase = true) -> {
-                            SimpleResultBuilder.error("未能理解您的请求")
+                        skillClassName.contains("System", ignoreCase = true) || skillClassName.contains("Navigation", ignoreCase = true) -> {
+                            SimpleResultBuilder.appAction("系统", "导航", true)
                         }
                         else -> {
-                            SimpleResultBuilder.fromSkillOutput(skillClassName, speechText, true)
+                            SimpleResultBuilder.info("命令执行", speechText)
                         }
                     }
                 }
