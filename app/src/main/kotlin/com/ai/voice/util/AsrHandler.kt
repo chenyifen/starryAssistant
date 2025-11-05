@@ -43,12 +43,23 @@ object AsrHandler {
     private var contextForStop: Context? = null
     private var silenceTimeoutCallback: (() -> Unit)? = null
     
+    // Final识别结果回调（用于触发技能识别）
+    private var finalResultCallback: ((String) -> Unit)? = null
+    
     /**
      * 设置静音超时回调（当检测到连续静音10秒时调用，用于更新 UI 状态）
      * 注意：AsrHandler 会在内部自动调用 stop()，回调只用于 UI 状态更新
      */
     fun setSilenceTimeoutCallback(callback: (() -> Unit)?) {
         silenceTimeoutCallback = callback
+    }
+    
+    /**
+     * 设置Final识别结果回调（当Final识别完成时调用，用于触发技能识别）
+     * @param callback 回调函数，参数为Final识别结果的文本
+     */
+    fun setFinalResultCallback(callback: ((String) -> Unit)?) {
+        finalResultCallback = callback
     }
     
     /**
@@ -482,6 +493,12 @@ object AsrHandler {
                                 }
                                 // 🔥 更新lastText为Final识别结果
                                 lastText = result.text
+                                
+                                // 🔥 Final识别完成，触发技能识别
+                                if (result.text.isNotBlank()) {
+                                    Log.d(TAG, "🎯 Final识别完成，触发技能识别: ${result.text}")
+                                    finalResultCallback?.invoke(result.text)
+                                }
                             }
                         }
                     }
