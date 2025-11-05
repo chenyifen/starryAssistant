@@ -55,6 +55,9 @@ class LanguageDetectingSpeechDevice(
     // 是否已初始化
     private var initialized = false
     
+    // 🆕 ASR识别的语言（用于优先选择TTS语言）
+    private var asrLocale: Locale? = null
+    
     // 回退设备（当所有TTS都失败时使用Toast）
     private val fallbackDevice: SpeechOutputDevice by lazy {
         ToastSpeechDevice(context)
@@ -78,7 +81,24 @@ class LanguageDetectingSpeechDevice(
     }
     
     /**
-     * 朗读文本（自动检测语言）
+     * 🆕 设置ASR识别的语言
+     * 
+     * 当ASR识别出用户输入后，调用此方法设置识别语言
+     * 后续的TTS回复将优先使用该语言
+     * 
+     * @param locale ASR识别的语言，如果为null则清除设置
+     */
+    fun setAsrLocale(locale: Locale?) {
+        asrLocale = locale
+        if (locale != null) {
+            Log.d(TAG, "🎤 ASR语言已设置: ${LanguageDetector.getLocaleName(locale)}")
+        } else {
+            Log.d(TAG, "🎤 ASR语言已清除")
+        }
+    }
+    
+    /**
+     * 朗读文本（优先使用ASR识别语言，但需要与回复文本语言匹配）
      */
     override fun speak(speechOutput: String) {
         if (speechOutput.isBlank()) {
@@ -90,15 +110,55 @@ class LanguageDetectingSpeechDevice(
         
         scope.launch {
             try {
-                // 1. 检测文本语言
-                val detectedLanguage = LanguageDetector.detectLanguage(speechOutput)
-                val targetLocale = LanguageDetector.detectLocale(speechOutput, defaultLocale)
+                // 1. 检测回复文本的语言
+                val textLanguage = LanguageDetector.detectLanguage(speechOutput)
+                val textLocale = LanguageDetector.detectLocale(speechOutput, defaultLocale)
                 
-                Log.d(TAG, "🔍 语言检测结果:")
-                Log.d(TAG, "  📊 检测类型: ${LanguageDetector.getLanguageName(detectedLanguage)}")
-                Log.d(TAG, "  🎯 目标语言: ${LanguageDetector.getLocaleName(targetLocale)}")
+                // 2. 确定最终使用的TTS语言
+                val targetLocale = if (asrLocale != null) {
+                    // 🆕 检查ASR语言和文本语言是否兼容
+                    // 如果ASR是英语但文本是中文/韩文，或者ASR是韩语但文本是中文/英文，则使用文本语言
+                    val isLanguageCompatible = when {
+                        // ASR是英语，文本也应该是英语或混合
+                        asrLocale!!.language == "en" -> {
+                            textLanguage == LanguageDetector.DetectedLanguage.ENGLISH || 
+                            textLanguage == LanguageDetector.DetectedLanguage.MIXED
+                        }
+                        // ASR是韩语，文本也应该是韩语或混合
+                        asrLocale!!.language == "ko" -> {
+                            textLanguage == LanguageDetector.DetectedLanguage.KOREAN || 
+                            textLanguage == LanguageDetector.DetectedLanguage.MIXED
+                        }
+                        // 其他情况使用文本语言
+                        else -> false
+                    }
+                    
+                    if (isLanguageCompatible) {
+                        Log.d(TAG, "🎤 使用ASR识别的语言: ${LanguageDetector.getLocaleName(asrLocale!!)} (与文本语言兼容)")
+                        asrLocale!!
+                    } else {
+                        // 不兼容时，如果文本是UNKNOWN（可能是中文），使用默认语言（韩语）
+                        // 否则使用文本检测到的语言
+                        val finalLocale = if (textLanguage == LanguageDetector.DetectedLanguage.UNKNOWN) {
+                            Log.d(TAG, "⚠️ 文本语言未知，使用默认语言（韩语）")
+                            defaultLocale
+                        } else {
+                            Log.d(TAG, "⚠️ ASR语言(${LanguageDetector.getLocaleName(asrLocale!!)})与文本语言(${LanguageDetector.getLanguageName(textLanguage)})不兼容，使用文本语言")
+                            textLocale
+                        }
+                        finalLocale
+                    }
+                } else {
+                    // 没有ASR语言信息，使用文本检测语言
+                    Log.d(TAG, "🔍 文本语言检测结果:")
+                    Log.d(TAG, "  📊 检测类型: ${LanguageDetector.getLanguageName(textLanguage)}")
+                    Log.d(TAG, "  🎯 目标语言: ${LanguageDetector.getLocaleName(textLocale)}")
+                    textLocale
+                }
                 
-                // 2. 获取或创建对应语言的TTS设备
+                Log.d(TAG, "🎯 最终选择TTS语言: ${LanguageDetector.getLocaleName(targetLocale)}")
+                
+                // 3. 获取或创建对应语言的TTS设备
                 val ttsDevice = getOrCreateTtsDevice(targetLocale)
                 
                 if (ttsDevice != null) {

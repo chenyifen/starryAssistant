@@ -66,7 +66,10 @@ class SkillEvaluatorImpl(
     
     // 🆕 标记Partial是否已执行技能（使用Mutex保证线程安全）
     private var partialSkillExecuted = false
-    private val partialExecutionMutex = Mutex()
+    private var partialExecutionMutex = Mutex()
+    // 🆕 记录Partial阶段执行的文本和技能ID，用于Final阶段对比
+    private var partialExecutedText = ""
+    private var partialExecutedSkillId: String? = null
 
     override fun processInputEvent(event: InputEvent) {
         // 发送事件到SharedFlow，让UI组件可以监听
@@ -97,23 +100,57 @@ class SkillEvaluatorImpl(
                     // 重置标记（线程安全）
                     partialExecutionMutex.withLock {
                         partialSkillExecuted = false
+                        partialExecutedText = ""
+                        partialExecutedSkillId = null
                     }
                     return
+                }
+                
+                // 🆕 检测ASR语言并设置到SkillContext（必须在技能执行前设置）
+                if (firstUtterance.isNotBlank()) {
+                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(firstUtterance, java.util.Locale.KOREAN)
+                    Log.d(TAG, "🎤 [Final] ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
+                    skillContext.asrLocale = asrLocale
+                } else {
+                    skillContext.asrLocale = null
                 }
                 
                 // 自动化测试：打印识别结果
                 Log.i("AutoTest", "ASR结果: $firstUtterance")
                 
-                // 🆕 检查Partial是否已执行（线程安全）
-                val shouldSkip = partialExecutionMutex.withLock {
+                // 🆕 检查Partial是否已执行，以及Final文本是否与Partial不同
+                val (shouldSkip, partialText, partialSkillId) = partialExecutionMutex.withLock {
                     val skip = partialSkillExecuted
+                    val text = partialExecutedText
+                    val skillId = partialExecutedSkillId
                     if (skip) {
                         partialSkillExecuted = false  // 重置标记
                     }
-                    skip
+                    Triple(skip, text, skillId)
                 }
                 
-                if (shouldSkip) {
+                // 🆕 如果Partial已执行，检查Final文本是否与Partial不同
+                if (shouldSkip && partialText.isNotBlank()) {
+                    // 计算文本相似度（简单比较）
+                    val textsSimilar = firstUtterance.lowercase().contains(partialText.lowercase()) ||
+                                      partialText.lowercase().contains(firstUtterance.lowercase()) ||
+                                      firstUtterance.lowercase() == partialText.lowercase()
+                    
+                    if (textsSimilar) {
+                        Log.i(TAG, "⏭️ [Final] Partial已执行技能，Final文本与Partial相似，跳过重复执行 (Partial: '$partialText', Final: '$firstUtterance')")
+                        _state.value = _state.value.copy(pendingQuestion = null)
+                        // 重置记录
+                        partialExecutionMutex.withLock {
+                            partialExecutedText = ""
+                            partialExecutedSkillId = null
+                        }
+                        return
+                    } else {
+                        // 🆕 Final文本与Partial不同，需要重新匹配和执行
+                        Log.i(TAG, "🔄 [Final] Partial已执行，但Final文本与Partial不同，重新匹配技能 (Partial: '$partialText' -> $partialSkillId, Final: '$firstUtterance')")
+                        // 继续执行，重新匹配Final阶段的技能
+                    }
+                } else if (shouldSkip) {
                     Log.i(TAG, "⏭️ [Final] Partial已执行技能，跳过重复执行")
                     _state.value = _state.value.copy(pendingQuestion = null)
                     return
@@ -138,6 +175,8 @@ class SkillEvaluatorImpl(
                 // 重置标记（线程安全）
                 partialExecutionMutex.withLock {
                     partialSkillExecuted = false
+                    partialExecutedText = ""
+                    partialExecutedSkillId = null
                 }
             }
             InputEvent.None -> {
@@ -181,12 +220,22 @@ class SkillEvaluatorImpl(
                                 }
                                 
                                 if (shouldExecute) {
+                                    // 🆕 检测ASR语言并设置到SkillContext（必须在技能执行前设置）
+                                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(utterance, java.util.Locale.KOREAN)
+                                    Log.d(TAG, "🎤 [Partial] ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
+                                    skillContext.asrLocale = asrLocale
+                                    
                                     // 🔥 修复：使用预匹配的技能，禁止fallback
                                     evaluateMatchingSkill(
                                         utterances = listOf(utterance),
                                         preMatchedSkill = result,
                                         allowFallback = false
                                     )
+                                    // 🆕 记录Partial阶段执行的文本和技能ID
+                                    partialExecutionMutex.withLock {
+                                        partialExecutedText = utterance
+                                        partialExecutedSkillId = result.skill.correspondingSkillInfo.id
+                                    }
                                 } else {
                                     Log.d(TAG, "⏭️ [Partial] 技能已被执行，跳过")
                                 }
@@ -287,10 +336,16 @@ class SkillEvaluatorImpl(
             
             val speechOutput = output.getSpeechOutput(skillContext)
             
-            if (speechOutput.isNotBlank()) {
+            // 🆕 如果识别不出具体命令（fallback技能），不播放TTS
+            // 只有执行了具体命令才有TTS回复
+            val isFallbackSkill = skillInfo.id == "text"
+            if (speechOutput.isNotBlank() && !isFallbackSkill) {
                 withContext (Dispatchers.Main) {
                     skillContext.speechOutputDevice.speak(speechOutput)
                 }
+                Log.d(TAG, "✅ 执行具体命令 (${skillInfo.id})，播放TTS: \"$speechOutput\"")
+            } else if (isFallbackSkill) {
+                Log.d(TAG, "⏭️ 识别不出具体命令（fallback），不播放TTS")
             }
             
             val totalEvalTime = System.currentTimeMillis() - evalStartTime

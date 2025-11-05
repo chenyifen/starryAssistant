@@ -22,6 +22,9 @@ class AudioBuffer(
     private val maxSamples = (sampleRate * maxDurationSeconds).toInt()
     private val audioData = mutableListOf<Float>()
     
+    // 🆕 已处理音频位置追踪（避免重复识别）
+    private var processedSampleIndex = 0 // 已处理的样本索引
+    
     // 统计信息
     private var totalSamplesAdded = 0L
     private var totalChunks = 0
@@ -48,15 +51,92 @@ class AudioBuffer(
             Unit
         }
         
-        DebugLogger.logAudio(TAG, "添加音频块: ${chunk.size}样本, 缓冲区总计: ${audioData.size}样本")
+        // 🆕 移除：频繁的日志打印，减少日志噪音
+        // DebugLogger.logAudio(TAG, "添加音频块: ${chunk.size}样本, 缓冲区总计: ${audioData.size}样本")
     }
     
     /**
-     * 获取累积的音频数据副本
+     * 获取累积的音频数据副本（从上次处理位置开始）
      */
     fun getAccumulatedAudio(): FloatArray {
         return lock.read {
-            audioData.toFloatArray()
+            if (processedSampleIndex >= audioData.size) {
+                // 已处理完所有数据，返回空数组
+                floatArrayOf()
+            } else {
+                // 返回未处理的音频数据
+                val unprocessedSize = audioData.size - processedSampleIndex
+                FloatArray(unprocessedSize) { i ->
+                    audioData[processedSampleIndex + i]
+                }
+            }
+        }
+    }
+    
+    /**
+     * 🆕 获取指定时间范围的音频数据（用于命令识别）
+     * @param startTimeMs 开始时间（相对于ASR启动的毫秒数）
+     * @param endTimeMs 结束时间（相对于ASR启动的毫秒数）
+     * 注意：此方法假设音频数据是按时间顺序添加的，从索引0开始
+     */
+    fun getAudioInTimeRange(startTimeMs: Long, endTimeMs: Long): FloatArray {
+        val startSample = (sampleRate * startTimeMs / 1000.0).toInt()
+        val endSample = (sampleRate * endTimeMs / 1000.0).toInt()
+        
+        return lock.read {
+            // 确保索引在有效范围内
+            val actualStart = kotlin.math.max(0, startSample)
+            val actualEnd = kotlin.math.min(endSample, audioData.size)
+            
+            if (actualStart >= actualEnd || actualStart >= audioData.size) {
+                floatArrayOf()
+            } else {
+                val size = actualEnd - actualStart
+                FloatArray(size) { i ->
+                    audioData[actualStart + i]
+                }
+            }
+        }
+    }
+    
+    /**
+     * 🆕 获取当前语音段的音频数据（从语音开始到当前）
+     * @param speechStartTimeMs 语音开始时间（相对于ASR启动的毫秒数）
+     * @param currentTimeMs 当前时间（相对于ASR启动的毫秒数）
+     */
+    fun getCurrentSpeechSegmentAudio(speechStartTimeMs: Long, currentTimeMs: Long): FloatArray {
+        return getAudioInTimeRange(speechStartTimeMs, currentTimeMs)
+    }
+    
+    /**
+     * 🆕 标记音频已处理（清空已处理的部分）
+     * @param processedSamples 已处理的样本数量
+     */
+    fun markAsProcessed(processedSamples: Int) {
+        lock.write {
+            if (processedSamples > 0 && processedSamples <= audioData.size) {
+                // 移除已处理的音频数据
+                repeat(processedSamples) {
+                    if (audioData.isNotEmpty()) {
+                        audioData.removeAt(0)
+                    }
+                }
+                // 重置处理索引（因为删除了前面的数据）
+                processedSampleIndex = 0
+                DebugLogger.logAudio(TAG, "标记${processedSamples}个样本已处理，剩余: ${audioData.size}样本")
+            }
+        }
+    }
+    
+    /**
+     * 🆕 标记当前所有音频已处理（清空整个缓冲区）
+     */
+    fun markAllAsProcessed() {
+        lock.write {
+            val previousSize = audioData.size
+            processedSampleIndex = 0
+            audioData.clear()
+            DebugLogger.logAudio(TAG, "标记所有音频已处理，之前大小: $previousSize")
         }
     }
     
@@ -79,12 +159,13 @@ class AudioBuffer(
     }
     
     /**
-     * 清空缓冲区
+     * 清空缓冲区（重置所有状态）
      */
     fun clear() {
         lock.write {
             val previousSize = audioData.size
             audioData.clear()
+            processedSampleIndex = 0 // 🆕 重置处理索引
             DebugLogger.logAudio(TAG, "清空音频缓冲区，之前大小: $previousSize")
             Unit
         }

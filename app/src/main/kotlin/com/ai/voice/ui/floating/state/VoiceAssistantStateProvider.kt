@@ -127,18 +127,27 @@ class VoiceAssistantStateProvider @Inject constructor(
         when (sttState) {
             is SttState.Loaded -> {
                 DebugLogger.logUI(TAG, "😴 STT device loaded and ready")
-                if (_currentState.uiState != VoiceAssistantUIState.IDLE) {
+                // 🆕 修复：如果ASR正在监听，不应该强制设置为IDLE
+                // 只有在确实没有监听时才设置为IDLE（10秒静音超时的情况）
+                // SttState.Loaded只是表示设备准备就绪，不代表停止监听
+                if (_currentState.uiState == VoiceAssistantUIState.IDLE || 
+                    _currentState.uiState == VoiceAssistantUIState.ERROR) {
+                    // 只有在IDLE或ERROR状态时才更新，保持LISTENING状态不变
                     updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+                } else {
+                    DebugLogger.logUI(TAG, "⏭️ STT设备已就绪，但ASR仍在监听，保持LISTENING状态")
                 }
             }
             
             is SttState.Listening -> {
                 DebugLogger.logUI(TAG, "🎧 STT device listening")
+                // 🆕 确保设置为LISTENING状态，无论当前是什么状态
                 updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
             }
             
             is SttState.Loading -> {
                 DebugLogger.logUI(TAG, "⏳ STT device loading")
+                // 🆕 THINKING状态不影响ASR监听，只是UI显示
                 updateState(uiState = VoiceAssistantUIState.THINKING, displayText = "")
             }
             
@@ -170,6 +179,7 @@ class VoiceAssistantStateProvider @Inject constructor(
             
             is SttState.WaitingForResult -> {
                 DebugLogger.logUI(TAG, "⏳ STT waiting for external result")
+                // 🆕 保持LISTENING状态
                 updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
             }
             
@@ -216,18 +226,30 @@ class VoiceAssistantStateProvider @Inject constructor(
                 val confidence = inputEvent.utterances.firstOrNull()?.second ?: 0f
                 DebugLogger.logUI(TAG, "✅ ASR final result: $bestResult (confidence: $confidence)")
                 
+                // 🆕 立即更新UI显示Final识别结果，不延迟
                 updateState(asrText = bestResult, confidence = confidence)
+                
+                // 🆕 检测ASR识别的语言并设置TTS语言
+                if (bestResult.isNotBlank()) {
+                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(bestResult, java.util.Locale.KOREAN)
+                    DebugLogger.logUI(TAG, "🎤 ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
+                    speechOutputDeviceWrapper.setAsrLocale(asrLocale)
+                    // 🆕 设置到SkillContext，让技能可以获取ASR语言
+                    skillContext.asrLocale = asrLocale
+                } else {
+                    // 清空ASR语言设置
+                    speechOutputDeviceWrapper.setAsrLocale(null)
+                    skillContext.asrLocale = null
+                }
                 
                 // 添加用户消息到会话历史
                 if (bestResult.isNotBlank()) {
                     addUserMessage(bestResult, confidence)
                 }
                 
-                // 清空ASR文本，因为现在进入技能处理阶段
-                scope.launch {
-                    kotlinx.coroutines.delay(1000) // 延迟1秒后清空，让用户看到最终结果
-                    updateState(asrText = "")
-                }
+                // 🆕 不清空ASR文本，保留显示，直到用户继续说话时新的Partial结果覆盖它
+                // 或者等待10秒静音超时再清空
+                // 这样用户可以连续说话时看到所有识别结果
             }
             
             is InputEvent.Error -> {
@@ -236,11 +258,23 @@ class VoiceAssistantStateProvider @Inject constructor(
             }
             
             InputEvent.None -> {
-                DebugLogger.logUI(TAG, "🔇 No speech detected")
-                // 由状态机接管：收到None说明本轮无语音，主动停止STT，回到待唤醒
+                DebugLogger.logUI(TAG, "🔇 No speech detected (10秒静音超时，停止监听)")
+                // 🆕 只有10秒静音超时时才会收到None事件，此时停止STT并回到待唤醒
                 updateState(asrText = "")
+                // 🆕 清空ASR语言设置
+                speechOutputDeviceWrapper.setAsrLocale(null)
+                skillContext.asrLocale = null
+                
+                // 🔥 关键修复：确保状态切换到IDLE
+                updateState(
+                    uiState = VoiceAssistantUIState.IDLE,
+                    displayText = "",
+                    ttsText = ""
+                )
+                
                 try {
                     sttInputDeviceWrapper.stopListening()
+                    DebugLogger.logUI(TAG, "✅ 已停止STT监听")
                 } catch (e: Exception) {
                     DebugLogger.logUI(TAG, "⚠️ 停止STT失败: ${e.message}")
                 }
@@ -258,6 +292,16 @@ class VoiceAssistantStateProvider @Inject constructor(
         if (lastAnswer != null) {
             DebugLogger.logUI(TAG, "🎯 New skill result available")
             
+            // 🆕 检查是否是fallback技能（识别不出具体命令）
+            val skillInfo = lastInteraction?.skill
+            val isFallbackSkill = skillInfo?.id == "text"
+            
+            if (isFallbackSkill) {
+                DebugLogger.logUI(TAG, "⏭️ 识别不出具体命令（fallback），不设置SPEAKING状态，不播放TTS")
+                // fallback时不设置SPEAKING状态，不播放TTS，保持LISTENING状态
+                return
+            }
+            
             // 将技能输出转换为SimpleResult
             val simpleResult = convertSkillOutputToSimpleResult(lastAnswer)
             updateState(result = simpleResult)
@@ -268,6 +312,7 @@ class VoiceAssistantStateProvider @Inject constructor(
                 DebugLogger.logUI(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
                 
                 if (speechOutput.isNotBlank()) {
+                    // 🆕 设置SPEAKING状态，但不影响ASR监听（ASR继续在后台监听）
                     updateState(
                         uiState = VoiceAssistantUIState.SPEAKING,
                         ttsText = speechOutput,
@@ -276,10 +321,10 @@ class VoiceAssistantStateProvider @Inject constructor(
                     addAIMessage(speechOutput)
                     
                     // ⚠️ 注意：这里不需要再次调用 speak()，因为 SkillEvaluator 已经调用了
-                    // 但是需要监听TTS播放完成
+                    // 🆕 关键：TTS播放不影响ASR监听，ASR会继续监听直到10秒静音
                     setupTTSCompletionCallback()
                     
-                    DebugLogger.logUI(TAG, "🗣️ [DEBUG] TTS 文本已设置，等待播放完成")
+                    DebugLogger.logUI(TAG, "🗣️ [DEBUG] TTS 文本已设置，ASR继续监听...")
                 } else {
                     DebugLogger.logUI(TAG, "⚠️ [DEBUG] speechOutput 为空，跳过TTS")
                 }
@@ -724,34 +769,59 @@ class VoiceAssistantStateProvider @Inject constructor(
     
     /**
      * 设置TTS播放完成回调
+     * 🔥 关键修复：TTS播放完成不影响ASR监听，ASR继续监听直到10秒静音超时
      */
     private fun setupTTSCompletionCallback() {
         try {
             speechOutputDeviceWrapper.runWhenFinishedSpeaking {
                 DebugLogger.logUI(TAG, "🎵 TTS playback completed")
                 
-                // TTS播放完成，延迟2秒后清空TTS文本，让用户有时间看到回复
+                // 🔥 关键修复：TTS播放完成不影响ASR监听状态
+                // ASR会继续监听直到10秒静音超时（InputEvent.None）才会停止
                 scope.launch {
-                    delay(2000) // 延迟2秒
+                    delay(1000) // 延迟1秒后清空TTS文本
+                    
+                    // 🆕 检查ASR是否仍在监听
+                    val sttState = sttInputDeviceWrapper.uiState.value
+                    
+                    if (sttState is SttState.Listening) {
+                        // ASR仍在监听，只清空TTS文本，保持LISTENING状态
+                        updateState(
+                            uiState = VoiceAssistantUIState.LISTENING,
+                            ttsText = "",
+                            displayText = "LISTENING"
+                        )
+                        DebugLogger.logUI(TAG, "🔄 TTS播放完成，ASR仍在监听，保持LISTENING状态")
+                    } else {
+                        // ASR已停止（10秒静音超时），切换到IDLE
+                        updateState(
+                            uiState = VoiceAssistantUIState.IDLE,
+                            ttsText = "",
+                            displayText = ""
+                        )
+                        DebugLogger.logUI(TAG, "🧹 TTS播放完成，ASR已停止，切换回IDLE状态")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "⚠️ 设置TTS完成回调失败: ${e.message}")
+            // 如果设置失败，使用延迟清理作为备用方案
+            scope.launch {
+                delay(2000)
+                val sttState = sttInputDeviceWrapper.uiState.value
+                if (sttState is SttState.Listening) {
+                    updateState(
+                        uiState = VoiceAssistantUIState.LISTENING,
+                        ttsText = "",
+                        displayText = "LISTENING"
+                    )
+                } else {
                     updateState(
                         uiState = VoiceAssistantUIState.IDLE,
                         ttsText = "",
                         displayText = ""
                     )
-                    DebugLogger.logUI(TAG, "🧹 TTS text cleared after delay")
                 }
-            }
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error setting up TTS completion callback: ${e.message}")
-            
-            // 如果设置回调失败，使用延迟作为备用方案
-            scope.launch {
-                kotlinx.coroutines.delay(3000) // 3秒后自动恢复到空闲状态
-                updateState(
-                    uiState = VoiceAssistantUIState.IDLE,
-                    ttsText = "",
-                    displayText = ""
-                )
             }
         }
     }

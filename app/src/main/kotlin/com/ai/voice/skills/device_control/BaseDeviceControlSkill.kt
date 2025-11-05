@@ -305,23 +305,49 @@ abstract class BaseDeviceControlSkill {
 
     // ==================== 系统导航和功能 ====================
     
+    /**
+     * 🆕 根据ASR语言获取多语言回复文本
+     */
+    private fun getLocalizedResponse(ctx: SkillContext, korean: String, english: String): String {
+        val asrLocale = (ctx as? com.ai.voice.di.SkillContextInternal)?.asrLocale
+        Log.d(TAG, "🔍 getLocalizedResponse - asrLocale: $asrLocale, language: ${asrLocale?.language}")
+        return when {
+            asrLocale?.language == "en" -> {
+                Log.d(TAG, "✅ 使用英语回复: $english")
+                english
+            }
+            asrLocale?.language == "ko" -> {
+                Log.d(TAG, "✅ 使用韩语回复: $korean")
+                korean
+            }
+            else -> {
+                Log.d(TAG, "⚠️ 使用默认韩语回复: $korean")
+                korean  // 默认韩语
+            }
+        }
+    }
+    
     fun executeHomeScreen(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().gotoHomeScreen(ctx.android)
-            return StringOutput("正在返回主屏幕")
+            val response = getLocalizedResponse(ctx, "홈 화면으로 이동 중입니다", "Returning to home screen")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "返回主屏幕失败", e)
-            return StringOutput("返回主屏幕失败")
+            val errorResponse = getLocalizedResponse(ctx, "홈 화면 이동 실패", "Failed to return to home screen")
+            return StringOutput(errorResponse)
         }
     }
 
     fun executeGoBack(ctx: SkillContext): SkillOutput {
         try {
             sendKeyEvent(ctx, KeyEvent.KEYCODE_BACK)
-            return StringOutput("返回")
+            val response = getLocalizedResponse(ctx, "뒤로 가기", "Going back")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "返回失败", e)
-            return StringOutput("返回失败")
+            val errorResponse = getLocalizedResponse(ctx, "뒤로 가기 실패", "Failed to go back")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -329,10 +355,12 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "执行截图命令")
             SystemHelper.getInstance().takeScreenShot("")
-            return StringOutput("正在截图")
+            val response = getLocalizedResponse(ctx, "스크린샷 찍는 중", "Taking screenshot")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "截图失败", e)
-            return StringOutput("截图失败")
+            val errorResponse = getLocalizedResponse(ctx, "스크린샷 실패", "Failed to take screenshot")
+            return StringOutput(errorResponse)
         }
     }
 
@@ -349,10 +377,12 @@ abstract class BaseDeviceControlSkill {
             val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             ctx.android.startActivity(intent)
-            return StringOutput("正在打开WiFi设置")
+            val response = getLocalizedResponse(ctx, "WiFi 설정 열기", "Opening WiFi settings")
+            return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开WiFi设置失败", e)
-            return StringOutput("打开WiFi设置失败")
+            val errorResponse = getLocalizedResponse(ctx, "WiFi 설정 열기 실패", "Failed to open WiFi settings")
+            return StringOutput(errorResponse)
         }
     }
 

@@ -53,6 +53,9 @@ class SkillContextImpl private constructor(
 
     override var previousOutput: SkillOutput? = null
 
+    // 🆕 ASR识别的语言
+    override var asrLocale: Locale? = null
+
     companion object {
         fun newForPreviews(context: Context): SkillContextImpl {
             val localeManager = LocaleManager.newForPreviews(context)

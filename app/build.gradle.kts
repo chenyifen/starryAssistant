@@ -44,7 +44,8 @@ android {
         }
 
         ndk {
-            abiFilters += arrayOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            // 🆕 只保留ARM架构，移除x86架构以减少APK大小（节省约80MB）
+            abiFilters += arrayOf("armeabi-v7a", "arm64-v8a")
         }
     }
 
