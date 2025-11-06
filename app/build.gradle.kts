@@ -67,23 +67,9 @@ android {
     flavorDimensions += "models"
     
     productFlavors {
-        create("hyundaiit"){
-            dimension = "models"
-            versionNameSuffix = "-hyundaiit"
-            // 包含所有模型文件（默认行为，无需额外配置）
-            buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "true")
-        }
-
-        create("withModels") {
-            dimension = "models"
-            versionNameSuffix = "-with-models"
-            // 包含所有模型文件（默认行为，无需额外配置）
-            buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "true")
-        }
-        
         create("noModels") {
             dimension = "models" 
-            versionNameSuffix = "-no-models"
+            versionNameSuffix = "-hyundaiit"
             // 排除模型文件以减少APK大小和构建时间
             buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "false")
         }
@@ -101,10 +87,12 @@ android {
     buildTypes {
         debug {
             // 固定包名和应用名，不添加分支后缀
+            signingConfig = signingConfigs.getByName("release")
+
             resValue("string", "app_name", "VoiceAssistant")
         }
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             isShrinkResources = false  // 暂时禁用资源压缩，避免模型文件压缩问题
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("release")

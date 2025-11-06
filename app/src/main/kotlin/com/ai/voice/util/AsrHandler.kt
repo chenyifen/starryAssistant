@@ -63,6 +63,14 @@ object AsrHandler {
     }
     
     /**
+     * 重置VAD静音超时时间（在每次唤醒后调用）
+     */
+    fun resetSilenceTimeout() {
+        lastSpeechDetectedTime = System.currentTimeMillis()
+        Log.d(TAG, "🔄 重置VAD静音超时时间")
+    }
+    
+    /**
      * 内部单例对象，完全按照 home.kt 中的 SimulateStreamingAsr 实现
      * 用于管理 recognizer 和 VAD
      */
@@ -248,8 +256,7 @@ object AsrHandler {
         contextForStop = context
         
         // 🔥 重置静音检测时间（确保重新启动时不会立即触发静音超时）
-        lastSpeechDetectedTime = System.currentTimeMillis()
-        Log.d(TAG, "🔄 重置静音检测时间")
+        resetSilenceTimeout()
         
         isStarted = true
         Log.i(TAG, "✅ 启动 doAsr...")

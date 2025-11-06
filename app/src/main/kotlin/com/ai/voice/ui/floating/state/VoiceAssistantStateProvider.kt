@@ -565,17 +565,6 @@ class VoiceAssistantStateProvider @Inject constructor(
     ) {
         val previousState = _currentState
         
-        // 🔥 修复：防止在SPEAKING状态时被意外覆盖成IDLE
-        // 如果当前是SPEAKING状态，且新状态想要切换到IDLE，但TTS文本还在，则忽略此次更新
-        // 但是如果明确要清空ttsText（ttsText参数为""），则允许更新（这是TTS播放完成的正常流程）
-        if (_currentState.uiState == VoiceAssistantUIState.SPEAKING && 
-            uiState == VoiceAssistantUIState.IDLE &&
-            _currentState.ttsText.isNotBlank() &&
-            ttsText != "") {  // 新增：如果明确要清空ttsText，则允许更新
-            DebugLogger.logUI(TAG, "🛡️ 防止状态覆盖：当前SPEAKING状态且TTS文本存在，忽略转到IDLE的请求")
-            return
-        }
-        
         // 修复：状态一致性检查
         val finalUiState = uiState ?: _currentState.uiState
         val finalDisplayText = when {
