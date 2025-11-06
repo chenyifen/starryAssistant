@@ -7,6 +7,7 @@
 /captures
 .externalNativeBuild
 # /models  # 现在使用 LFS 管理大文件，不再忽略
+app/src/main/assets/vosk-model-small-ko-0.22
 /aars/build
 /checkouts
 .kotlin
