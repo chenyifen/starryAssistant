@@ -1,6 +1,12 @@
 package com.ai.voice.util
 
+import android.content.Context
 import android.util.Log
+import org.dicio.skill.skill.SkillInfo
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * 自动化测试日志工具类
@@ -30,9 +36,68 @@ object AutoTestLogger {
      * 记录技能执行
      * @param skillId 技能ID
      * @param result 执行结果描述
+     * @param appName 应用名称（仅用于app_launcher技能，如"google", "browser"等）
      */
-    fun logSkillExecuted(skillId: String, result: String) {
-        Log.i(TAG, "技能执行: $skillId, 结果: $result")
+    fun logSkillExecuted(skillId: String, result: String, appName: String? = null) {
+        val logMessage = if (skillId == "app_launcher" && appName != null) {
+            "技能执行: $skillId (open $appName), 结果: $result"
+        } else {
+            "技能执行: $skillId, 结果: $result"
+        }
+        Log.i(TAG, logMessage)
+    }
+    
+    /**
+     * 记录技能列表（用于调试和测试）
+     * @param context Android上下文
+     * @param skills 技能信息列表
+     */
+    fun logSkillList(context: Context, skills: List<SkillInfo>) {
+        Log.i(TAG, "📋 技能列表 (共${skills.size}个):")
+        skills.forEachIndexed { index, skillInfo ->
+            val skillName = try {
+                skillInfo.name(context)
+            } catch (e: Exception) {
+                "未知"
+            }
+            Log.i(TAG, "  ${index + 1}. ${skillInfo.id} - $skillName")
+        }
+    }
+    
+    /**
+     * 保存技能列表到文件
+     * @param context Android上下文
+     * @param skills 技能信息列表
+     */
+    fun saveSkillListToFile(context: Context, skills: List<SkillInfo>) {
+        try {
+            val file = File(context.getExternalFilesDir(null), "skill_list.txt")
+            val content = buildString {
+                appendLine("技能列表 (共${skills.size}个)")
+                appendLine("生成时间: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())}")
+                appendLine("=".repeat(50))
+                skills.forEachIndexed { index, skillInfo ->
+                    val skillName = try {
+                        skillInfo.name(context)
+                    } catch (e: Exception) {
+                        "未知"
+                    }
+                    val example = try {
+                        skillInfo.sentenceExample(context)
+                    } catch (e: Exception) {
+                        "未知"
+                    }
+                    appendLine("${index + 1}. ${skillInfo.id}")
+                    appendLine("   名称: $skillName")
+                    appendLine("   示例: $example")
+                    appendLine()
+                }
+            }
+            file.writeText(content)
+            Log.i(TAG, "✅ 技能列表已保存到: ${file.absolutePath}")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 保存技能列表失败", e)
+        }
     }
     
     /**

@@ -84,6 +84,15 @@ class SkillHandler @Inject constructor(
                         newEnabledSkillsInfo.map(::buildSkillFromInfo),
                         buildSkillFromInfo(fallbackSkillInfoList[0]),
                     )
+                    
+                    // 🔥 打印和保存技能列表（用于调试和测试）
+                    try {
+                        val context = skillContext.android
+                        com.ai.voice.util.AutoTestLogger.logSkillList(context, allSkillInfoList)
+                        com.ai.voice.util.AutoTestLogger.saveSkillListToFile(context, allSkillInfoList)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "⚠️ 打印/保存技能列表失败", e)
+                    }
                 }
         }
     }

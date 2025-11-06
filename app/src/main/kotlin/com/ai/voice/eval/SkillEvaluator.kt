@@ -54,13 +54,101 @@ class SkillEvaluatorImpl(
      * 清理ASR识别文本，去除空格、标点等，提高技能匹配准确性
      */
     private fun cleanTextForSkillMatching(text: String): String {
-        return text.trim()
+        var cleaned = text.trim()
             // 移除多个连续空格
             .replace(Regex("\\s+"), " ")
             // 移除常见的标点符号（保留韩文、中文、英文的基本字符）
             .replace(Regex("[.,。，!！?？;；:：]"), "")
             // 移除前后空格
             .trim()
+        
+        // 🆕 根据语言转换数字为文字
+        cleaned = convertNumbersToWords(cleaned)
+        
+        return cleaned
+    }
+    
+    /**
+     * 根据文本语言将数字转换为对应语言的文字表达
+     * 例如: "hdmi 2" -> "hdmi two", "에이치디엠아이 2" -> "에이치디엠아이 투"
+     */
+    private fun convertNumbersToWords(text: String): String {
+        // 如果文本中没有数字，直接返回
+        if (!text.contains(Regex("\\d"))) {
+            return text
+        }
+        
+        // 检测语言
+        val locale = com.ai.voice.util.LanguageDetector.detectLocale(text, java.util.Locale.KOREAN)
+        val isKorean = locale.language == "ko"
+        val isEnglish = locale.language == "en"
+        
+        // 数字映射表
+        val koreanNumbers = mapOf(
+            "0" to "영", "1" to "일", "2" to "이", "3" to "삼", "4" to "사",
+            "5" to "오", "6" to "육", "7" to "칠", "8" to "팔", "9" to "구"
+        )
+        
+        val koreanNumbersAlt = mapOf(
+            "0" to "공", "1" to "원", "2" to "투", "3" to "쓰리", "4" to "포",
+            "5" to "파이브", "6" to "식스", "7" to "세븐", "8" to "에잇", "9" to "나인"
+        )
+        
+        val englishNumbers = mapOf(
+            "0" to "zero", "1" to "one", "2" to "two", "3" to "three", "4" to "four",
+            "5" to "five", "6" to "six", "7" to "seven", "8" to "eight", "9" to "nine"
+        )
+        
+        var result = text
+        var converted = false
+        
+        when {
+            isKorean -> {
+                // 韩语环境：优先使用外来语数字（HDMI等技术术语常用）
+                // 如果数字前面是字母/韩文，在前面加空格
+                result = result.replace(Regex("([\\p{L}])(\\d)")) { matchResult ->
+                    val char = matchResult.groupValues[1]
+                    val digit = matchResult.groupValues[2]
+                    converted = true
+                    "$char ${koreanNumbersAlt[digit] ?: digit}"
+                }
+                // 处理剩余的独立数字
+                result = result.replace(Regex("(\\d)")) { matchResult ->
+                    val digit = matchResult.value
+                    converted = true
+                    koreanNumbersAlt[digit] ?: digit
+                }
+            }
+            isEnglish -> {
+                // 英语环境：转换为英文数字
+                // 如果数字前面是字母，在前面加空格；如果数字后面是字母，在后面加空格
+                result = result.replace(Regex("([a-zA-Z])(\\d)([a-zA-Z]?)")) { matchResult ->
+                    val before = matchResult.groupValues[1]
+                    val digit = matchResult.groupValues[2]
+                    val after = matchResult.groupValues[3]
+                    converted = true
+                    val word = englishNumbers[digit] ?: digit
+                    if (after.isNotEmpty()) {
+                        "$before $word $after"
+                    } else {
+                        "$before $word"
+                    }
+                }
+                // 处理剩余的独立数字
+                result = result.replace(Regex("(\\d)")) { matchResult ->
+                    val digit = matchResult.value
+                    converted = true
+                    englishNumbers[digit] ?: digit
+                }
+            }
+            // 其他语言暂不处理
+        }
+        
+        if (converted) {
+            Log.d(TAG, "🔢 数字转换: '$text' -> '$result' (${locale.language})")
+        }
+        
+        return result
     }
 
     private val _state = MutableStateFlow(
@@ -353,7 +441,33 @@ class SkillEvaluatorImpl(
             
             // 记录技能执行结果（用于自动化测试）
             val speechResult = output.getSpeechOutput(skillContext)
-            com.ai.voice.util.AutoTestLogger.logSkillExecuted(skillInfo.id, speechResult)
+            
+            // 🔥 提取app_launcher技能的应用名称
+            val appName = if (skillInfo.id == "app_launcher") {
+                try {
+                    @Suppress("UNCHECKED_CAST")
+                    val inputData = (chosenSkill as? com.ai.voice.eval.SkillWithResult<com.ai.voice.sentences.Sentences.AppLauncher>)?.inputData
+                    when (inputData) {
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Google -> "google"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Browser -> "browser"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.PlayStore -> "play_store"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Youtube -> "youtube"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Settings -> "settings"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Recorder -> "recorder"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Eshare -> "eshare"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Camera -> "camera"
+                        is com.ai.voice.sentences.Sentences.AppLauncher.Finder -> "finder"
+                        else -> null
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ 提取app_launcher应用名称失败", e)
+                    null
+                }
+            } else {
+                null
+            }
+            
+            com.ai.voice.util.AutoTestLogger.logSkillExecuted(skillInfo.id, speechResult, appName)
 
             val interactionPlan = output.getInteractionPlan(skillContext)
             addInteractionFromPending(output)
