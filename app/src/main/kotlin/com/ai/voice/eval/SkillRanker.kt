@@ -35,7 +35,7 @@ class SkillRanker(
             // first round: considering only high-priority skills
             val bestHigh = getBestForSpecificity(ctx, highSkills, input)
             Log.d(TAG, "🔴 第一轮(High): ${bestHigh?.let { "${it.skill.correspondingSkillInfo.id} (${it.score.scoreIn01Range()})" } ?: "无匹配"}")
-            if (bestHigh != null && bestHigh.score.scoreIn01Range() > HIGH_THRESHOLD_1) {
+            if (bestHigh != null && bestHigh.score.scoreIn01Range() >= HIGH_THRESHOLD_1) {
                 Log.d(TAG, "✅ 第一轮通过，阈值: $HIGH_THRESHOLD_1")
                 return bestHigh
             }
@@ -43,10 +43,10 @@ class SkillRanker(
             // second round: considering both medium- and high-priority skills
             val bestMedium = getBestForSpecificity(ctx, mediumSkills, input)
             Log.d(TAG, "🟡 第二轮(Medium): ${bestMedium?.let { "${it.skill.correspondingSkillInfo.id} (${it.score.scoreIn01Range()})" } ?: "无匹配"}")
-            if (bestMedium != null && bestMedium.score.scoreIn01Range() > MEDIUM_THRESHOLD_2) {
+            if (bestMedium != null && bestMedium.score.scoreIn01Range() >= MEDIUM_THRESHOLD_2) {
                 Log.d(TAG, "✅ 第二轮Medium通过，阈值: $MEDIUM_THRESHOLD_2")
                 return bestMedium
-            } else if (bestHigh != null && bestHigh.score.scoreIn01Range() > HIGH_THRESHOLD_2) {
+            } else if (bestHigh != null && bestHigh.score.scoreIn01Range() >= HIGH_THRESHOLD_2) {
                 Log.d(TAG, "✅ 第二轮High通过，阈值: $HIGH_THRESHOLD_2")
                 return bestHigh
             }
@@ -54,13 +54,13 @@ class SkillRanker(
             // third round: all skills are considered
             val bestLow = getBestForSpecificity(ctx, lowSkills, input)
             Log.d(TAG, "🟢 第三轮(Low): ${bestLow?.let { "${it.skill.correspondingSkillInfo.id} (${it.score.scoreIn01Range()})" } ?: "无匹配"}")
-            if (bestLow != null && bestLow.score.scoreIn01Range() > LOW_THRESHOLD_3) {
+            if (bestLow != null && bestLow.score.scoreIn01Range() >=LOW_THRESHOLD_3) {
                 Log.d(TAG, "✅ 第三轮Low通过，阈值: $LOW_THRESHOLD_3")
                 return bestLow
-            } else if (bestMedium != null && bestMedium.score.scoreIn01Range() > MEDIUM_THRESHOLD_3) {
+            } else if (bestMedium != null && bestMedium.score.scoreIn01Range() >= MEDIUM_THRESHOLD_3) {
                 Log.d(TAG, "✅ 第三轮Medium通过，阈值: $MEDIUM_THRESHOLD_3")
                 return bestMedium
-            } else if (bestHigh != null && bestHigh.score.scoreIn01Range() > HIGH_THRESHOLD_3) {
+            } else if (bestHigh != null && bestHigh.score.scoreIn01Range() >= HIGH_THRESHOLD_3) {
                 Log.d(TAG, "✅ 第三轮High通过，阈值: $HIGH_THRESHOLD_3")
                 return bestHigh
             }
@@ -167,6 +167,6 @@ class SkillRanker(
         // third round
         private const val LOW_THRESHOLD_3 = 0.80f
         private const val MEDIUM_THRESHOLD_3 = 0.60f
-        private const val HIGH_THRESHOLD_3 = 0.50f
+        private const val HIGH_THRESHOLD_3 = 0.49f
     }
 }
