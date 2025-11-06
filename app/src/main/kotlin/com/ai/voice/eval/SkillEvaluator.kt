@@ -69,6 +69,41 @@ class SkillEvaluatorImpl(
     }
     
     /**
+     * 从技能输入数据中提取子技能ID
+     * 例如：AppLauncher.Google -> "google", PowerControl.PowerOff -> "power_off"
+     * @param inputData 技能输入数据（sealed class实例）
+     * @return 子技能ID，如果没有子技能则返回null
+     */
+    private fun extractSubSkillId(inputData: Any?): String? {
+        if (inputData == null) return null
+        
+        // 获取类名（例如：AppLauncher$Google）
+        val className = inputData.javaClass.simpleName
+        
+        // 如果类名包含$，说明是sealed class的子类
+        // 例如：AppLauncher$Google -> Google
+        val subClassName = if (className.contains('$')) {
+            className.substringAfter('$')
+        } else {
+            className
+        }
+        
+        // 将PascalCase转换为snake_case
+        // 例如：PowerOff -> power_off, Google -> google
+        val subSkillId = subClassName
+            .replace(Regex("([a-z])([A-Z])"), "$1_$2")
+            .lowercase()
+        
+        // 如果转换后的ID与原始类名相同（都是小写），说明没有子技能
+        // 或者如果subSkillId为空，返回null
+        return if (subSkillId.isBlank() || subSkillId == className.lowercase()) {
+            null
+        } else {
+            subSkillId
+        }
+    }
+    
+    /**
      * 根据文本语言将数字转换为对应语言的文字表达
      * 例如: "hdmi 2" -> "hdmi two", "에이치디엠아이 2" -> "에이치디엠아이 투"
      */
@@ -441,33 +476,9 @@ class SkillEvaluatorImpl(
             
             // 记录技能执行结果（用于自动化测试）
             val speechResult = output.getSpeechOutput(skillContext)
-            
-            // 🔥 提取app_launcher技能的应用名称
-            val appName = if (skillInfo.id == "app_launcher") {
-                try {
-                    @Suppress("UNCHECKED_CAST")
-                    val inputData = (chosenSkill as? com.ai.voice.eval.SkillWithResult<com.ai.voice.sentences.Sentences.AppLauncher>)?.inputData
-                    when (inputData) {
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Google -> "google"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Browser -> "browser"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.PlayStore -> "play_store"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Youtube -> "youtube"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Settings -> "settings"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Recorder -> "recorder"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Eshare -> "eshare"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Camera -> "camera"
-                        is com.ai.voice.sentences.Sentences.AppLauncher.Finder -> "finder"
-                        else -> null
-                    }
-                } catch (e: Exception) {
-                    Log.w(TAG, "⚠️ 提取app_launcher应用名称失败", e)
-                    null
-                }
-            } else {
-                null
-            }
-            
-            com.ai.voice.util.AutoTestLogger.logSkillExecuted(skillInfo.id, speechResult, appName)
+            // 🔥 提取子技能ID（如app_launcher:google）
+            val subSkillId = extractSubSkillId(chosenSkill.inputData)
+            com.ai.voice.util.AutoTestLogger.logSkillExecuted(skillInfo.id, speechResult, subSkillId)
 
             val interactionPlan = output.getInteractionPlan(skillContext)
             addInteractionFromPending(output)
