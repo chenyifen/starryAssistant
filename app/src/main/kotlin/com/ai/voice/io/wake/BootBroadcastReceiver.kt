@@ -21,52 +21,34 @@ class BootBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "Got intent ${intent.action}")
 
-        if (ContextCompat.checkSelfPermission(context, RECORD_AUDIO) !=
-            PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "Audio permission not granted")
-            return
-        }
-
-        // 检查悬浮窗权限，如果有权限就启动悬浮球服务
-        if (Settings.canDrawOverlays(context)) {
-            Log.d(TAG, "Starting Floating Window Service on boot")
-            
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // Android 11+ 不能直接从BOOT_COMPLETED启动需要麦克风的前台服务
-                // 悬浮球服务会在启动时处理这个情况
-                Log.d(TAG, "Creating notification to start floating service later")
-                // 由于悬浮球服务内部会启动WakeService，所以这里创建一个通知
-                WakeService.createNotificationToStartLater(context)
-            } else {
-                // Android 10及以下，可以直接启动
+        // 开机或快速重启时：尝试启动悬浮球服务（不涉及麦克风类型）
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED ||
+            intent.action == "android.intent.action.QUICKBOOT_POWERON" ||
+            intent.action == "com.htc.intent.action.QUICKBOOT_POWERON" ||
+            intent.action == Intent.ACTION_LOCKED_BOOT_COMPLETED) {
+            if (Settings.canDrawOverlays(context)) {
+                Log.d(TAG, "Starting Floating Window Service on boot/locked boot")
                 EnhancedFloatingWindowService.start(context)
+            } else {
+                Log.d(TAG, "Overlay permission not granted, cannot start floating service")
             }
-        } else {
-            Log.d(TAG, "Overlay permission not granted, cannot start floating service")
         }
 
-        // 保留原有的WakeService启动逻辑作为备用
-        when (wakeDevice.state.value) {
-            WakeState.NotLoaded,
-            WakeState.Loading,
-            WakeState.Loaded -> {
-                // any of these three states indicates that wake word recognition is enabled, and
-                // that the model has already been downloaded
-
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    // Starting from Android 11, it is not possible to start a foreground service
-                    // that accesses the microphone from a BOOT_COMPLETED broadcast. So we show a
-                    // notification instead, which starts the foreground service when clicked.
-                    // https://developer.android.com/about/versions/15/behavior-changes-15#fgs-boot-completed
-                    Log.d(TAG, "Creating notification")
-                    WakeService.createNotificationToStartLater(context)
-                } else {
-                    Log.d(TAG, "Starting service")
-                    WakeService.start(context)
+        // 用户解锁后：如果唤醒词已启用，则启动麦克风前台服务
+        if (intent.action == Intent.ACTION_USER_PRESENT) {
+            if (ContextCompat.checkSelfPermission(context, RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED) {
+                when (wakeDevice.state.value) {
+                    WakeState.NotLoaded,
+                    WakeState.Loading,
+                    WakeState.Loaded -> {
+                        Log.d(TAG, "User present: starting WakeService")
+                        WakeService.start(context)
+                    }
+                    else -> Log.d(TAG, "User present: wake device state ${wakeDevice.state.value}")
                 }
-            }
-            else -> {
-                Log.d(TAG, "Wrong wake device state: ${wakeDevice.state.value}")
+            } else {
+                Log.d(TAG, "User present but RECORD_AUDIO not granted")
             }
         }
     }

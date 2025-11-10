@@ -118,9 +118,11 @@ class EnhancedFloatingWindowService : Service(),
         
         // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
-        
-        // 启动WakeService（现在由悬浮球服务管理）
-        startWakeService()
+
+        // 启动WakeService（Android 10及以下在服务内启动；Android 11+由其他前台组件或解锁广播启动）
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
+            startWakeService()
+        }
         
         // 注意：不在Service层监听状态变化，让DraggableFloatingOrb自己处理
         // 避免重复监听导致的状态更新循环
@@ -520,17 +522,8 @@ class EnhancedFloatingWindowService : Service(),
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
         
-        // 启动前台服务
-        // Android 14+ (API 34+) 需要指定前台服务类型
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        // 启动前台服务（不指定麦克风类型，避免开机广播限制）
+        startForeground(NOTIFICATION_ID, notification)
         DebugLogger.logUI(TAG, "✅ Foreground service notification created")
     }
     
