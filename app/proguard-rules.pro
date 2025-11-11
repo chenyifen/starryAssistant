@@ -62,41 +62,71 @@
     <fields>;
 }
 
-# ===== Protobuf生成的类（DataStore相关）=====
-# 保护所有Protobuf生成的类，防止字段被混淆
--keep class com.ai.voice.settings.datastore.** { *; }
+# ===== Protobuf生成的类（DataStore相关）- 增强混淆保护 =====
+# 🔒 允许混淆Protobuf生成的类名，但保留必要的序列化方法
+# 只保留Protobuf运行时需要的方法，其他方法允许混淆
+
+# 保护Protobuf核心运行时类（必须保留）
+-keep class com.google.protobuf.** { *; }
+-keep class * extends com.google.protobuf.GeneratedMessage { *; }
+-keep class * extends com.google.protobuf.GeneratedMessageLite { *; }
+
+# 🔒 允许混淆DataStore生成的类名，但保留必要的序列化方法
+# 只保留Protobuf序列化/反序列化需要的方法
 -keepclassmembers class com.ai.voice.settings.datastore.** {
-    <fields>;
-    <methods>;
+    # 保留Protobuf序列化方法
+    public <methods>;
+    public static <methods>;
+    # 保留Builder模式的方法
+    public com.ai.voice.settings.datastore.**$Builder toBuilder();
+    public static com.ai.voice.settings.datastore.**$Builder newBuilder();
+    public static com.ai.voice.settings.datastore.** parseFrom(...);
+    public static com.ai.voice.settings.datastore.** parseDelimitedFrom(...);
+    # 保留字段访问器（Protobuf生成的getter/setter）
+    public *** get*();
+    public boolean has*();
+    public com.ai.voice.settings.datastore.**$Builder set*(...);
+    public com.ai.voice.settings.datastore.**$Builder clear*();
+    # 保留序列化方法
+    public void writeTo(com.google.protobuf.CodedOutputStream);
+    public int getSerializedSize();
+    public com.google.protobuf.ByteString toByteString();
+    public byte[] toByteArray();
 }
 
-# 保护Protobuf生成的Builder类
--keep class com.ai.voice.settings.datastore.**$Builder { *; }
+# 🔒 允许混淆Builder类名，但保留必要的构建方法
 -keepclassmembers class com.ai.voice.settings.datastore.**$Builder {
-    <fields>;
-    <methods>;
+    public com.ai.voice.settings.datastore.** build();
+    public com.ai.voice.settings.datastore.** buildPartial();
+    public com.ai.voice.settings.datastore.**$Builder clone();
+    public com.ai.voice.settings.datastore.**$Builder mergeFrom(...);
+    public com.ai.voice.settings.datastore.**$Builder clear();
+    # 保留字段设置方法
+    public com.ai.voice.settings.datastore.**$Builder set*(...);
+    public com.ai.voice.settings.datastore.**$Builder clear*();
+    public *** get*();
+    public boolean has*();
 }
 
-# 保护Protobuf生成的枚举类
--keep enum com.ai.voice.settings.datastore.** { *; }
+# 🔒 允许混淆枚举类名，但保留枚举值
+-keepclassmembers enum com.ai.voice.settings.datastore.** {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+    public int getNumber();
+}
 
-# Protobuf字段名保护（字段名以_结尾）
+# 🔒 保护Protobuf字段名（以_结尾的字段，Protobuf内部使用）
+# 这些字段名必须保留，否则序列化会失败
 -keepclassmembers class com.ai.voice.settings.datastore.** {
-    *** theme_;
-    *** language_;
-    *** input_device_;
-    *** speech_output_device_;
-    *** wake_device_;
-    *** stt_play_sound_;
-    *** two_pass_settings_;
-    *** audio_quality_;
-    *** tts_fallback_chain_;
-    *** asr_fallback_chain_;
-    *** dynamic_colors_;
-    *** auto_finish_stt_popup_;
-    *** performance_monitor_enabled_;
-    *** pause_wake_during_asr_;
-    *** enabled_skills_;
+    # 使用通配符匹配所有以_结尾的字段
+    *** *_;
+}
+
+# 🔒 保护Protobuf内部使用的字段描述符
+-keepclassmembers class com.ai.voice.settings.datastore.** {
+    private static final com.google.protobuf.Descriptors$Descriptor *;
+    private static final com.google.protobuf.Descriptors$FieldDescriptor *;
+    private static final com.google.protobuf.Internal$FieldAccessorTable *;
 }
 
 # ===== Hyundai IT API =====
@@ -226,21 +256,47 @@
 # ===== 保留Permission Flow =====
 -keep class dev.shreyaspatil.permissionflow.** { *; }
 
+# ===== Assets解密工具保护 =====
+# 🔒 保护解密工具类，防止被反编译分析
+# 允许混淆类名和方法名，但保留必要的功能
+-keepclassmembers class com.ai.voice.util.AssetDecryptor {
+    public static <methods>;
+    private static <methods>;
+}
+-keepclassmembers class com.ai.voice.util.AssetHelper {
+    public static <methods>;
+}
+
 # ===== 核心业务逻辑保护（选择性混淆，确保功能正常）=====
 # 注意：这里只保护关键类，不全部keep，允许混淆以提高安全性
 # 如果发现运行时问题，可以添加更多keep规则
 
-# 保留WakeService和关键服务
--keep class com.ai.voice.io.wake.WakeService { *; }
--keep class com.ai.voice.ui.floating.EnhancedFloatingWindowService { *; }
--keep class com.ai.voice.io.wake.BootBroadcastReceiver { *; }
+# 🔒 允许混淆WakeService和关键服务的类名，但保留必要的方法
+-keepclassmembers class com.ai.voice.io.wake.WakeService {
+    public <methods>;
+    protected <methods>;
+}
+-keepclassmembers class com.ai.voice.ui.floating.EnhancedFloatingWindowService {
+    public <methods>;
+    protected <methods>;
+}
+-keepclassmembers class com.ai.voice.io.wake.BootBroadcastReceiver {
+    public <methods>;
+}
 
-# 保留MainActivity
--keep class com.ai.voice.MainActivity { *; }
+# 🔒 允许混淆MainActivity类名，但保留必要的方法
+-keepclassmembers class com.ai.voice.MainActivity {
+    public <methods>;
+    protected <methods>;
+}
 
-# 保留关键接口和抽象类
--keep interface com.ai.voice.io.wake.WakeDevice { *; }
--keep interface com.ai.voice.di.WakeDeviceWrapper { *; }
+# 🔒 允许混淆接口名，但保留接口定义
+-keep interface com.ai.voice.io.wake.WakeDevice {
+    <methods>;
+}
+-keep interface com.ai.voice.di.WakeDeviceWrapper {
+    <methods>;
+}
 
 # ===== 移除调试日志（Release版本）=====
 -assumenosideeffects class android.util.Log {
