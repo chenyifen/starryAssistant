@@ -11,7 +11,7 @@ object UserSettingsSerializer : Serializer<UserSettings> {
         .toBuilder()
         .setLanguage(Language.LANGUAGE_KO) // 默认韩语
         .setWakeDevice(WakeDevice.WAKE_DEVICE_HI_NUDGE_V8) // 默认V8唤醒
-        .setInputDevice(InputDevice.INPUT_DEVICE_SENSEVOICE) // 默认SenseVoice ASR
+        .setInputDevice(InputDevice.INPUT_DEVICE_NOTHING) // 默认改为 Vosk ASR
         .setAutoFinishSttPopup(true)
         .setPauseWakeDuringAsr(true) // 默认启用：ASR时暂停唤醒服务
         .build()

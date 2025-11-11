@@ -3,8 +3,9 @@ package com.ai.voice.di
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
-import android.util.Log
 import androidx.datastore.core.DataStore
+import com.ai.voice.BuildConfig
+import com.ai.voice.util.DebugLogger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +26,6 @@ import com.ai.voice.io.input.SttState
 import com.ai.voice.io.input.external_popup.ExternalPopupInputDevice
 import com.ai.voice.io.input.vosk.VoskInputDevice
 import com.ai.voice.io.input.TwoPassInputDevice
-import com.ai.voice.io.input.sensevoice.SenseVoiceInputDevice
 import com.ai.voice.io.input.sherpa_simulate.SherpaOnnxSimulateInputDevice
 import com.ai.voice.settings.datastore.InputDevice
 import com.ai.voice.settings.datastore.InputDevice.INPUT_DEVICE_NOTHING
@@ -78,97 +78,130 @@ class SttInputDeviceWrapperImpl(
 
 
     init {
-        Log.d(TAG, "🏗️ [INIT] SttInputDeviceWrapper初始化开始")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "🏗️ [INIT] SttInputDeviceWrapper初始化开始")
+        }
         // Run blocking, because the data store is always available right away since LocaleManager
         // also initializes in a blocking way from the same data store.
         val (firstSettings, nextSettingsFlow) = dataStore.data
             .map { Pair(it.inputDevice, it.sttPlaySound) }
             .distinctUntilChangedBlockingFirst()
 
-        Log.d(TAG, "📝 [INIT] 读取配置完成: ${firstSettings.first}")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "📝 [INIT] 读取配置完成: ${firstSettings.first}")
+        }
         inputDeviceSetting = firstSettings.first
         sttPlaySoundSetting = firstSettings.second
-        Log.d(TAG, "🔨 [INIT] 开始构建SttInputDevice")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "🔨 [INIT] 开始构建SttInputDevice")
+        }
         sttInputDevice = buildInputDevice(inputDeviceSetting)
-        Log.d(TAG, "✅ [INIT] SttInputDevice构建完成")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "✅ [INIT] SttInputDevice构建完成")
+        }
         scope.launch {
             restartUiStateJob()
         }
 
         scope.launch {
             nextSettingsFlow.collect { (inputDevice, sttPlaySound) ->
-                Log.d(TAG, "📨 收到设置更新: inputDevice=$inputDevice, sttPlaySound=$sttPlaySound")
-                Log.d(TAG, "   当前设置: inputDeviceSetting=$inputDeviceSetting")
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "📨 收到设置更新: inputDevice=$inputDevice, sttPlaySound=$sttPlaySound")
+                    DebugLogger.logIfDebug(TAG, "   当前设置: inputDeviceSetting=$inputDeviceSetting")
+                }
                 sttPlaySoundSetting = sttPlaySound
                 if (inputDeviceSetting != inputDevice) {
-                    Log.w(TAG, "⚠️ 检测到设备类型变化: $inputDeviceSetting → $inputDevice")
+                    if (BuildConfig.DEBUG) {
+                        DebugLogger.logWarnIfDebug(TAG, "⚠️ 检测到设备类型变化: $inputDeviceSetting → $inputDevice")
+                    }
                     changeInputDeviceTo(inputDevice)
                 } else {
-                    Log.d(TAG, "✅ 设备类型未变化，跳过切换")
+                    if (BuildConfig.DEBUG) {
+                        DebugLogger.logIfDebug(TAG, "✅ 设备类型未变化，跳过切换")
+                    }
                 }
             }
         }
     }
 
     private suspend fun changeInputDeviceTo(setting: InputDevice) {
-        Log.d(TAG, "🔄 切换输入设备: $setting")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "🔄 切换输入设备: $setting")
+        }
         val prevSttInputDevice = sttInputDevice
         
-        // 🔥 对于单例设备（如SenseVoice），不要调用destroy()，只停止监听
-        // 只有在切换到不同类型的设备时才需要销毁
         val newDevice = buildInputDevice(setting)
         
         if (prevSttInputDevice != null && prevSttInputDevice !== newDevice) {
-            // 不同的设备实例，停止旧设备的监听
-            Log.d(TAG, "🛑 停止旧设备监听...")
-            prevSttInputDevice.stopListening()
-            
-            // 只有非单例设备才需要销毁
-            if (prevSttInputDevice !is SenseVoiceInputDevice) {
-                Log.d(TAG, "🧹 销毁非单例设备...")
-                prevSttInputDevice.destroy()
+            // 不同的设备实例，停止旧设备的监听并释放资源
+            if (BuildConfig.DEBUG) {
+                DebugLogger.logIfDebug(TAG, "🛑 停止旧设备监听...")
             }
+            prevSttInputDevice.stopListening()
+            if (BuildConfig.DEBUG) {
+                DebugLogger.logIfDebug(TAG, "🧹 销毁旧设备...")
+            }
+            prevSttInputDevice.destroy()
         }
         
         // 切换到新设备
         inputDeviceSetting = setting
         sttInputDevice = newDevice
         
-        Log.d(TAG, "✅ 设备切换完成")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "✅ 设备切换完成")
+        }
         restartUiStateJob()
     }
 
     private fun buildInputDevice(setting: InputDevice): SttInputDevice? {
-        Log.d(TAG, "🏗️ 构建STT输入设备: $setting")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug(TAG, "🏗️ 构建STT输入设备: $setting")
+        }
         return when (setting) {
             UNRECOGNIZED,
             INPUT_DEVICE_UNSET -> {
-                // 默认使用 SenseVoice
-                Log.d(TAG, "   🎙️ 创建 SenseVoiceInputDevice (默认)")
-                SenseVoiceInputDevice.getInstance(appContext, localeManager)
+                // 默认使用 Vosk
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   📡 创建VoskInputDevice (默认)")
+                }
+                VoskInputDevice(appContext, okHttpClient, localeManager)
             }
             INPUT_DEVICE_SENSEVOICE -> {
-                Log.d(TAG, "   🎙️ 获取SenseVoiceInputDevice单例")
-                SenseVoiceInputDevice.getInstance(appContext, localeManager)
+                // 保留枚举值，但映射到 Vosk，避免旧配置导致崩溃
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   📡 映射 SenseVoice 到 VoskInputDevice")
+                }
+                VoskInputDevice(appContext, okHttpClient, localeManager)
             }
             INPUT_DEVICE_VOSK -> {
-                Log.d(TAG, "   📡 创建VoskInputDevice")
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   📡 创建VoskInputDevice")
+                }
                 VoskInputDevice(appContext, okHttpClient, localeManager)
             }
             INPUT_DEVICE_TWO_PASS -> {
-                Log.d(TAG, "   🎯 创建TwoPassInputDevice (双识别模式)")
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   🎯 创建TwoPassInputDevice (双识别模式)")
+                }
                 TwoPassInputDevice(appContext, okHttpClient, localeManager)
             }
             INPUT_DEVICE_EXTERNAL_POPUP -> {
-                Log.d(TAG, "   🖥️ 创建ExternalPopupInputDevice")
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   🖥️ 创建ExternalPopupInputDevice")
+                }
                 ExternalPopupInputDevice(appContext, activityForResultManager, localeManager)
             }
             INPUT_DEVICE_SHERPA_SIMULATE -> {
-                Log.d(TAG, "   🎬 创建SherpaOnnxSimulateInputDevice")
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   🎬 创建SherpaOnnxSimulateInputDevice")
+                }
                 SherpaOnnxSimulateInputDevice(appContext, localeManager)
             }
             INPUT_DEVICE_NOTHING -> {
-                Log.d(TAG, "   ❌ 无输入设备")
+                if (BuildConfig.DEBUG) {
+                    DebugLogger.logIfDebug(TAG, "   ❌ 无输入设备")
+                }
                 null
             }
         }
@@ -253,6 +286,7 @@ class SttInputDeviceWrapperModule {
         okHttpClient: OkHttpClient,
         activityForResultManager: ActivityForResultManager,
     ): SttInputDeviceWrapper {
+        // 恢复原始实现，确保依赖注入正常，避免编译错误
         return SttInputDeviceWrapperImpl(
             appContext, dataStore, localeManager, okHttpClient, activityForResultManager
         )

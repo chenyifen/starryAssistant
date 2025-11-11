@@ -56,7 +56,6 @@ import com.ai.voice.util.LocaleUtils
 import com.ai.voice.util.distinctUntilChangedBlockingFirst
 import com.ai.voice.util.downloadBinaryFilesWithPartial
 import com.ai.voice.util.extractZip
-import com.ai.voice.BuildConfig as AppBuildConfig
 import org.vosk.BuildConfig
 import org.vosk.LibVosk
 import org.vosk.LogLevel
@@ -134,8 +133,8 @@ class VoskInputDevice(
                     
                     var modelCopied = false
                     
-                    // noModels变体优先检查外部存储
-                    if (!AppBuildConfig.HAS_MODELS_IN_ASSETS && AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString)) {
+                    // 渠道已移除：统一视为包含内置模型，不再优先外部存储
+                    if (!true && AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString)) {
                         Log.d(TAG, "Auto-copying Vosk model from external storage for language: $localeString")
                         val copySuccess = AssetModelManager.copyVoskModelFromExternalStorage(appContext, localeString)
                         if (copySuccess) {
@@ -209,8 +208,8 @@ class VoskInputDevice(
                 val localeString = resolveVoskLanguageCode(locale)
                 
                 when {
-                    // noModels变体优先检查外部存储
-                    localeString != null && !AppBuildConfig.HAS_MODELS_IN_ASSETS && 
+                    // 渠道已移除：统一视为包含内置模型，不再优先外部存储
+                    localeString != null && !true && 
                     AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString) -> {
                         if (modelExistFileCheck.exists()) {
                             NotLoaded // 模型已复制，可以直接加载
@@ -243,8 +242,8 @@ class VoskInputDevice(
                 val localeString = resolveVoskLanguageCode(locale)
                 
                 when {
-                    // noModels变体优先检查外部存储
-                    localeString != null && !AppBuildConfig.HAS_MODELS_IN_ASSETS && 
+                    // 渠道已移除：统一视为包含内置模型，不再优先外部存储
+                    localeString != null && !true && 
                     AssetModelManager.hasVoskModelInExternalStorage(appContext, localeString) -> {
                         Downloaded // 外部存储有模型，标记为已下载状态，等待复制
                     }
@@ -432,8 +431,8 @@ class VoskInputDevice(
             val currentLocale = resolveVoskLanguageCode(currentAppLocale)
             
             if (currentLocale != null) {
-                // noModels变体优先尝试从外部存储复制模型
-                if (!AppBuildConfig.HAS_MODELS_IN_ASSETS && AssetModelManager.hasVoskModelInExternalStorage(appContext, currentLocale)) {
+                // 渠道已移除：统一视为包含内置模型，不再优先外部存储
+                if (!true && AssetModelManager.hasVoskModelInExternalStorage(appContext, currentLocale)) {
                     Log.d(TAG, "Copying Vosk model from external storage for language: $currentLocale")
                     val copySuccess = AssetModelManager.copyVoskModelFromExternalStorage(appContext, currentLocale)
                     if (copySuccess) {

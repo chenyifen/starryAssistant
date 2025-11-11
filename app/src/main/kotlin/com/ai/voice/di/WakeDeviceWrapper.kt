@@ -1,8 +1,9 @@
 package com.ai.voice.di
 
 import android.content.Context
-import android.util.Log
 import androidx.datastore.core.DataStore
+import com.ai.voice.BuildConfig
+import com.ai.voice.util.DebugLogger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +26,6 @@ import com.ai.voice.io.wake.onnx.HiNudgeOnnxWakeDevice
 import com.ai.voice.io.wake.onnx.HiNudgeOnnxV8WakeDevice
 import com.ai.voice.io.wake.sherpa.SherpaOnnxWakeDevice
 import com.ai.voice.settings.datastore.UserSettings
-import com.ai.voice.util.DebugLogger
 import com.ai.voice.settings.datastore.WakeDevice.UNRECOGNIZED
 import com.ai.voice.settings.datastore.WakeDevice.WAKE_DEVICE_NOTHING
 import com.ai.voice.settings.datastore.WakeDevice.WAKE_DEVICE_OWW
@@ -66,18 +66,26 @@ class WakeDeviceWrapperImpl(
     private val currentDevice: MutableStateFlow<WakeDevice?>
 
     init {
-        Log.d("WakeDeviceWrapper", "🏗️ [INIT] WakeDeviceWrapper初始化开始")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug("WakeDeviceWrapper", "🏗️ [INIT] WakeDeviceWrapper初始化开始")
+        }
         // Run blocking, because the data store is always available right away since LocaleManager
         // also initializes in a blocking way from the same data store.
         val (firstWakeDeviceSetting, nextWakeDeviceFlow) = dataStore.data
             .map { it.wakeDevice }
             .distinctUntilChangedBlockingFirst()
 
-        Log.d("WakeDeviceWrapper", "📝 [INIT] 读取配置完成: $firstWakeDeviceSetting")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug("WakeDeviceWrapper", "📝 [INIT] 读取配置完成: $firstWakeDeviceSetting")
+        }
         currentSetting = firstWakeDeviceSetting
-        Log.d("WakeDeviceWrapper", "🔨 [INIT] 开始构建WakeDevice")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug("WakeDeviceWrapper", "🔨 [INIT] 开始构建WakeDevice")
+        }
         val firstWakeDevice = buildInputDevice(firstWakeDeviceSetting)
-        Log.d("WakeDeviceWrapper", "✅ [INIT] WakeDevice构建完成")
+        if (BuildConfig.DEBUG) {
+            DebugLogger.logIfDebug("WakeDeviceWrapper", "✅ [INIT] WakeDevice构建完成")
+        }
         currentDevice = MutableStateFlow(firstWakeDevice)
         _isHeyDicio = MutableStateFlow(firstWakeDevice?.isHeyDicio() ?: true)
         isHeyDicio = _isHeyDicio
@@ -153,7 +161,8 @@ class WakeDeviceWrapperImpl(
                 device.processFrame(audio16bitPcm)
             } catch (e: Exception) {
                 // 捕获任何异常，防止崩溃
-                Log.w(TAG, "❌ Error processing wake word frame: ${e.message}")
+                // 错误日志在Release版本也会输出
+                DebugLogger.logError(TAG, "❌ Error processing wake word frame: ${e.message}", e)
                 false
             }
         }

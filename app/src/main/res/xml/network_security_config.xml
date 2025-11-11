@@ -1,10 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- 开发环境: 允许所有明文流量 (包括局域网IP) -->
-    <!-- 注意: 生产环境应该只允许特定域名,并使用 HTTPS -->
-    <base-config cleartextTrafficPermitted="true">
+    <!-- 
+        🔒 网络安全配置
+        Debug版本: 允许明文流量（便于开发调试）
+        Release版本: 仅允许HTTPS（通过BuildConfig控制）
+    -->
+    
+    <!-- 基础配置：信任系统证书 -->
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
+            <!-- 信任系统预装的CA证书 -->
             <certificates src="system" />
+            <!-- 如果需要用户安装的证书，取消下面的注释 -->
+            <!-- <certificates src="user" /> -->
         </trust-anchors>
     </base-config>
+    
+    <!-- Debug版本允许明文流量（通过debug-overrides） -->
+    <debug-overrides>
+        <base-config cleartextTrafficPermitted="true">
+            <trust-anchors>
+                <certificates src="system" />
+            </trust-anchors>
+        </base-config>
+    </debug-overrides>
+    
+    <!-- 
+        域名特定配置示例（如果需要）
+        取消注释并配置实际使用的API域名
+    -->
+    <!--
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.yourserver.com</domain>
+        <domain includeSubdomains="true">cdn.yourserver.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </domain-config>
+    -->
 </network-security-config>

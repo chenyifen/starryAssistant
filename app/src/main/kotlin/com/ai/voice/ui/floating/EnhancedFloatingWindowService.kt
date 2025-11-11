@@ -119,10 +119,10 @@ class EnhancedFloatingWindowService : Service(),
         // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
 
-        // 启动WakeService（Android 10及以下在服务内启动；Android 11+由其他前台组件或解锁广播启动）
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            startWakeService()
-        }
+        // 🔧 修复：移除Android版本限制，所有版本都尝试启动WakeService
+        // 因为单用户设备可能不会发送USER_PRESENT广播，或者已经发送过了
+        // EnhancedFloatingWindowService作为前台服务，可以启动其他前台服务
+        startWakeService()
         
         // 注意：不在Service层监听状态变化，让DraggableFloatingOrb自己处理
         // 避免重复监听导致的状态更新循环
@@ -421,8 +421,8 @@ class EnhancedFloatingWindowService : Service(),
         }
         
         try {
-            val intent = Intent(this, WakeService::class.java)
-            startService(intent)
+            // 使用 WakeService.start() 方法，它会正确使用 startForegroundService
+            WakeService.start(this)
             DebugLogger.logUI(TAG, "✅ WakeService started by EnhancedFloatingWindowService")
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Failed to start WakeService: ${e.message}")

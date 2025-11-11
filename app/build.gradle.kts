@@ -63,17 +63,7 @@ android {
         }
     }
 
-    // 产品变体：控制是否包含模型文件
-    flavorDimensions += "models"
-    
-    productFlavors {
-        create("noModels") {
-            dimension = "models" 
-            versionNameSuffix = "-hyundaiit"
-            // 排除模型文件以减少APK大小和构建时间
-            buildConfigField("boolean", "HAS_MODELS_IN_ASSETS", "false")
-        }
-    }
+    // 已移除渠道与产品变体，统一仅使用 debug/release 构建类型
 
     signingConfigs {
         create("release") {
@@ -82,22 +72,56 @@ android {
             keyAlias = "release"
             keyPassword = "android123"
         }
+        create("510en") {
+            storeFile = file("/Users/user/tool/docsample/510-en-key/platform.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+        create("pad") {
+            storeFile = file("/Users/user/tool/docsample/pad/pad.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
         debug {
             // 固定包名和应用名，不添加分支后缀
-            signingConfig = signingConfigs.getByName("release")
-
+            signingConfig = signingConfigs.getByName("510en")
             resValue("string", "app_name", "VoiceAssistant")
+            
+            // Debug版本不启用混淆，便于调试
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false  // 暂时禁用资源压缩，避免模型文件压缩问题
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("release")
+            // 🔒 启用代码混淆和资源压缩
+            isMinifyEnabled = true
+            isShrinkResources = true
+            
+            // ProGuard规则文件
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            
+            // 签名配置
+            signingConfig = signingConfigs.getByName("pad")
+            
+            // 应用名称
             resValue("string", "app_name", "VoiceAssistant")
+            
+            // 构建配置
+            buildConfigField("boolean", "DEBUG_MODE", "false")
+            
+            // 禁用调试
             isDebuggable = false
+            isJniDebuggable = false
+            isRenderscriptDebuggable = false
+            
+            // 启用ZIP对齐
             isZipAlignEnabled = true
         }
     }

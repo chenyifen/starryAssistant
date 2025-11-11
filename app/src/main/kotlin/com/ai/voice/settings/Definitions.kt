@@ -112,12 +112,6 @@ fun inputDevice() = ListSetting(
     description = stringResource(R.string.pref_input_method_summary),
     possibleValues = listOf(
         ListSetting.Value(
-            value = InputDevice.INPUT_DEVICE_SENSEVOICE,
-            name = stringResource(R.string.pref_input_method_sensevoice),
-            description = stringResource(R.string.pref_input_method_sensevoice_summary),
-            icon = Icons.Default.Mic,
-        ),
-        ListSetting.Value(
             value = InputDevice.INPUT_DEVICE_VOSK,
             name = stringResource(R.string.pref_input_method_vosk),
             description = stringResource(R.string.pref_input_method_vosk_summary),
@@ -219,13 +213,7 @@ fun sttAutoFinish() = BooleanSetting(
     descriptionOn = stringResource(R.string.pref_stt_auto_finish_summary_on),
 )
 
-@Composable
-fun senseVoiceKoreanMode() = BooleanSetting(
-    title = stringResource(R.string.pref_sensevoice_korean_mode_title),
-    icon = Icons.Default.Language,
-    descriptionOff = stringResource(R.string.pref_sensevoice_korean_mode_summary_off),
-    descriptionOn = stringResource(R.string.pref_sensevoice_korean_mode_summary_on),
-)
+// 移除 SenseVoice 相关设置项
 
 @Composable
 fun sttPlaySound() = ListSetting(

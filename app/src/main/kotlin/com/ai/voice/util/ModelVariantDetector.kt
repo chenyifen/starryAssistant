@@ -1,7 +1,6 @@
 package com.ai.voice.util
 
 import android.content.Context
-import com.ai.voice.BuildConfig
 
 /**
  * 构建变体检测器
@@ -14,35 +13,22 @@ object ModelVariantDetector {
      * withModels 变体使用 AssetManager，noModels 变体使用外部存储
      */
     fun shouldUseAssetManager(context: Context): Boolean {
-        return try {
-            // 通过 BuildConfig 检查是否有内置模型
-            BuildConfig.HAS_MODELS_IN_ASSETS
-        } catch (e: Exception) {
-            // 如果没有 BuildConfig 字段，默认使用外部存储
-            false
-        }
+        // 渠道已移除：统一视为包含内置模型
+        return true
     }
     
     /**
      * 获取当前构建变体名称
      */
     fun getVariantName(context: Context): String {
-        return if (shouldUseAssetManager(context)) {
-            "withModels"
-        } else {
-            "noModels"
-        }
+        return "withModels"
     }
     
     /**
      * 获取模型基础路径
      */
     fun getModelBasePath(context: Context): String {
-        return if (shouldUseAssetManager(context)) {
-            "models" // assets 目录下的相对路径
-        } else {
-            "/storage/emulated/0/Dicio/models" // 外部存储的绝对路径
-        }
+        return "models" // assets 目录下的相对路径
     }
     
     /**
@@ -50,11 +36,7 @@ object ModelVariantDetector {
      */
     fun getSherpaKwsModelPath(context: Context): String {
         val basePath = getModelBasePath(context)
-        return if (shouldUseAssetManager(context)) {
-            "$basePath/sherpa_onnx_kws"
-        } else {
-            "$basePath/sherpa_onnx_kws"
-        }
+        return "$basePath/sherpa_onnx_kws"
     }
     
     /**
@@ -94,26 +76,11 @@ object ModelVariantDetector {
      * 获取 SherpaOnnx KWS 模型信息
      */
     fun getSherpaKwsModelInfo(context: Context): ModelInfo {
-        val useAssetManager = shouldUseAssetManager(context)
         val basePath = getSherpaKwsModelPath(context)
-        
-        return if (useAssetManager) {
-            ModelInfo(
-                isExternal = false,
-                basePath = basePath,
-                message = "使用内置 SherpaOnnx KWS 模型 (withModels 变体)"
-            )
-        } else {
-            val externalAvailable = checkExternalSherpaKwsModelsAvailable()
-            ModelInfo(
-                isExternal = true,
-                basePath = basePath,
-                message = if (externalAvailable) {
-                    "使用外部 SherpaOnnx KWS 模型 (noModels 变体)"
-                } else {
-                    "外部 SherpaOnnx KWS 模型不可用 (noModels 变体)"
-                }
-            )
-        }
+        return ModelInfo(
+            isExternal = false,
+            basePath = basePath,
+            message = "使用内置 SherpaOnnx KWS 模型 (withModels)"
+        )
     }
 }

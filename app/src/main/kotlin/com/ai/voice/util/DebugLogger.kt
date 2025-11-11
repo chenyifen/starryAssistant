@@ -1,28 +1,33 @@
 package com.ai.voice.util
 
 import android.util.Log
+import com.ai.voice.BuildConfig
 
 /**
- * 调试日志管理器 - 提供一键开关调试日志的功能
+ * 调试日志管理器 - 根据构建类型自动控制日志输出
+ * 
+ * Debug版本: 输出所有调试日志
+ * Release版本: 仅输出错误日志，移除所有调试日志
  */
 object DebugLogger {
     
-    // 🔧 调试开关 - 修改这里可以一键开启/关闭所有调试日志
-    private const val DEBUG_ENABLED = true
+    // 🔒 Release版本禁用所有调试日志，仅保留错误日志
+    // Debug版本启用所有日志
+    private val DEBUG_ENABLED = BuildConfig.DEBUG
     
-    // 各模块的调试开关
-    private const val DEBUG_WAKE_WORD = DEBUG_ENABLED && true
-    private const val DEBUG_VOICE_RECOGNITION = DEBUG_ENABLED && true
-    private const val DEBUG_AUDIO_PROCESSING = DEBUG_ENABLED && true 
-    private const val DEBUG_MODEL_MANAGEMENT = DEBUG_ENABLED && true
-    private const val DEBUG_STATE_MACHINE = DEBUG_ENABLED && true
-    private const val DEBUG_UI = DEBUG_ENABLED && true
+    // 各模块的调试开关（仅在Debug版本启用）
+    private val DEBUG_WAKE_WORD = DEBUG_ENABLED
+    private val DEBUG_VOICE_RECOGNITION = DEBUG_ENABLED
+    private val DEBUG_AUDIO_PROCESSING = DEBUG_ENABLED
+    private val DEBUG_MODEL_MANAGEMENT = DEBUG_ENABLED
+    private val DEBUG_STATE_MACHINE = DEBUG_ENABLED
+    private val DEBUG_UI = DEBUG_ENABLED
     
-    // 音频保存调试功能 - 可以一键关闭
-    private const val DEBUG_SAVE_AUDIO = DEBUG_ENABLED && false
+    // 音频保存调试功能 - Debug版本可启用
+    private val DEBUG_SAVE_AUDIO = DEBUG_ENABLED && false
     
-    // ASR文本显示专用调试开关 - 临时增强调试
-    private const val DEBUG_ASR_TEXT_FLOW = DEBUG_ENABLED && true
+    // ASR文本显示专用调试开关 - Debug版本可启用
+    private val DEBUG_ASR_TEXT_FLOW = DEBUG_ENABLED
     
     // 唤醒词相关日志
     fun logWakeWord(tag: String?, message: String) {
@@ -143,6 +148,40 @@ object DebugLogger {
      * 检查音频保存功能是否启用
      */
     fun isAudioSaveEnabled(): Boolean = DEBUG_SAVE_AUDIO
+    
+    /**
+     * Release版本安全的日志输出
+     * Debug版本: 正常输出
+     * Release版本: 不输出（会被ProGuard移除）
+     */
+    fun logIfDebug(tag: String, message: String) {
+        if (DEBUG_ENABLED) {
+            Log.d(tag, message)
+        }
+    }
+    
+    /**
+     * Release版本安全的警告日志
+     * Debug版本: 正常输出
+     * Release版本: 不输出（会被ProGuard移除）
+     */
+    fun logWarnIfDebug(tag: String, message: String) {
+        if (DEBUG_ENABLED) {
+            Log.w(tag, message)
+        }
+    }
+    
+    /**
+     * Release版本安全的错误日志
+     * 错误日志在Release版本也会输出（用于问题排查）
+     */
+    fun logError(tag: String, message: String, throwable: Throwable? = null) {
+        if (throwable != null) {
+            Log.e(tag, message, throwable)
+        } else {
+            Log.e(tag, message)
+        }
+    }
 }
 
 /**

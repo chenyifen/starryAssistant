@@ -602,7 +602,7 @@ class VoiceAssistantStateProvider @Inject constructor(
                 StateChangeType.ASR_TEXT_ONLY, StateChangeType.TTS_TEXT_ONLY -> {
                     // 轻量级通知：仅文本变化，直接在主线程调用
                     notifyListenersLight()
-                }
+            }
                 else -> {
                     // 完整通知：UI状态变化，使用协程
                     notifyListeners()
