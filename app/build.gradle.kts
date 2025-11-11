@@ -1,5 +1,5 @@
-import org.gradle.configurationcache.extensions.capitalized
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.io.File
 
 buildscript {
     repositories {
@@ -24,6 +24,32 @@ plugins {
     id("org.stypox.dicio.sentencesCompilerPlugin")
 }
 
+// ===== Git版本信息获取（移到android块之前）=====
+val gitCommitCount: Int = run {
+    try {
+        val process = Runtime.getRuntime().exec("git rev-list --count HEAD")
+        process.waitFor()
+        val result = process.inputStream.bufferedReader().readText().trim()
+        if (result.isNotEmpty()) result.toInt() else 0
+    } catch (e: Exception) {
+        0
+    }
+}
+
+// 基础版本号
+val baseVersionMajor = 3
+val baseVersionMinor = 3
+val baseVersionCode = 16
+
+// 版本号计算规则：修订号从0开始，每次commit+1，到9后次版本号+1，修订号重置为0
+// 例如：3.3.0 -> 3.3.1 -> ... -> 3.3.9 -> 3.4.0
+val revisionNumber = gitCommitCount % 10  // 修订号：0-9循环
+val minorVersion = baseVersionMinor + (gitCommitCount / 10)  // 每10次commit，次版本号+1
+
+// 最终版本号
+val finalVersionCode = baseVersionCode + gitCommitCount
+val finalVersionName = "${baseVersionMajor}.${minorVersion}.${revisionNumber}"
+
 android {
     namespace = "com.ai.voice"
     compileSdk = 36
@@ -32,8 +58,8 @@ android {
         applicationId = "com.ai.voice"
         minSdk = 26
         targetSdk = 36
-        versionCode = 16
-        versionName = "3.2"
+        versionCode = finalVersionCode
+        versionName = finalVersionName
         testInstrumentationRunner = "com.ai.voice.CustomTestRunner"
 
         vectorDrawables.useSupportLibrary = true
@@ -108,7 +134,7 @@ android {
             )
             
             // 签名配置
-            signingConfig = signingConfigs.getByName("pad")
+            signingConfig = signingConfigs.getByName("510en")
             
             // 应用名称
             resValue("string", "app_name", "VoiceAssistant")
@@ -119,10 +145,45 @@ android {
             // 禁用调试
             isDebuggable = false
             isJniDebuggable = false
-            isRenderscriptDebuggable = false
+            // isRenderscriptDebuggable 已弃用，AGP 9.0将移除
+            // isZipAlignEnabled 已弃用，ZIP对齐现在总是启用的
+        }
+    }
+    
+    // ===== 自定义APK文件名格式：VoiceAssistant-版本号-buildType.apk =====
+    // 使用afterEvaluate确保版本信息已计算
+    afterEvaluate {
+        applicationVariants.all {
+            val variant = this
+            val buildType = variant.buildType.name
+            val versionName = variant.versionName
             
-            // 启用ZIP对齐
-            isZipAlignEnabled = true
+            // 构建APK文件名：VoiceAssistant-版本号-buildType.apk
+            val apkFileName = when (buildType) {
+                "debug" -> {
+                    "VoiceAssistant-${versionName}-Debug.apk"
+                }
+                "release" -> {
+                    "VoiceAssistant-${versionName}-Release.apk"
+                }
+                else -> {
+                    val buildTypeCapitalized = buildType.replaceFirstChar { it.uppercase() }
+                    "VoiceAssistant-${versionName}-${buildTypeCapitalized}.apk"
+                }
+            }
+            
+            // 使用任务重命名APK文件
+            variant.outputs.forEach { output ->
+                val packageTask = variant.packageApplicationProvider.get()
+                packageTask.doLast {
+                    val outputFile = output.outputFile
+                    if (outputFile != null && outputFile.exists()) {
+                        val newFile = File(outputFile.parent, apkFileName)
+                        outputFile.renameTo(newFile)
+                        println("✅ APK已重命名为: ${newFile.name}")
+                    }
+                }
+            }
         }
     }
 
@@ -176,7 +237,7 @@ protobuf {
 androidComponents {
     onVariants(selector().all()) { variant ->
         afterEvaluate {
-            val capName = variant.name.capitalized()
+            val capName = variant.name.replaceFirstChar { it.uppercase() }
             tasks.getByName<KotlinCompile>("ksp${capName}Kotlin") {
                 setSource(tasks.getByName("generate${capName}Proto").outputs)
             }

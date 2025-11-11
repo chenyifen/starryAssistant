@@ -32,8 +32,8 @@ echo "✅ 检测到 $device_count 个设备"
 
 # 构建应用
 echo ""
-echo "🔨 3. 构建noModels变体..."
-./gradlew assembleNoModelsDebug
+echo "🔨 3. 构建 Debug 版本..."
+./gradlew assembleDebug
 
 if [ $? -ne 0 ]; then
     echo "❌ 构建失败"
@@ -42,15 +42,21 @@ fi
 
 echo "✅ 构建成功"
 
-# 检查APK文件是否存在
-apk_path="app/build/outputs/apk/noModels/debug/app-noModels-debug.apk"
-if [ ! -f "$apk_path" ]; then
-    echo "❌ APK文件不存在: $apk_path"
+# 查找APK文件（新格式：VoiceAssistant-版本号-Debug.apk）
+apk_dir="app/build/outputs/apk/debug"
+apk_path=$(find "$apk_dir" -name "VoiceAssistant-*-Debug.apk" -type f | head -1)
+
+if [ -z "$apk_path" ] || [ ! -f "$apk_path" ]; then
+    echo "❌ APK文件不存在，查找目录: $apk_dir"
+    echo "   尝试查找的文件模式: VoiceAssistant-*-Debug.apk"
+    ls -la "$apk_dir" 2>/dev/null || echo "   目录不存在"
     exit 1
 fi
 
 # 获取APK信息
+apk_name=$(basename "$apk_path")
 apk_size=$(ls -lh "$apk_path" | awk '{print $5}')
+echo "📦 APK文件: $apk_name"
 echo "📦 APK大小: $apk_size"
 
 # 安装应用

@@ -182,6 +182,32 @@ object DebugLogger {
             Log.e(tag, message)
         }
     }
+    
+    /**
+     * 🔒 关键日志：ASR识别结果（Release版本也输出）
+     * 用于生产环境监控和问题排查
+     */
+    fun logAsrResult(tag: String, text: String, confidence: Float = 0f) {
+        if (text.isNotBlank()) {
+            Log.i("🎤[$tag]", "ASR识别结果: \"$text\"${if (confidence > 0) " (置信度: $confidence)" else ""}")
+        }
+    }
+    
+    /**
+     * 🔒 关键日志：唤醒词检测成功（Release版本也输出）
+     */
+    fun logWakeWordSuccess(tag: String) {
+        Log.i("🔊[$tag]", "✅ 唤醒词检测成功")
+    }
+    
+    /**
+     * 🔒 关键日志：命令执行成功（Release版本也输出）
+     */
+    fun logCommandExecuted(tag: String, skillId: String, command: String?, result: String = "") {
+        val commandText = command ?: "未知命令"
+        val resultText = if (result.isNotBlank()) " -> $result" else ""
+        Log.i("✅[$tag]", "命令执行: [$skillId] \"$commandText\"$resultText")
+    }
 }
 
 /**

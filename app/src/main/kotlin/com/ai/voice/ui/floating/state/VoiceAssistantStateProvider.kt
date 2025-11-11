@@ -247,6 +247,9 @@ class VoiceAssistantStateProvider @Inject constructor(
                 val confidence = inputEvent.utterances.firstOrNull()?.second ?: 0f
                 DebugLogger.logUI(TAG, "✅ ASR final result: $bestResult (confidence: $confidence)")
                 
+                // 🔒 关键日志：ASR识别结果（Release版本也输出）
+                DebugLogger.logAsrResult(TAG, bestResult, confidence)
+                
                 // 🆕 立即更新UI显示Final识别结果，不延迟
                 updateState(asrText = bestResult, confidence = confidence)
                 

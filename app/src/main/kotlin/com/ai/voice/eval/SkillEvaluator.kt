@@ -1,6 +1,7 @@
 package com.ai.voice.eval
 
 import android.util.Log
+import com.ai.voice.util.DebugLogger
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -479,6 +480,10 @@ class SkillEvaluatorImpl(
             // 🔥 提取子技能ID（如app_launcher:google）
             val subSkillId = extractSubSkillId(chosenSkill.inputData)
             com.ai.voice.util.AutoTestLogger.logSkillExecuted(skillInfo.id, speechResult, subSkillId)
+            
+            // 🔒 关键日志：命令执行成功（Release版本也输出）
+            // chosenInput 可能为 String?，但 logCommandExecuted 方法已接受 String? 类型
+            DebugLogger.logCommandExecuted(TAG, skillInfo.id, chosenInput, speechResult)
 
             val interactionPlan = output.getInteractionPlan(skillContext)
             addInteractionFromPending(output)
@@ -569,7 +574,7 @@ class SkillEvaluatorImpl(
     }
 
     companion object {
-        val TAG = SkillEvaluator::class.simpleName
+        val TAG: String = SkillEvaluator::class.java.simpleName
     }
 }
 

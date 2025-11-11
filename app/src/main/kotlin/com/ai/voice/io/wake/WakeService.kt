@@ -638,6 +638,8 @@ class WakeService : Service() {
                         if (wakeWordDetected) {
                             if (now > nextWakeWordAllowed) {
                                 DebugLogger.logWakeWord(TAG, "🎯 WAKE WORD DETECTED! Frame #$frameCount")
+                                // 🔒 关键日志：唤醒词检测成功（Release版本也输出）
+                                DebugLogger.logWakeWordSuccess(TAG)
                                 com.ai.voice.util.AutoTestLogger.logWakeupDetected()
                                 nextWakeWordAllowed = now.plusMillis(WAKE_WORD_BACKOFF_MILLIS)
                                 onWakeWordDetected()

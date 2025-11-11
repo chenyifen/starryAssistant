@@ -264,7 +264,11 @@
     public static void logUI(...);
     public static void logIfDebug(...);
     public static void logWarnIfDebug(...);
-    # 注意：logError 不在这里移除，因为错误日志在Release版本也需要保留
+    # 注意：以下关键日志方法不在这里移除，Release版本也需要输出
+    # - logAsrResult (ASR识别结果)
+    # - logWakeWordSuccess (唤醒词检测成功)
+    # - logCommandExecuted (命令执行成功)
+    # - logError (错误日志)
 }
 
 # ===== 警告抑制 =====

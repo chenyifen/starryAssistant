@@ -32,8 +32,8 @@ echo "✅ 检测到 $device_count 个设备"
 
 # 构建应用
 echo ""
-echo "🔨 3. 构建 Debug 版本..."
-./gradlew assembleDebug
+echo "🔨 3. 构建 Release 版本..."
+./gradlew assembleRelease
 
 if [ $? -ne 0 ]; then
     echo "❌ 构建失败"
@@ -42,13 +42,13 @@ fi
 
 echo "✅ 构建成功"
 
-# 查找APK文件（新格式：VoiceAssistant-版本号-Debug.apk）
-apk_dir="app/build/outputs/apk/debug"
-apk_path=$(find "$apk_dir" -name "VoiceAssistant-*-Debug.apk" -type f | head -1)
+# 查找APK文件（新格式：VoiceAssistant-版本号-Release.apk）
+apk_dir="app/build/outputs/apk/release"
+apk_path=$(find "$apk_dir" -name "VoiceAssistant-*-Release.apk" -type f | head -1)
 
 if [ -z "$apk_path" ] || [ ! -f "$apk_path" ]; then
     echo "❌ APK文件不存在，查找目录: $apk_dir"
-    echo "   尝试查找的文件模式: VoiceAssistant-*-Debug.apk"
+    echo "   尝试查找的文件模式: VoiceAssistant-*-Release.apk"
     ls -la "$apk_dir" 2>/dev/null || echo "   目录不存在"
     exit 1
 fi
