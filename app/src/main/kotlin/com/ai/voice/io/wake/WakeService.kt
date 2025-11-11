@@ -45,6 +45,9 @@ import com.ai.voice.settings.datastore.UserSettings
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AudioDebugSaver
 import com.ai.voice.io.wake.WakeWordCallbackManager
+import com.ai.voice.util.ActivationChecker
+import com.ai.voice.settings.datastore.UserSettingsEntryPoint
+import dagger.hilt.android.EntryPointAccessors
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -682,6 +685,29 @@ class WakeService : Service() {
 
     private fun onWakeWordDetected() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
+        
+        // 🔒 检查激活状态（15天试用期）
+        val dataStore = try {
+            EntryPointAccessors.fromApplication(
+                this,
+                UserSettingsEntryPoint::class.java
+            ).userSettings()
+        } catch (e: Exception) {
+            null
+        }
+        
+        val isActivated = ActivationChecker.isActivated(this, dataStore)
+        if (!isActivated) {
+            DebugLogger.logWakeWord(TAG, "❌ 应用试用期已过期，无法使用")
+            // 播放"Not Activated"提示
+            try {
+                speechOutputDevice.speak("Not Activated")
+                DebugLogger.logWakeWord(TAG, "🔊 已播放: Not Activated")
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "❌ 播放TTS失败", e)
+            }
+            return
+        }
         
         // 🔧 取消之前的恢复任务，避免重复唤醒导致状态混乱
         handler.removeCallbacks(releaseSttResourcesRunnable)

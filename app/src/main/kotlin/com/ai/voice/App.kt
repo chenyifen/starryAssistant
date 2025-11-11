@@ -11,6 +11,11 @@ import com.ai.voice.activation.ActivationManager
 import com.ai.voice.activation.ActivationCodeGenerator
 import com.ai.voice.util.checkPermissions
 import com.ai.voice.util.AsrHandler
+import com.ai.voice.util.ActivationChecker
+import com.ai.voice.settings.datastore.UserSettingsEntryPoint
+import androidx.datastore.core.DataStore
+import dagger.hilt.android.EntryPointAccessors
+import com.ai.voice.settings.datastore.UserSettings
 
 // IMPORTANT NOTE: beware of this nasty bug related to allowBackup=true
 // https://medium.com/p/924c91bafcac
@@ -24,9 +29,25 @@ class App : Application() {
         // ⚠️ 注意: 这是一个可选的模块,如果不需要可以删除整个 activation package
         ActivationManager.initialize(this)
         
+        // 初始化激活检查（保存首次启动时间）
+        try {
+            val dataStore = EntryPointAccessors.fromApplication(
+                this,
+                UserSettingsEntryPoint::class.java
+            ).userSettings()
+            ActivationChecker.isActivated(this, dataStore)
+            Log.i(TAG, "✅ 激活检查初始化完成")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 激活检查初始化失败: ${e.message}", e)
+            // 使用静态方法（不依赖DataStore）
+            ActivationChecker.isActivated(this, null)
+        }
+        
         // 初始化 AsrHandler（应用启动时预先初始化，避免首次唤醒时的延迟）
         Log.i(TAG, "🚀 开始初始化 AsrHandler...")
-        AsrHandler.initialize(this)
+        if (!AsrHandler.initialize(this)) {
+            Log.e(TAG, "❌ AsrHandler初始化失败")
+        }
         
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             checkPermissions(this, Manifest.permission.POST_NOTIFICATIONS)
