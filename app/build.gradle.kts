@@ -41,14 +41,17 @@ val baseVersionMajor = 3
 val baseVersionMinor = 3
 val baseVersionCode = 16
 
-// 版本号计算规则：修订号从0开始，每次commit+1，到9后次版本号+1，修订号重置为0
-// 例如：3.3.0 -> 3.3.1 -> ... -> 3.3.9 -> 3.4.0
-val revisionNumber = gitCommitCount % 10  // 修订号：0-9循环
-val minorVersion = baseVersionMinor + (gitCommitCount / 10)  // 每10次commit，次版本号+1
+// 版本号计算规则：修订号0-99循环，每100次commit次版本号+1，次版本号超过99时主版本号+1
+// 例如：3.3.0 -> 3.3.99 -> 3.4.0 -> ... -> 3.99.99 -> 4.0.0
+val revisionNumber = gitCommitCount % 100  // 修订号：0-99循环
+val minorVersionIncrement = (gitCommitCount / 100) % 100  // 次版本号增量：0-99
+val majorVersionIncrement = gitCommitCount / 10000  // 主版本号增量
+val minorVersion = baseVersionMinor + minorVersionIncrement
+val majorVersion = baseVersionMajor + majorVersionIncrement
 
 // 最终版本号
 val finalVersionCode = baseVersionCode + gitCommitCount
-val finalVersionName = "${baseVersionMajor}.${minorVersion}.${revisionNumber}"
+val finalVersionName = "${majorVersion}.${minorVersion}.${revisionNumber}"
 
 android {
     namespace = "com.ai.voice"
