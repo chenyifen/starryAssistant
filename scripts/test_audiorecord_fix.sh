@@ -46,7 +46,7 @@ sleep 3
 # 启动WakeService
 echo "🎵 启动WakeService..."
 echo "🎵 Starting WakeService..."
-adb shell am startservice org.stypox.dicio.master/org.stypox.dicio.io.wake.WakeService
+adb shell am startservice org.stypox.dicio.master/com.ai.voice.WakeService
 
 sleep 5
 

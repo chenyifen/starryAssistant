@@ -16,7 +16,7 @@ class WakeWordTriggerBroadcastReceiver : BroadcastReceiver() {
     companion object {
         private const val TAG = "WakeWordTriggerReceiver"
         const val ACTION_TRIGGER_WAKE_WORD =
-            "org.stypox.dicio.io.wake.WakeService.ACTION_TRIGGER_WAKE_WORD"
+            "com.ai.voice.WakeService.ACTION_TRIGGER_WAKE_WORD"
     }
     
     override fun onReceive(context: Context?, intent: Intent?) {

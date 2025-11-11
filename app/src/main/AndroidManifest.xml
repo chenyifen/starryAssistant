@@ -171,6 +171,16 @@
             </intent-filter>
         </receiver>
 
+        <!-- 唤醒词调试广播接收器 -->
+        <receiver
+            android:name=".io.wake.WakeWordDebugBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.ai.voice.WakeService.ACTION_DEBUG_WAKE_WORD" />
+            </intent-filter>
+        </receiver>
+
                 <activity
                     android:name=".ui.floating.FloatingAssistantTestActivity"
                     android:enabled="false"

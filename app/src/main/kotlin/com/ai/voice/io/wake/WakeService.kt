@@ -8,8 +8,6 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.BroadcastReceiver
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.media.AudioAttributes
@@ -88,9 +86,6 @@ class WakeService : Service() {
     }
 
     private lateinit var notificationManager: NotificationManager
-    
-    // 🔧 临时调试：广播接收器，用于模拟唤醒词检测
-    private var debugWakeReceiver: BroadcastReceiver? = null
 
     override fun onBind(intent: Intent?): IBinder? {
         return null
@@ -121,8 +116,8 @@ class WakeService : Service() {
             AudioDebugSaver.cleanupOldAudioFiles(this, 50)
         }
         
-        // 🔧 临时调试：注册广播接收器，用于模拟唤醒词检测
-        registerDebugWakeReceiver()
+        // 🔧 临时调试：广播接收器已改为静态注册（WakeWordDebugBroadcastReceiver）
+        // 不再需要动态注册，因为静态注册可以接收外部广播（adb shell am broadcast）
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -227,8 +222,7 @@ class WakeService : Service() {
     override fun onDestroy() {
         listening.set(false)
         
-        // 🔧 临时调试：注销广播接收器
-        unregisterDebugWakeReceiver()
+        // 🔧 临时调试：广播接收器已改为静态注册，无需注销
         
         // 通知回调：停止监听
         WakeWordCallbackManager.notifyListeningStopped()
@@ -952,59 +946,22 @@ class WakeService : Service() {
 
         private val TAG = WakeService::class.simpleName ?: "WakeService"
         private const val FOREGROUND_NOTIFICATION_CHANNEL_ID =
-            "org.stypox.dicio.io.wake.WakeService.FOREGROUND"
+            "com.ai.voice.WakeService.FOREGROUND"
         private const val START_NOTIFICATION_CHANNEL_ID =
-            "org.stypox.dicio.io.wake.WakeService.START"
+            "com.ai.voice.WakeService.START"
         private const val TRIGGERED_NOTIFICATION_CHANNEL_ID =
-            "org.stypox.dicio.io.wake.WakeService.TRIGGERED"
+            "com.ai.voice.WakeService.TRIGGERED"
         private const val FOREGROUND_NOTIFICATION_ID = 19803672
         private const val START_NOTIFICATION_ID = 48019274
         private const val TRIGGERED_NOTIFICATION_ID = 601398647
         private const val WAKE_WORD_BACKOFF_MILLIS = 4000L
         private const val ACTION_STOP_WAKE_SERVICE =
-            "org.stypox.dicio.io.wake.WakeService.ACTION_STOP"
+            "com.ai.voice.WakeService.ACTION_STOP"
         private const val RELEASE_STT_RESOURCES_MILLIS = 1000L * 10 // 10 seconds - 缩短时间以快速恢复WakeService
         
         // 🔧 临时调试：广播 action，用于模拟唤醒词检测
         const val ACTION_DEBUG_WAKE_WORD =
-            "org.stypox.dicio.io.wake.WakeService.ACTION_DEBUG_WAKE_WORD"
+            "com.ai.voice.WakeService.ACTION_DEBUG_WAKE_WORD"
     }
     
-    /**
-     * 🔧 临时调试：注册广播接收器，用于模拟唤醒词检测
-     * 发送广播：adb shell am broadcast -a org.stypox.dicio.io.wake.WakeService.ACTION_DEBUG_WAKE_WORD
-     */
-    private fun registerDebugWakeReceiver() {
-        debugWakeReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == ACTION_DEBUG_WAKE_WORD) {
-                    DebugLogger.logWakeWord(TAG, "🔧 [DEBUG] 收到调试唤醒广播，模拟唤醒词检测")
-                    onWakeWordDetected()
-                }
-            }
-        }
-        
-        val filter = IntentFilter(ACTION_DEBUG_WAKE_WORD)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(debugWakeReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(debugWakeReceiver, filter)
-        }
-        DebugLogger.logWakeWord(TAG, "🔧 [DEBUG] 调试唤醒广播接收器已注册")
-    }
-    
-    /**
-     * 🔧 临时调试：注销广播接收器
-     */
-    private fun unregisterDebugWakeReceiver() {
-        debugWakeReceiver?.let {
-            try {
-                unregisterReceiver(it)
-                DebugLogger.logWakeWord(TAG, "🔧 [DEBUG] 调试唤醒广播接收器已注销")
-            } catch (e: Exception) {
-                DebugLogger.logWakeWord(TAG, "⚠️ [DEBUG] 注销广播接收器失败: ${e.message}")
-            }
-        }
-        debugWakeReceiver = null
-    }
 }

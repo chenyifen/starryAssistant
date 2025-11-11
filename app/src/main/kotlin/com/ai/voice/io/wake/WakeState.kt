@@ -4,7 +4,7 @@ import com.ai.voice.ui.util.Progress
 
 sealed interface WakeState {
     /**
-     * Should never be generated directly by a [org.stypox.dicio.io.wake.WakeDevice]. In fact,
+     * Should never be generated directly by a [com.ai.voice.WakeDevice]. In fact,
      * this is used directly in the UI layer, since permission checks can only be done there.
      */
     data object NoMicOrNotificationPermission : WakeState
