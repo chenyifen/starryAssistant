@@ -125,7 +125,7 @@ class EnhancedFloatingWindowService : Service(),
         // 🔧 修复：移除Android版本限制，所有版本都尝试启动WakeService
         // 因为单用户设备可能不会发送USER_PRESENT广播，或者已经发送过了
         // EnhancedFloatingWindowService作为前台服务，可以启动其他前台服务
-        startWakeService()
+            startWakeService()
         
         // 注意：不在Service层监听状态变化，让DraggableFloatingOrb自己处理
         // 避免重复监听导致的状态更新循环
@@ -541,8 +541,17 @@ class EnhancedFloatingWindowService : Service(),
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
         
-        // 启动前台服务（不指定麦克风类型，避免开机广播限制）
+        // 启动前台服务
+        // Android 14+ (API 34+) 需要指定前台服务类型
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
         startForeground(NOTIFICATION_ID, notification)
+        }
         DebugLogger.logUI(TAG, "✅ Foreground service notification created")
     }
     

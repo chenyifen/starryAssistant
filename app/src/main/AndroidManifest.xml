@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:installLocation="auto"
-    android:sharedUserId="android.uid.system">
+    android:installLocation="auto">
+    <!-- android:sharedUserId="android.uid.system"> -->
     <!-- Allow installing also on external storage -->
     
     <!-- Override minSdkVersion check for Hyundai IT API library -->
@@ -14,6 +14,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <!-- 外部存储权限已移除 - Hyundai IT版本模型文件已内置到assets -->
@@ -159,7 +160,13 @@
             android:name=".ui.floating.EnhancedFloatingWindowService"
             android:enabled="true"
             android:exported="false"
-            android:label="Enhanced Floating Assistant" />
+            android:foregroundServiceType="specialUse"
+            android:icon="@mipmap/ic_launcher"
+            android:label="Enhanced Floating Assistant">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="语音助手悬浮窗服务" />
+        </service>
 
         <!-- 自动化测试广播接收器 -->
         <receiver
