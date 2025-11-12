@@ -8,6 +8,8 @@
 .externalNativeBuild
 # /models  # 现在使用 LFS 管理大文件，不再忽略
 app/src/main/assets/vosk-model-small-ko-0.22
+# 忽略整个 assets 文件夹
+app/src/main/assets/
 /aars/build
 /checkouts
 .kotlin
@@ -23,5 +25,6 @@ fastlane/report.xml
 fastlane/README.md
 fastlane_config.txt
 AI语音助手应用集成指南.pdf
-AiVoiceRelease_202511/VoiceAssistant-3.19.38-202511-Release.apk
+# 忽略整个 AiVoiceRelease_202511 文件夹
+AiVoiceRelease_202511/
 AiVoiceRelease_202511.zip
