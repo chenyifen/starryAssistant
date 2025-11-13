@@ -1,5 +1,5 @@
 whiteboard:
-  - open the? whiteboard
+  - open the whiteboard
   - whiteboard
   - launch whiteboard
   - start whiteboard
@@ -21,24 +21,26 @@ whiteboard:
   - writing board
 
 save_whiteboard:
-  - save the? whiteboard
+  - save the whiteboard
   - save board
-  - save the? board
+  - save the board
   - save current board
   - save white board
   - store whiteboard
   - save this
   - save it
   - save drawing
-  - save the? drawing
+  - save the drawing
   - store board
   - save canvas
-  - save the? canvas
+  - save the canvas
   - save my work
   - save current work
   - store this
   - save now
   - save whiteboard now
+  - safe
+
 
 red_pen:
   - red pen
@@ -145,10 +147,10 @@ eraser:
   - eraser mode
   - switch eraser
   - change eraser
-  - select the? eraser
-  - use the? eraser
-  - switch the? eraser
-  - change the? eraser
+  - select the eraser
+  - use the eraser
+  - switch the eraser
+  - change the eraser
   - eraser now
   - switch to erase
   - change to erase
@@ -247,7 +249,7 @@ add_page:
   - create new page now
   - add one more page
   - page add
-  - add the? page
+  - add the page
   - page creation
   - new page creation
 
@@ -258,14 +260,14 @@ delete_page:
   - remove page
   - remove current page
   - remove this page
-  - delete the? page
-  - remove the? page
+  - delete the page
+  - remove the page
   - delete current
   - remove current
   - delete this
   - remove this
-  - delete the? current page
-  - remove the? current page
+  - delete the current page
+  - remove the current page
   - page delete
   - page remove
   - erase page

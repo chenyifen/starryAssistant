@@ -21,25 +21,25 @@ google:
   - visit google
 
 browser:
-  - open the? browser
-  - open the? web browser
+  - open the browser
+  - open the web browser
   - browser
   - open web browser
   - launch browser
-  - launch the? browser
+  - launch the browser
   - start browser
-  - start the? browser
+  - start the browser
   - internet browser
   - web browser
   - internet
   - web
   - go online
-  - surf the? web
+  - surf the web
   - open internet
   - internet connection
   - connect to internet
   - web connection
-  - browse the? web
+  - browse the web
   - start browsing
   - open browsing
   - run browser
@@ -49,15 +49,15 @@ browser:
   - open web
 
 play_store:
-  - open the? play store
+  - open the play store
   - open play store
   - play store
   - open google play
   - google play store
   - launch play store
-  - launch the? play store
+  - launch the play store
   - start play store
-  - start the? play store
+  - start the play store
   - app store
   - google play
   - store
@@ -73,7 +73,7 @@ play_store:
 
 youtube:
   - open youtube
-  - open the? youtube
+  - open the youtube
   - open up youtube
   - youtube
   - launch youtube
@@ -94,7 +94,7 @@ youtube:
   - youtube player
 
 settings:
-  - open the? settings
+  - open the settings
   - open settings
   - settings
   - open system settings
@@ -118,7 +118,7 @@ settings:
   - settings screen
 
 recorder:
-  - open the? recorder
+  - open the recorder
   - open recorder
   - recorder
   - screen recorder
@@ -132,7 +132,7 @@ recorder:
   - open recording
   - begin recording
   - recording tool
-  - record the? screen
+  - record the screen
   - capture screen recording
   - screen capture recorder
   - video recorder
@@ -152,7 +152,7 @@ eshare:
   - screen sharing
   - open screen sharing
   - start screen sharing
-  - share the? screen
+  - share the screen
   - e share app
   - screen mirroring
   - mirror screen
@@ -160,17 +160,17 @@ eshare:
   - screen cast
 
 camera:
-  - open the? camera
+  - open the camera
   - open camera
   - camera
   - launch camera
   - start camera
   - take photo
-  - take a? photo
+  - take a photo
   - open camera app
   - camera app
   - take picture
-  - take a? picture
+  - take a picture
   - capture photo
   - capture picture
   - photo camera
@@ -181,7 +181,7 @@ camera:
   - start camera app
 
 finder:
-  - open the? finder
+  - open the finder
   - open finder
   - finder
   - file manager

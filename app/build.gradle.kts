@@ -1,5 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.io.File
+import java.io.FileOutputStream
+import javax.crypto.Cipher
+import javax.crypto.spec.SecretKeySpec
 
 buildscript {
     repositories {
@@ -129,7 +132,7 @@ android {
             // 🔒 启用代码混淆和资源压缩
             isMinifyEnabled = true
             isShrinkResources = true
-            
+           
             // ProGuard规则文件
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -13,6 +13,9 @@ import com.ai.voice.util.checkPermissions
 import com.ai.voice.util.AsrHandler
 import com.ai.voice.util.ActivationChecker
 import com.ai.voice.settings.datastore.UserSettingsEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import androidx.datastore.core.DataStore
 import dagger.hilt.android.EntryPointAccessors
 import com.ai.voice.settings.datastore.UserSettings
@@ -21,6 +24,8 @@ import com.ai.voice.settings.datastore.UserSettings
 // https://medium.com/p/924c91bafcac
 @HiltAndroidApp
 class App : Application() {
+    
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     override fun onCreate() {
         super.onCreate()

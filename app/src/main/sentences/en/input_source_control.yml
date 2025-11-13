@@ -1,5 +1,5 @@
 input_source:
-  - open the? input source window
+  - open the input source window
   - show input source
   - input source
   - display input source
@@ -69,18 +69,53 @@ hdmi_two:
   - hdmi channel two
   - hdmi source two
 
+
+ops:
+  - switch to ops
+  - switch to o p s
+  - go to ops
+  - go to o p s
+  - ops
+  - o p s
+  - connect to ops
+  - connect to o p s
+  - change to ops
+  - change to o p s
+  - select ops
+  - select o p s
+  - use ops
+  - use o p s
+  - turn on ops
+  - turn on o p s
+  - o p s
+  - ops input
+  - o p s input
+  - ops port
+  - o p s port
+  - activate ops
+  - activate o p s
+  - enable ops
+  - enable o p s
+  - open ops
+  - open o p s
+  - ops mode
+  - o p s mode
+  - ops system
+  - o p s system
+
+
 dp_port:
-  - switch to dp port?
-  - go todp port?
-  - dp port?
-  - connect to dp port?
-  - change to dp port?
-  - display port?
-  - switch to display port?
-  - go to display port?
-  - select dp port?
-  - use dp port?
-  - d p port?
+  - switch to dp port
+  - go todp port
+  - dp port
+  - connect to dp port
+  - change to dp port
+  - display port
+  - switch to display port
+  - go to display port
+  - select dp port
+  - use dp port
+  - d p port
   - d p
   - displayport
   - display port
@@ -138,22 +173,4 @@ front_usb_c:
   - front side usb c
   - type c
   - front type c
-
-ops:
-  - switch to ops
-  - go to ops
-  - ops
-  - connect to ops
-  - change to ops
-  - select ops
-  - use ops
-  - turn on ops
-  - o p s
-  - ops input
-  - ops port
-  - activate ops
-  - enable ops
-  - open ops
-  - ops mode
-  - ops system
 
