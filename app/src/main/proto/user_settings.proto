@@ -29,5 +29,5 @@ message UserSettings {
     TtsFallbackChain tts_fallback_chain = 13;
     AsrFallbackChain asr_fallback_chain = 14;
     bool pause_wake_during_asr = 15; // ASR运行时是否暂停唤醒服务
-    int64 first_install_timestamp = 16; // 首次安装时间戳（毫秒），用于15天试用期
+    int64 first_install_timestamp = 16; // 首次安装时间戳（毫秒），已废弃，不再使用
 }

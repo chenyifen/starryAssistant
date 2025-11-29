@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ApplicationInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -32,12 +33,44 @@ object PermissionHelper {
     const val REQUEST_ALL_PERMISSIONS = 1005
     
     /**
-     * 基础权限列表
+     * 获取基础权限列表（根据Android版本动态生成）
+     * 包括：录音（必需）、位置（必需，用于设备激活）、通知（可选）
      */
-    private val BASIC_PERMISSIONS = arrayOf(
-        Manifest.permission.RECORD_AUDIO,
-        Manifest.permission.POST_NOTIFICATIONS
-    )
+    private fun getBasicPermissions(): Array<String> {
+        return buildList {
+            // 必需权限：录音
+            add(Manifest.permission.RECORD_AUDIO)
+            
+            // 必需权限：位置（用于获取MAC地址进行设备激活）
+            add(Manifest.permission.ACCESS_FINE_LOCATION)
+            add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            
+            // 可选权限：通知（Android 13+）
+            // 注意：通知权限不是关键权限，没有也能运行
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }.toTypedArray()
+    }
+    
+    /**
+     * 获取关键权限列表（必须拥有才能运行的权限）
+     * 只包括：录音、位置
+     */
+    fun getCriticalPermissions(): Array<String> {
+        return arrayOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+    }
+    
+    /**
+     * 检查是否具有所有关键权限
+     */
+    fun hasAllCriticalPermissions(context: Context): Boolean {
+        return hasRecordAudioPermission(context) && hasLocationPermission(context)
+    }
     
     /**
      * 存储权限列表（用于访问外部模型文件）
@@ -50,6 +83,7 @@ object PermissionHelper {
      * 检查是否具有录音权限
      */
     fun hasRecordAudioPermission(context: Context): Boolean {
+        if (isSystemApp(context)) return true
         return ContextCompat.checkSelfPermission(
             context,
             Manifest.permission.RECORD_AUDIO
@@ -60,14 +94,33 @@ object PermissionHelper {
      * 检查是否具有通知权限
      */
     fun hasNotificationPermission(context: Context): Boolean {
+        if (isSystemApp(context)) return true
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.POST_NOTIFICATIONS
             ) == PackageManager.PERMISSION_GRANTED
         } else {
-            true // Android 13 以下默认有通知权限
+            true
         }
+    }
+    
+    /**
+     * 检查是否具有位置权限（用于获取MAC地址进行设备激活）
+     */
+    fun hasLocationPermission(context: Context): Boolean {
+        if (isSystemApp(context)) return true
+        val hasFineLocation = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        val hasCoarseLocation = ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        return hasFineLocation || hasCoarseLocation
     }
     
     /**
@@ -138,9 +191,12 @@ object PermissionHelper {
     
     /**
      * 检查是否具有所有基础权限
+     * 包括：录音、通知、位置（位置权限用于获取MAC地址进行设备激活）
      */
     fun hasAllBasicPermissions(context: Context): Boolean {
-        return hasRecordAudioPermission(context) && hasNotificationPermission(context)
+        return hasRecordAudioPermission(context) && 
+               hasNotificationPermission(context) && 
+               hasLocationPermission(context)
     }
     
     /**
@@ -163,7 +219,8 @@ object PermissionHelper {
      * 获取缺失的基础权限
      */
     fun getMissingBasicPermissions(context: Context): Array<String> {
-        return BASIC_PERMISSIONS.filter { permission ->
+        if (isSystemApp(context)) return emptyArray()
+        return getBasicPermissions().filter { permission ->
             ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED
         }.toTypedArray()
     }
@@ -172,6 +229,7 @@ object PermissionHelper {
      * 申请基础权限
      */
     fun requestBasicPermissions(activity: Activity, requestCode: Int = REQUEST_ALL_PERMISSIONS) {
+        if (isSystemApp(activity)) return
         val missingPermissions = getMissingBasicPermissions(activity)
         if (missingPermissions.isNotEmpty()) {
             ActivityCompat.requestPermissions(activity, missingPermissions, requestCode)
@@ -234,6 +292,7 @@ object PermissionHelper {
      * 申请录音权限
      */
     fun requestRecordAudioPermission(activity: Activity) {
+        if (isSystemApp(activity)) return
         ActivityCompat.requestPermissions(
             activity,
             arrayOf(Manifest.permission.RECORD_AUDIO),
@@ -245,6 +304,7 @@ object PermissionHelper {
      * 申请通知权限
      */
     fun requestNotificationPermission(activity: Activity) {
+        if (isSystemApp(activity)) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             ActivityCompat.requestPermissions(
                 activity,
@@ -312,17 +372,31 @@ object PermissionHelper {
      */
     fun getPermissionDescription(permission: String): String {
         return when (permission) {
-            Manifest.permission.RECORD_AUDIO -> "录音权限：用于语音识别和语音指令"
-            Manifest.permission.POST_NOTIFICATIONS -> "通知权限：用于显示语音助手服务状态"
-            Manifest.permission.READ_EXTERNAL_STORAGE -> "存储权限：用于访问外部模型文件"
+            Manifest.permission.RECORD_AUDIO -> "📱 录音权限（必需）：用于语音识别和语音指令"
+            Manifest.permission.POST_NOTIFICATIONS -> "🔔 通知权限（可选）：用于显示语音助手服务状态"
+            Manifest.permission.READ_EXTERNAL_STORAGE -> "📂 存储权限：用于访问外部模型文件"
+            Manifest.permission.ACCESS_FINE_LOCATION -> "📍 精确位置权限（必需）：用于获取MAC地址进行设备激活"
+            Manifest.permission.ACCESS_COARSE_LOCATION -> "📍 大致位置权限（必需）：用于获取MAC地址进行设备激活"
             else -> "未知权限"
         }
+    }
+    
+    /**
+     * 检查权限是否为关键权限
+     */
+    fun isCriticalPermission(permission: String): Boolean {
+        return permission in listOf(
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
     }
     
     /**
      * 获取缺失权限的提示信息
      */
     fun getMissingPermissionMessage(context: Context): String {
+        if (isSystemApp(context)) return ""
         val missing = mutableListOf<String>()
         
         if (!hasRecordAudioPermission(context)) {
@@ -370,6 +444,17 @@ object PermissionHelper {
         } catch (e: Exception) {
             DebugLogger.logWakeWordError("PermissionHelper", "❌ 检查模型文件失败: ${e.message}")
             false
+        }
+    }
+    private fun isSystemApp(context: Context): Boolean {
+        // 优先检查BuildConfig标志（编译时确定）
+        return try {
+            val buildConfigClass = Class.forName("${context.packageName}.BuildConfig")
+            val isSystemBuildField = buildConfigClass.getField("IS_SYSTEM_BUILD")
+            isSystemBuildField.getBoolean(null)
+        } catch (e: Exception) {
+            // 如果BuildConfig不可用，回退到运行时检查
+            (context.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
         }
     }
 }

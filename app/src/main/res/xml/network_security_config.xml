@@ -26,6 +26,16 @@
     </debug-overrides>
     
     <!-- 
+        激活API服务器配置（HTTPS）
+    -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">namingyou.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+    
+    <!-- 
         域名特定配置示例（如果需要）
         取消注释并配置实际使用的API域名
     -->

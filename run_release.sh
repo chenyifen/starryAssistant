@@ -30,10 +30,14 @@ if [ $device_count -eq 0 ]; then
 fi
 echo "✅ 检测到 $device_count 个设备"
 
-# 构建应用
+# 构建应用（普通版本，需要申请权限）
 echo ""
-echo "🔨 3. 构建 Release 版本..."
-./gradlew assembleRelease
+echo "🔨 3. 构建普通版本 Release (normalRelease)..."
+echo "   - Flavor: normal"
+echo "   - BuildType: release"
+echo "   - 签名: 510en"
+echo "   - 权限: 需要申请RECORD_AUDIO和POST_NOTIFICATIONS"
+./gradlew assembleNormalRelease
 
 if [ $? -ne 0 ]; then
     echo "❌ 构建失败"
@@ -42,9 +46,21 @@ fi
 
 echo "✅ 构建成功"
 
-# 查找APK文件（新格式：VoiceAssistant-版本号-Release.apk）
-apk_dir="app/build/outputs/apk/release"
+# 查找APK文件（普通版本：VoiceAssistant-版本号-Release.apk）
+# normal flavor的release构建输出路径：app/build/outputs/apk/normal/release/
+apk_dir="app/build/outputs/apk/normal/release"
 apk_path=$(find "$apk_dir" -name "VoiceAssistant-*-Release.apk" -type f | head -1)
+
+if [ -z "$apk_path" ] || [ ! -f "$apk_path" ]; then
+    echo "⚠️  未找到预期格式的APK文件，尝试查找所有APK..."
+    apk_path=$(find "$apk_dir" -name "*.apk" -type f | head -1)
+fi
+
+# 如果还是找不到，尝试在release目录查找（兼容旧版本）
+if [ -z "$apk_path" ] || [ ! -f "$apk_path" ]; then
+    apk_dir="app/build/outputs/apk/release"
+    apk_path=$(find "$apk_dir" -name "VoiceAssistant-*-Release.apk" -type f | head -1)
+fi
 
 if [ -z "$apk_path" ] || [ ! -f "$apk_path" ]; then
     echo "❌ APK文件不存在，查找目录: $apk_dir"
@@ -61,7 +77,7 @@ echo "📦 APK大小: $apk_size"
 
 # 安装应用
 echo ""
-echo "📲 4. 安装应用到设备..."
+echo "📲 5. 安装应用到设备..."
 adb install -r "$apk_path"
 
 if [ $? -ne 0 ]; then
@@ -70,10 +86,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "✅ 安装成功"
+echo "💡 普通版本特点："
+echo "   - 需要申请录音和通知权限"
+echo "   - 使用普通应用UID运行"
 
 # 启动应用（启动悬浮球启动器）
 echo ""
-echo "🎯 5. 启动应用（悬浮球启动器）..."
+echo "🎯 4. 启动应用（悬浮球启动器）..."
 package_name="com.ai.voice"
 activity_name="com.ai.voice.ui.floating.FloatingLauncherActivity"
 
@@ -88,7 +107,7 @@ echo "✅ 应用已启动"
 
 # 获取应用进程ID
 echo ""
-echo "🔍 获取应用进程信息..."
+echo "🔍 5. 获取应用进程信息..."
 sleep 2  # 等待应用完全启动
 
 app_pid=$(adb shell ps | grep "$package_name" | awk '{print $2}' | head -1)
@@ -101,4 +120,10 @@ else
     echo "⚠️ 未能获取应用进程ID，应用可能未完全启动"
 fi
 
-adb logcat | grep $app_pid
+if [ -n "$app_pid" ]; then
+    echo "📋 显示应用日志（按Ctrl+C退出）:"
+    adb logcat | grep -- "$app_pid"
+else
+    echo "📋 显示应用日志（按Ctrl+C退出）:"
+    adb logcat | grep -i "com.ai.voice"
+fi

@@ -1,0 +1,12 @@
+# 忽略用户生成的签名文件
+*.keystore
+!example.keystore
+
+# 忽略签名后的APK文件
+*-signed.apk
+*-resigned.apk
+*.idsig
+
+# 忽略临时文件
+*-aligned.apk
+

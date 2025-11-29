@@ -71,8 +71,11 @@ object AsrHandler {
      * 重置VAD静音超时时间（在每次唤醒后调用）
      */
     fun resetSilenceTimeout() {
+        val oldTime = lastSpeechDetectedTime
         lastSpeechDetectedTime = System.currentTimeMillis()
-        Log.d(TAG, "🔄 重置VAD静音超时时间")
+        val timeDiff = lastSpeechDetectedTime - oldTime
+        Log.d(TAG, "🔄 [TIMEOUT] 重置VAD静音超时时间: oldTime=$oldTime, newTime=$lastSpeechDetectedTime, timeDiff=${timeDiff}ms")
+        Log.d(TAG, "🔄 [TIMEOUT] 重置后静音超时阈值: ${SILENCE_TIMEOUT_MS}ms")
     }
     
     /**
@@ -201,7 +204,7 @@ object AsrHandler {
     fun initialize(context: Context): Boolean {
         Log.i(TAG, "🚀 开始初始化 AsrHandler (应用启动时)...")
         
-        // 🔒 检查激活状态（15天试用期）
+        // 🔒 检查激活状态
         val dataStore = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
@@ -213,8 +216,8 @@ object AsrHandler {
         
         val isActivated = ActivationChecker.isActivated(context, dataStore)
         if (!isActivated) {
-            Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法初始化")
-            Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
+            Log.e(TAG, "❌ 应用未激活，AsrHandler无法初始化")
+            Log.e(TAG, "💡 请先激活应用后再使用")
             return false
         }
         
@@ -250,7 +253,7 @@ object AsrHandler {
     fun start(context: Context): Boolean {
         Log.i(TAG, "🚀 开始启动 AsrHandler...")
         
-        // 🔒 检查激活状态（15天试用期）
+        // 🔒 检查激活状态
         val dataStore = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
@@ -262,13 +265,14 @@ object AsrHandler {
         
         val isActivated = ActivationChecker.isActivated(context, dataStore)
         if (!isActivated) {
-            Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法启动")
-            Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
+            Log.e(TAG, "❌ 应用未激活，AsrHandler无法启动")
+            Log.e(TAG, "💡 请先激活应用后再使用")
             return false
         }
         
         if (isStarted) {
-            Log.w(TAG, "⚠️ ASR 已在运行中")
+            Log.w(TAG, "⚠️ [START] ASR 已在运行中，拒绝重复启动")
+            Log.w(TAG, "⚠️ [START] 当前 isStarted=true, lastSpeechDetectedTime=$lastSpeechDetectedTime")
             return false
         }
         
@@ -297,10 +301,15 @@ object AsrHandler {
         // 🔥 重置静音检测时间（确保重新启动时不会立即触发静音超时）
         resetSilenceTimeout()
         
+        val startTime = System.currentTimeMillis()
         isStarted = true
-        Log.i(TAG, "✅ 启动 doAsr...")
+        Log.i(TAG, "✅ [START] 启动 doAsr...")
+        Log.i(TAG, "✅ [START] isStarted状态: false -> true")
+        Log.i(TAG, "✅ [START] 启动时间: $startTime")
+        Log.i(TAG, "✅ [START] lastSpeechDetectedTime: $lastSpeechDetectedTime")
+        Log.i(TAG, "✅ [START] 静音超时阈值: ${SILENCE_TIMEOUT_MS}ms")
         doAsr(context)
-        Log.i(TAG, "✅ AsrHandler 启动成功")
+        Log.i(TAG, "✅ [START] AsrHandler 启动成功")
         return true
     }
     
@@ -309,6 +318,25 @@ object AsrHandler {
      * @param context 上下文，用于执行停止逻辑
      */
     fun stop(context: Context) {
+        val wasStarted = isStarted
+        val currentTime = System.currentTimeMillis()
+        val silenceDuration = if (wasStarted) currentTime - lastSpeechDetectedTime else -1L
+        
+        Log.i(TAG, "⏹️ [STOP] AsrHandler.stop() 被调用")
+        Log.i(TAG, "⏹️ [STOP] isStarted状态: $wasStarted -> false")
+        Log.i(TAG, "⏹️ [STOP] 当前时间: $currentTime")
+        Log.i(TAG, "⏹️ [STOP] lastSpeechDetectedTime: $lastSpeechDetectedTime")
+        Log.i(TAG, "⏹️ [STOP] 静音时长: ${silenceDuration}ms (阈值: ${SILENCE_TIMEOUT_MS}ms)")
+        
+        // 打印调用栈（仅前5层）
+        val stackTrace = Thread.currentThread().stackTrace
+        Log.i(TAG, "⏹️ [STOP] 调用栈:")
+        stackTrace.take(6).forEachIndexed { index, element ->
+            if (index > 0) { // 跳过当前方法
+                Log.i(TAG, "⏹️ [STOP]   [$index] ${element.className}.${element.methodName}(${element.fileName}:${element.lineNumber})")
+            }
+        }
+        
         isStarted = false
         contextForStop = null
         doAsr(context)
@@ -380,7 +408,9 @@ object AsrHandler {
                 }
 
                 // 重置静音检测时间
+                val oldTime = lastSpeechDetectedTime
                 lastSpeechDetectedTime = System.currentTimeMillis()
+                Log.d(TAG, "🔄 [DOASR] doAsr() 内部重置静音检测时间: oldTime=$oldTime, newTime=$lastSpeechDetectedTime")
                 
                 CoroutineScope(Dispatchers.Default).launch {
                     var buffer = arrayListOf<Float>()
@@ -397,10 +427,18 @@ object AsrHandler {
                     // 超时时间：如果超过 5 秒没有检测到语音结束，强制清空 buffer
                     val timeoutMs = 5000L
                     var lastVadActivityTime = System.currentTimeMillis()
+                    var lastTimeoutCheckLogTime = 0L // 用于控制超时检查日志频率
 
+                    Log.d(TAG, "🔄 [DOASR] 进入主循环，isStarted=$isStarted")
+                    var loopCount = 0
                     while (isStarted) {
+                        loopCount++
+                        if (loopCount % 100 == 0) {
+                            Log.v(TAG, "🔄 [DOASR] 主循环运行中，loopCount=$loopCount, isStarted=$isStarted")
+                        }
                         for (s in samplesChannel) {
                             if (s.isEmpty()) {
+                                Log.d(TAG, "🔄 [DOASR] 收到空样本，退出循环")
                                 break
                             }
 
@@ -436,28 +474,60 @@ object AsrHandler {
                                 offset += windowSize
                                 
                                 // VAD 检测逻辑
-                                if (!isSpeechStarted && vad.isSpeechDetected()) {
+                                val vadDetected = vad.isSpeechDetected()
+                                if (!isSpeechStarted && vadDetected) {
                                     isSpeechStarted = true
                                     startTime = System.currentTimeMillis()
                                     lastVadActivityTime = System.currentTimeMillis()
                                     // VAD 检测到语音，更新最后语音检测时间
+                                    val oldTime = lastSpeechDetectedTime
                                     lastSpeechDetectedTime = System.currentTimeMillis()
-                                    Log.d(TAG, "🗣️ VAD 检测到语音，重置静音计时")
-                                } else if (isSpeechStarted && vad.isSpeechDetected()) {
+                                    val timeSinceLastSpeech = lastSpeechDetectedTime - oldTime
+                                    Log.d(TAG, "🗣️ [VAD] VAD检测到语音开始，重置静音计时")
+                                    Log.d(TAG, "🗣️ [VAD] 上次语音时间: $oldTime, 当前时间: $lastSpeechDetectedTime, 间隔: ${timeSinceLastSpeech}ms")
+                                } else if (isSpeechStarted && vadDetected) {
                                     // 持续检测到语音，更新最后语音检测时间
+                                    val oldTime = lastSpeechDetectedTime
                                     lastSpeechDetectedTime = System.currentTimeMillis()
+                                    val timeSinceLastSpeech = lastSpeechDetectedTime - oldTime
+                                    Log.d(TAG, "🗣️ [VAD] VAD持续检测到语音，更新静音计时: 间隔=${timeSinceLastSpeech}ms")
+                                } else if (isSpeechStarted && !vadDetected) {
+                                    // 检测到静音（但还在isSpeechStarted状态）
+                                    val currentTime = System.currentTimeMillis()
+                                    val silenceDuration = currentTime - lastSpeechDetectedTime
+                                    Log.v(TAG, "🔇 [VAD] VAD检测到静音，isSpeechStarted=true, 静音时长: ${silenceDuration}ms")
                                 }
                                 
                                 // 检查静音超时：基于 VAD 检测到的实际静音时间
                                 val currentTime = System.currentTimeMillis()
                                 val silenceDuration = currentTime - lastSpeechDetectedTime
+                                
+                                // 每500ms打印一次静音超时检查状态，或接近超时阈值时打印（避免日志过多）
+                                val shouldLogTimeoutCheck = (currentTime - lastTimeoutCheckLogTime >= 500) || 
+                                                           (silenceDuration > SILENCE_TIMEOUT_MS - 1000)
+                                if (shouldLogTimeoutCheck) {
+                                    lastTimeoutCheckLogTime = currentTime
+                                    Log.d(TAG, "⏰ [TIMEOUT_CHECK] 静音超时检查: silenceDuration=${silenceDuration}ms, threshold=${SILENCE_TIMEOUT_MS}ms, isStarted=$isStarted")
+                                    Log.d(TAG, "⏰ [TIMEOUT_CHECK] 当前时间: $currentTime, lastSpeechDetectedTime: $lastSpeechDetectedTime")
+                                    Log.d(TAG, "⏰ [TIMEOUT_CHECK] isSpeechStarted: $isSpeechStarted, buffer.size: ${buffer.size}, offset: $offset")
+                                    Log.d(TAG, "⏰ [TIMEOUT_CHECK] 距离超时还剩: ${SILENCE_TIMEOUT_MS - silenceDuration}ms")
+                                }
+                                
                                 if (silenceDuration > SILENCE_TIMEOUT_MS && isStarted) {
-                                    Log.i(TAG, "⏰ 检测到连续静音超过10秒（基于VAD），停止 AsrHandler")
+                                    Log.w(TAG, "⏰ [TIMEOUT] ⚠️ 检测到连续静音超过${SILENCE_TIMEOUT_MS}ms（基于VAD），停止 AsrHandler")
+                                    Log.w(TAG, "⏰ [TIMEOUT] 静音时长: ${silenceDuration}ms, 阈值: ${SILENCE_TIMEOUT_MS}ms")
+                                    Log.w(TAG, "⏰ [TIMEOUT] 当前时间: $currentTime, lastSpeechDetectedTime: $lastSpeechDetectedTime")
+                                    Log.w(TAG, "⏰ [TIMEOUT] isSpeechStarted: $isSpeechStarted, isStarted: $isStarted")
+                                    Log.w(TAG, "⏰ [TIMEOUT] buffer.size: ${buffer.size}, offset: $offset")
+                                    
                                     // 先调用回调更新 UI 状态
                                     silenceTimeoutCallback?.invoke()
                                     // 然后停止 AsrHandler
                                     contextForStop?.let {
+                                        Log.w(TAG, "⏰ [TIMEOUT] 调用 stop() 方法")
                                         stop(it)
+                                    } ?: run {
+                                        Log.e(TAG, "⏰ [TIMEOUT] ⚠️ contextForStop 为 null，无法调用 stop()")
                                     }
                                     break
                                 }
@@ -527,6 +597,11 @@ object AsrHandler {
                                 val result = recognizer.getResult(stream)
                                 stream.release()
 
+                                Log.d(TAG, "🎯 [FINAL] VAD检测到语音结束，进行Final识别")
+                                val currentTimeBeforeFinal = System.currentTimeMillis()
+                                val silenceBeforeFinal = currentTimeBeforeFinal - lastSpeechDetectedTime
+                                Log.d(TAG, "🎯 [FINAL] Final识别前状态: silenceDuration=${silenceBeforeFinal}ms, isStarted=$isStarted")
+                                
                                 isSpeechStarted = false
                                 vad.pop()
 
@@ -546,18 +621,22 @@ object AsrHandler {
                                 
                                 // 🔥 Final识别完成，触发技能识别
                                 if (result.text.isNotBlank()) {
-                                    Log.d(TAG, "🎯 Final识别完成，触发技能识别: ${result.text}")
+                                    Log.d(TAG, "🎯 [FINAL] Final识别完成，触发技能识别: ${result.text}")
+                                    Log.d(TAG, "🎯 [FINAL] Final识别后状态: isStarted=$isStarted, lastSpeechDetectedTime=$lastSpeechDetectedTime")
                                     finalResultCallback?.invoke(result.text)
                                 }
                             }
                         }
                     }
+                    Log.d(TAG, "🔄 [DOASR] 主循环退出，isStarted=$isStarted, loopCount=$loopCount")
                 }
             }
         } else {
+            Log.d(TAG, "🔄 [DOASR] isStarted=false，停止录音")
             audioRecord?.stop()
             audioRecord?.release()
             audioRecord = null
+            Log.d(TAG, "🔄 [DOASR] 录音已停止并释放")
         }
     }
 }

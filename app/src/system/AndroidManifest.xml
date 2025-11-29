@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- 系统预装版本：移除RECORD_AUDIO和POST_NOTIFICATIONS权限 -->
+    <!-- 系统应用使用系统UID，自动拥有这些权限，不需要在manifest中声明 -->
+    
+    <!-- 移除录音权限 -->
+    <uses-permission 
+        android:name="android.permission.RECORD_AUDIO"
+        tools:node="ignore" />
+    
+    <!-- 移除通知权限（Android 13+） -->
+    <uses-permission 
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:node="remove" />
+    
+    <!-- 移除FOREGROUND_SERVICE_MICROPHONE（系统应用不需要） -->
+    <uses-permission 
+        android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"
+        tools:node="remove" />
+    
+    <!-- 移除SttService的RECORD_AUDIO权限要求 -->
+    <application>
+        <service
+            android:name=".io.input.stt_service.SttService"
+            tools:remove="android:permission" />
+    </application>
+    
+</manifest>
+

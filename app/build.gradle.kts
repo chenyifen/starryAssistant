@@ -27,7 +27,23 @@ plugins {
     id("org.stypox.dicio.sentencesCompilerPlugin")
 }
 
-// ===== Git版本信息获取（移到android块之前）=====
+// ===== 版本号读取（从VERSION文件）=====
+val versionFile = File(rootProject.projectDir, "VERSION")
+val finalVersionName: String = run {
+    if (versionFile.exists()) {
+        try {
+            versionFile.readText().trim()
+        } catch (e: Exception) {
+            println("⚠️  读取VERSION文件失败，使用默认版本号: ${e.message}")
+            "3.19.43"
+        }
+    } else {
+        println("⚠️  VERSION文件不存在，使用默认版本号")
+        "3.19.43"
+    }
+}
+
+// Git commit数量（用于versionCode计算）
 val gitCommitCount: Int = run {
     try {
         val process = Runtime.getRuntime().exec("git rev-list --count HEAD")
@@ -39,22 +55,11 @@ val gitCommitCount: Int = run {
     }
 }
 
-// 基础版本号
-val baseVersionMajor = 3
-val baseVersionMinor = 3
+// 基础版本代码
 val baseVersionCode = 16
 
-// 版本号计算规则：修订号0-99循环，每100次commit次版本号+1，次版本号超过99时主版本号+1
-// 例如：3.3.0 -> 3.3.99 -> 3.4.0 -> ... -> 3.99.99 -> 4.0.0
-val revisionNumber = gitCommitCount % 100  // 修订号：0-99循环
-val minorVersionIncrement = (gitCommitCount / 100) % 100  // 次版本号增量：0-99
-val majorVersionIncrement = gitCommitCount / 10000  // 主版本号增量
-val minorVersion = baseVersionMinor + minorVersionIncrement
-val majorVersion = baseVersionMajor + majorVersionIncrement
-
-// 最终版本号
+// 最终版本代码
 val finalVersionCode = baseVersionCode + gitCommitCount
-val finalVersionName = "${majorVersion}.${minorVersion}.${revisionNumber}"
 
 android {
     namespace = "com.ai.voice"
@@ -95,7 +100,27 @@ android {
         }
     }
 
-    // 已移除渠道与产品变体，统一仅使用 debug/release 构建类型
+    // 产品变体：区分普通版本和系统预装版本
+    flavorDimensions += "version"
+    productFlavors {
+        create("normal") {
+            dimension = "version"
+            // 普通版本：不设置sharedUserId，需要申请权限
+            manifestPlaceholders["sharedUserId"] = ""
+            buildConfigField("boolean", "IS_SYSTEM_BUILD", "false")
+        }
+        
+        create("system") {
+            dimension = "version"
+            // 系统预装版本：使用系统UID，不需要申请录音和通知权限
+            manifestPlaceholders["sharedUserId"] = "android.uid.system"
+            buildConfigField("boolean", "IS_SYSTEM_BUILD", "true")
+            // 系统版本的应用名称可以不同（可选）
+            resValue("string", "app_name", "VoiceAssistant")
+            // 系统版本的release构建使用starry签名
+            // 注意：签名配置需要在buildTypes中通过variant配置，这里只是标记
+        }
+    }
 
     signingConfigs {
         create("release") {
@@ -115,6 +140,12 @@ android {
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+        }
+        create("starry") {
+            storeFile = file("release.keystore")
+            storePassword = "android123"
+            keyAlias = "release"
+            keyPassword = "android123"
         }
     }
 
@@ -139,7 +170,8 @@ android {
                 "proguard-rules.pro"
             )
             
-            // 签名配置
+            // 签名配置：默认使用510en签名（normal版本）
+            // system版本的签名在afterEvaluate中通过variant配置
             signingConfig = signingConfigs.getByName("510en")
             
             // 应用名称
@@ -156,25 +188,67 @@ android {
         }
     }
     
-    // ===== 自定义APK文件名格式：VoiceAssistant-版本号-buildType.apk =====
+    // 在afterEvaluate中为systemRelease变体设置签名
+    afterEvaluate {
+        // 检查是否有systemRelease相关的任务被请求执行
+        val requestedTasks = gradle.startParameter.taskNames
+        val isBuildingSystemRelease = requestedTasks.any { 
+            it.contains("SystemRelease", ignoreCase = true) || 
+            it.contains("systemRelease", ignoreCase = true)
+        }
+        
+        applicationVariants.all {
+            val variant = this
+            val flavorName = variant.flavorName
+            val buildType = variant.buildType.name
+            
+            // 为system flavor的release构建设置starry签名
+            // 只在真正构建systemRelease时才尝试设置签名和显示警告
+            if (flavorName == "system" && buildType == "release" && isBuildingSystemRelease) {
+                // 注意：signingConfig在较新版本的AGP中是只读的
+                // 这里我们通过修改variant的signingConfig属性来实现
+                // 如果无法修改，需要在构建时通过gradle参数指定：-PsigningConfig=starry
+                try {
+                    // 尝试通过反射设置签名配置
+                    val signingConfigField = variant.javaClass.getDeclaredField("signingConfig")
+                    signingConfigField.isAccessible = true
+                    signingConfigField.set(variant, signingConfigs.getByName("starry"))
+                } catch (e: Exception) {
+                    // 如果反射失败，输出警告信息（只在构建systemRelease时显示）
+                    println("⚠️  无法自动设置system版本的签名配置")
+                    println("   请使用以下命令构建system版本：")
+                    println("   ./gradlew assembleSystemRelease -PsigningConfig=starry")
+                }
+            }
+        }
+    }
+    
+    // ===== 自定义APK文件名格式：VoiceAssistant-版本号-flavor-buildType.apk =====
     // 使用afterEvaluate确保版本信息已计算
     afterEvaluate {
         applicationVariants.all {
             val variant = this
             val buildType = variant.buildType.name
+            val flavorName = variant.flavorName
             val versionName = variant.versionName
             
-            // 构建APK文件名：VoiceAssistant-版本号-buildType.apk
+            // 构建APK文件名：VoiceAssistant-版本号-flavor-buildType.apk
+            val flavorSuffix = if (flavorName.isNotEmpty() && flavorName != "normal") {
+                "-${flavorName.replaceFirstChar { it.uppercase() }}"
+            } else {
+                ""
+            }
+            
             val apkFileName = when (buildType) {
                 "debug" -> {
-                    "VoiceAssistant-${versionName}-Debug.apk"
+                    "VoiceAssistant-${versionName}${flavorSuffix}-Debug.apk"
                 }
                 "release" -> {
-                    "VoiceAssistant-${versionName}-Release.apk"
+                    "VoiceAssistant-${versionName}${flavorSuffix}-Release.apk"
                 }
                 else -> {
                     val buildTypeCapitalized = buildType.replaceFirstChar { it.uppercase() }
-                    "VoiceAssistant-${versionName}-${buildTypeCapitalized}.apk"
+                    "VoiceAssistant-${versionName}${flavorSuffix}-${buildTypeCapitalized}.apk"
                 }
             }
             

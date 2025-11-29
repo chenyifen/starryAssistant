@@ -183,6 +183,7 @@ class EnhancedFloatingWindowService : Service(),
         WakeWordCallbackManager.unregisterCallback(this)
         
         // 停止 AsrHandler
+        DebugLogger.logUI(TAG, "⏹️ [CALLER] onDestroy() 调用 AsrHandler.stop()")
         AsrHandler.stop(this)
         
         // 清除所有回调
@@ -350,6 +351,7 @@ class EnhancedFloatingWindowService : Service(),
         DebugLogger.logUI(TAG, "📉 Contracting to orb")
         
         // 停止 AsrHandler
+        DebugLogger.logUI(TAG, "⏹️ [CALLER] handleContractToOrb() 调用 AsrHandler.stop()")
         AsrHandler.stop(this)
         DebugLogger.logUI(TAG, "⏹️ AsrHandler stopped")
         
@@ -366,10 +368,10 @@ class EnhancedFloatingWindowService : Service(),
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
         DebugLogger.logUI(TAG, "🎤 Wake word detected: $wakeWord (confidence: $confidence)")
         
-        // 🔒 检查激活状态（15天试用期）
+        // 🔒 检查激活状态
         val isActivated = ActivationChecker.isActivated(this, dataStore)
         if (!isActivated) {
-            DebugLogger.logUI(TAG, "❌ 应用试用期已过期，无法使用")
+            DebugLogger.logUI(TAG, "❌ 应用未激活，无法使用")
             // 播放"Not Activated"提示
             try {
                 serviceScope.launch {
@@ -469,6 +471,7 @@ class EnhancedFloatingWindowService : Service(),
                             DebugLogger.logUI(TAG, "✅ 匹配到技能 (${skillInfo?.id})，停止ASR并设置orb为idle")
                             
                             // 停止 AsrHandler
+                            DebugLogger.logUI(TAG, "⏹️ [CALLER] 技能匹配后调用 AsrHandler.stop()，skillId=${skillInfo?.id}")
                             AsrHandler.stop(this@EnhancedFloatingWindowService)
                             
                             // 更新UI状态为IDLE并清空ASR和TTS文本

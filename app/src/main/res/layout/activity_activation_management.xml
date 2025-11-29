@@ -1,0 +1,445 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF1A1A1A"
+    android:fillViewport="true"
+    android:padding="48dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:orientation="vertical">
+
+        <!-- 标题 -->
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="设备激活管理"
+            android:textColor="#FFFFFFFF"
+            android:textSize="64sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="32dp" />
+
+        <!-- 状态显示 -->
+        <TextView
+            android:id="@+id/tv_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="检查中..."
+            android:textColor="#FFFFAA00"
+            android:textSize="48sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp" />
+
+        <!-- 设备信息 -->
+        <TextView
+            android:id="@+id/tv_device_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="设备信息"
+            android:textColor="#FFCCCCCC"
+            android:textSize="32sp"
+            android:lineSpacingMultiplier="1.3"
+            android:layout_marginBottom="16dp"
+            android:gravity="start" />
+
+        <!-- 授权码 -->
+        <TextView
+            android:id="@+id/tv_license_key"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="授权码: XXXX-XXXX-XXXX"
+            android:textColor="#FFCCCCCC"
+            android:textSize="32sp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp" />
+
+        <!-- 激活时间 -->
+        <TextView
+            android:id="@+id/tv_activation_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="激活时间: 2024-01-01 00:00:00"
+            android:textColor="#FFCCCCCC"
+            android:textSize="32sp"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp" />
+
+        <!-- 过期时间 -->
+        <TextView
+            android:id="@+id/tv_expiry_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="过期时间: 永久有效"
+            android:textColor="#FFCCCCCC"
+            android:textSize="32sp"
+            android:visibility="gone"
+            android:layout_marginBottom="32dp" />
+
+        <!-- 操作按钮 -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginBottom="32dp">
+
+            <Button
+                android:id="@+id/btn_activate"
+                android:layout_width="280dp"
+                android:layout_height="88dp"
+                android:text="输入激活码"
+                android:textSize="36sp"
+                android:textColor="#FFFFFFFF"
+                android:background="@drawable/btn_tv_selector"
+                android:focusable="true"
+                android:layout_margin="12dp" />
+
+            <Button
+                android:id="@+id/btn_check_status"
+                android:layout_width="280dp"
+                android:layout_height="88dp"
+                android:text="检查状态"
+                android:textSize="36sp"
+                android:textColor="#FFFFFFFF"
+                android:background="@drawable/btn_tv_selector"
+                android:focusable="true"
+                android:layout_margin="12dp" />
+
+            <Button
+                android:id="@+id/btn_continue"
+                android:layout_width="280dp"
+                android:layout_height="88dp"
+                android:text="继续使用"
+                android:textSize="36sp"
+                android:textColor="#FFFFFFFF"
+                android:background="@drawable/btn_tv_selector_primary"
+                android:focusable="true"
+                android:visibility="gone"
+                android:layout_margin="12dp" />
+
+            <Button
+                android:id="@+id/btn_clear_activation"
+                android:layout_width="240dp"
+                android:layout_height="88dp"
+                android:text="清除激活\n(长按)"
+                android:textSize="28sp"
+                android:textColor="#FFFF4444"
+                android:background="@drawable/btn_tv_selector_danger"
+                android:focusable="true"
+                android:layout_margin="12dp" />
+
+        </LinearLayout>
+
+        <!-- 激活码输入容器 -->
+        <LinearLayout
+            android:id="@+id/input_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone"
+            android:padding="24dp"
+            android:background="#FF2A2A2A">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="请输入激活码"
+                android:textColor="#FFFFFFFF"
+                android:textSize="40sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp" />
+
+            <!-- 输入显示 -->
+            <TextView
+                android:id="@+id/tv_input_display"
+                android:layout_width="match_parent"
+                android:layout_height="96dp"
+                android:text=""
+                android:hint="激活码将显示在这里"
+                android:textColor="#FFFFFFFF"
+                android:textColorHint="#FF666666"
+                android:textSize="42sp"
+                android:gravity="center"
+                android:background="#FF1A1A1A"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp" />
+
+            <!-- 虚拟键盘 - 数字行 0-9 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="12dp">
+
+                <Button
+                    android:id="@+id/btn_num_1"
+                    style="@style/TvKeyboardButton"
+                    android:text="1" />
+
+                <Button
+                    android:id="@+id/btn_num_2"
+                    style="@style/TvKeyboardButton"
+                    android:text="2" />
+
+                <Button
+                    android:id="@+id/btn_num_3"
+                    style="@style/TvKeyboardButton"
+                    android:text="3" />
+
+                <Button
+                    android:id="@+id/btn_num_4"
+                    style="@style/TvKeyboardButton"
+                    android:text="4" />
+
+                <Button
+                    android:id="@+id/btn_num_5"
+                    style="@style/TvKeyboardButton"
+                    android:text="5" />
+
+                <Button
+                    android:id="@+id/btn_num_6"
+                    style="@style/TvKeyboardButton"
+                    android:text="6" />
+
+                <Button
+                    android:id="@+id/btn_num_7"
+                    style="@style/TvKeyboardButton"
+                    android:text="7" />
+
+                <Button
+                    android:id="@+id/btn_num_8"
+                    style="@style/TvKeyboardButton"
+                    android:text="8" />
+
+                <Button
+                    android:id="@+id/btn_num_9"
+                    style="@style/TvKeyboardButton"
+                    android:text="9" />
+
+                <Button
+                    android:id="@+id/btn_num_0"
+                    style="@style/TvKeyboardButton"
+                    android:text="0" />
+
+            </LinearLayout>
+
+            <!-- 虚拟键盘 - 字母行 A-J -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="12dp">
+
+                <Button
+                    android:id="@+id/btn_letter_a"
+                    style="@style/TvKeyboardButton"
+                    android:text="A" />
+
+                <Button
+                    android:id="@+id/btn_letter_b"
+                    style="@style/TvKeyboardButton"
+                    android:text="B" />
+
+                <Button
+                    android:id="@+id/btn_letter_c"
+                    style="@style/TvKeyboardButton"
+                    android:text="C" />
+
+                <Button
+                    android:id="@+id/btn_letter_d"
+                    style="@style/TvKeyboardButton"
+                    android:text="D" />
+
+                <Button
+                    android:id="@+id/btn_letter_e"
+                    style="@style/TvKeyboardButton"
+                    android:text="E" />
+
+                <Button
+                    android:id="@+id/btn_letter_f"
+                    style="@style/TvKeyboardButton"
+                    android:text="F" />
+
+                <Button
+                    android:id="@+id/btn_letter_g"
+                    style="@style/TvKeyboardButton"
+                    android:text="G" />
+
+                <Button
+                    android:id="@+id/btn_letter_h"
+                    style="@style/TvKeyboardButton"
+                    android:text="H" />
+
+                <Button
+                    android:id="@+id/btn_letter_i"
+                    style="@style/TvKeyboardButton"
+                    android:text="I" />
+
+                <Button
+                    android:id="@+id/btn_letter_j"
+                    style="@style/TvKeyboardButton"
+                    android:text="J" />
+
+            </LinearLayout>
+
+            <!-- 虚拟键盘 - 字母行 K-T -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="12dp">
+
+                <Button
+                    android:id="@+id/btn_letter_k"
+                    style="@style/TvKeyboardButton"
+                    android:text="K" />
+
+                <Button
+                    android:id="@+id/btn_letter_l"
+                    style="@style/TvKeyboardButton"
+                    android:text="L" />
+
+                <Button
+                    android:id="@+id/btn_letter_m"
+                    style="@style/TvKeyboardButton"
+                    android:text="M" />
+
+                <Button
+                    android:id="@+id/btn_letter_n"
+                    style="@style/TvKeyboardButton"
+                    android:text="N" />
+
+                <Button
+                    android:id="@+id/btn_letter_o"
+                    style="@style/TvKeyboardButton"
+                    android:text="O" />
+
+                <Button
+                    android:id="@+id/btn_letter_p"
+                    style="@style/TvKeyboardButton"
+                    android:text="P" />
+
+                <Button
+                    android:id="@+id/btn_letter_q"
+                    style="@style/TvKeyboardButton"
+                    android:text="Q" />
+
+                <Button
+                    android:id="@+id/btn_letter_r"
+                    style="@style/TvKeyboardButton"
+                    android:text="R" />
+
+                <Button
+                    android:id="@+id/btn_letter_s"
+                    style="@style/TvKeyboardButton"
+                    android:text="S" />
+
+                <Button
+                    android:id="@+id/btn_letter_t"
+                    style="@style/TvKeyboardButton"
+                    android:text="T" />
+
+            </LinearLayout>
+
+            <!-- 虚拟键盘 - 字母行 U-Z 和连字符 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:layout_marginBottom="24dp">
+
+                <Button
+                    android:id="@+id/btn_letter_u"
+                    style="@style/TvKeyboardButton"
+                    android:text="U" />
+
+                <Button
+                    android:id="@+id/btn_letter_v"
+                    style="@style/TvKeyboardButton"
+                    android:text="V" />
+
+                <Button
+                    android:id="@+id/btn_letter_w"
+                    style="@style/TvKeyboardButton"
+                    android:text="W" />
+
+                <Button
+                    android:id="@+id/btn_letter_x"
+                    style="@style/TvKeyboardButton"
+                    android:text="X" />
+
+                <Button
+                    android:id="@+id/btn_letter_y"
+                    style="@style/TvKeyboardButton"
+                    android:text="Y" />
+
+                <Button
+                    android:id="@+id/btn_letter_z"
+                    style="@style/TvKeyboardButton"
+                    android:text="Z" />
+
+                <Button
+                    android:id="@+id/btn_dash"
+                    style="@style/TvKeyboardButton"
+                    android:text="-" />
+
+            </LinearLayout>
+
+            <!-- 控制按钮 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/btn_backspace"
+                    android:layout_width="180dp"
+                    android:layout_height="72dp"
+                    android:text="退格"
+                    android:textSize="32sp"
+                    android:textColor="#FFFFFFFF"
+                    android:background="@drawable/btn_tv_selector"
+                    android:focusable="true"
+                    android:layout_margin="8dp" />
+
+                <Button
+                    android:id="@+id/btn_clear"
+                    android:layout_width="180dp"
+                    android:layout_height="72dp"
+                    android:text="清空"
+                    android:textSize="32sp"
+                    android:textColor="#FFFFFFFF"
+                    android:background="@drawable/btn_tv_selector"
+                    android:focusable="true"
+                    android:layout_margin="8dp" />
+
+                <Button
+                    android:id="@+id/btn_submit"
+                    android:layout_width="240dp"
+                    android:layout_height="72dp"
+                    android:text="提交激活"
+                    android:textSize="32sp"
+                    android:textColor="#FFFFFFFF"
+                    android:background="@drawable/btn_tv_selector_primary"
+                    android:focusable="true"
+                    android:layout_margin="8dp" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</ScrollView>
+

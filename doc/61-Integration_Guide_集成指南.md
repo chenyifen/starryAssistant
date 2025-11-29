@@ -16,7 +16,7 @@
 - **目标Android版本**: Android 14 (API 36)
 
 ### 1.2 核心功能
-- ✅ 语音唤醒（韩语唤醒词检测）
+- ✅ 语音唤醒（Hey Nudget唤醒词检测）
 - ✅ 语音识别（ASR）
 - ✅ 语音合成（TTS）
 - ✅ 设备控制（通过Hyundai IT API）

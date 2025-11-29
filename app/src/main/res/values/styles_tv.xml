@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- TV友好的键盘按钮样式 -->
+    <style name="TvKeyboardButton">
+        <item name="android:layout_width">80dp</item>
+        <item name="android:layout_height">72dp</item>
+        <item name="android:textSize">36sp</item>
+        <item name="android:textColor">#FFFFFFFF</item>
+        <item name="android:background">@drawable/btn_tv_selector</item>
+        <item name="android:focusable">true</item>
+        <item name="android:layout_margin">6dp</item>
+    </style>
+</resources>
+

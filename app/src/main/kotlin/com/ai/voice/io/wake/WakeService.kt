@@ -686,7 +686,7 @@ class WakeService : Service() {
     private fun onWakeWordDetected() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
         
-        // 🔒 检查激活状态（15天试用期）
+        // 🔒 检查激活状态
         val dataStore = try {
             EntryPointAccessors.fromApplication(
                 this,
@@ -698,7 +698,7 @@ class WakeService : Service() {
         
         val isActivated = ActivationChecker.isActivated(this, dataStore)
         if (!isActivated) {
-            DebugLogger.logWakeWord(TAG, "❌ 应用试用期已过期，无法使用")
+            DebugLogger.logWakeWord(TAG, "❌ 应用未激活，无法使用")
             // 播放"Not Activated"提示
             try {
                 speechOutputDevice.speak("Not Activated")

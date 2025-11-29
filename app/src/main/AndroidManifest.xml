@@ -2,36 +2,30 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="auto">
-    android:sharedUserId="android.uid.system">
+    <!-- sharedUserId通过productFlavors动态设置：
+         - normal版本: 空字符串（不设置）
+         - system版本: android.uid.system -->
     <!-- Allow installing also on external storage -->
     
     <!-- Override minSdkVersion check for Hyundai IT API library -->
     <uses-sdk tools:overrideLibrary="com.ifpdos.sdklib.hyundaiit" />
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- 获取MAC地址权限（Android 6.0+需要位置权限） -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
-    <!-- 外部存储权限已移除 - Hyundai IT版本模型文件已内置到assets -->
-    <!-- required by the download manager for APIs < Q -->
-    <!--
-    <uses-permission
-        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    -->
-    
-    <!-- External storage permissions for accessing model files -->
-    <!-- <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" /> -->
-    
-    <!-- Android 10+ 分区存储权限 -->
-    <!--
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" 
-        tools:ignore="ScopedStorage" />
-    -->
-
+ 
     <!-- the open skill needs to query all apps -->
     <uses-permission
         android:name="android.permission.QUERY_ALL_PACKAGES"
@@ -52,6 +46,15 @@
         android:networkSecurityConfig="@xml/network_security_config"
         tools:ignore="GoogleAppIndexingWarning"
         android:dataExtractionRules="@xml/data_extraction_rules">
+
+        <!-- 激活管理Activity - TV友好的激活界面 -->
+        <activity
+            android:name=".license.ActivationManagementActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTop">
+        </activity>
 
         <!-- 悬浮球启动器 - 应用主入口 -->
         <activity
