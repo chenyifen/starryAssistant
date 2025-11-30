@@ -36,17 +36,14 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         
         // 资源路径
         private const val ASSET_MODEL_DIR = "korean_hinudge_onnx"
-        // hyundaiit变体模型文件（根目录）
-        private const val HYUNDAIIT_MEL_FILE = "melspectrogram.onnx"
-        private const val HYUNDAIIT_EMB_FILE = "embedding_model.onnx"
-        private const val HYUNDAIIT_WAKE_FILE = "korean_wake_word_v24.onnx"
         private const val MEL_FILE_NAME = "melspectrogram.onnx"
         private const val EMB_FILE_NAME = "embedding_model.onnx"
-        private const val WAKE_FILE_NAME = "korean_wake_word_v24.onnx"
+        private const val WAKE_FILE_NAME = "korean_wake_word_v41.onnx"
         
         // 音频参数
         private const val N_PREPARED_SAMPLES = 1280  // 80ms @ 16kHz
         private const val SAMPLE_RATE = 16000
+        private const val WAKE_INPUT_FRAMES = 16
         private const val MELSPECTROGRAM_MAX_LEN = 10 * 97
         private const val FEATURE_BUFFER_MAX_LEN = 120
         private const val BATCH_SIZE = 1
@@ -76,6 +73,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     private var rawDataRemainder = floatArrayOf()
     private var melspectrogramBuffer: Array<FloatArray> = Array(76) { FloatArray(32) { 1.0f } }
     private var accumulatedSamples = 0
+    private var realDataFrames = 0
 
     private val scope = CoroutineScope(Dispatchers.IO)
     
@@ -101,7 +99,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         DebugLogger.logWakeWord(TAG, "  - ${embFile.name}: ${if (embFile.exists()) "EXISTS (${embFile.length()} bytes)" else "❌ MISSING"}")
         DebugLogger.logWakeWord(TAG, "  - ${wakeFile.name}: ${if (wakeFile.exists()) "EXISTS (${wakeFile.length()} bytes)" else "❌ MISSING"}")
         DebugLogger.logWakeWord(TAG, "⚙️ Detection Threshold: $DETECTION_THRESHOLD")
-        DebugLogger.logWakeWord(TAG, "🎯 Using V24 Model: Korean wake word model from OpenWakeWord project")
+        DebugLogger.logWakeWord(TAG, "🎯 Using  Model: " + WAKE_FILE_NAME)
 
         val modelsAvailable = hasModelsAvailable()
         DebugLogger.logWakeWord(TAG, "✅ Models available: $modelsAvailable")
@@ -158,18 +156,6 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
 
     private fun hasModelsInAssets(): Boolean {
         return try {
-            // 优先检查hyundaiit/assets根目录下的模型
-            val rootFiles = appContext.assets.list("")
-            val hasHyundaiitModels = rootFiles?.contains(HYUNDAIIT_MEL_FILE) == true &&
-                    rootFiles.contains(HYUNDAIIT_EMB_FILE) &&
-                    rootFiles.contains(HYUNDAIIT_WAKE_FILE)
-            
-            if (hasHyundaiitModels) {
-                DebugLogger.logModelManagement(TAG, "✅ 找到hyundaiit/assets根目录下的唤醒模型")
-                return true
-            }
-            
-            // 检查传统路径
             val files = appContext.assets.list(ASSET_MODEL_DIR)
             files?.contains(MEL_FILE_NAME) == true &&
             files.contains(EMB_FILE_NAME) &&
@@ -184,39 +170,18 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         return try {
             modelFolder.mkdirs()
             
-            // 优先使用hyundaiit/assets根目录下的模型
-            val rootFiles = appContext.assets.list("")
-            val useHyundaiitModels = rootFiles?.contains(HYUNDAIIT_MEL_FILE) == true &&
-                    rootFiles.contains(HYUNDAIIT_EMB_FILE) &&
-                    rootFiles.contains(HYUNDAIIT_WAKE_FILE)
+            // 使用传统路径
+            DebugLogger.logModelManagement(TAG, "📥 Copying V8 models from $ASSET_MODEL_DIR...")
+            appContext.assets.open("$ASSET_MODEL_DIR/$MEL_FILE_NAME").use { input ->
+                melFile.outputStream().use { output -> input.copyTo(output) }
+            }
             
-            if (useHyundaiitModels) {
-                DebugLogger.logModelManagement(TAG, "📥 Copying V8 models from hyundaiit/assets root...")
-                appContext.assets.open(HYUNDAIIT_MEL_FILE).use { input ->
-                    melFile.outputStream().use { output -> input.copyTo(output) }
-                }
-                
-                appContext.assets.open(HYUNDAIIT_EMB_FILE).use { input ->
-                    embFile.outputStream().use { output -> input.copyTo(output) }
-                }
-                
-                appContext.assets.open(HYUNDAIIT_WAKE_FILE).use { input ->
-                    wakeFile.outputStream().use { output -> input.copyTo(output) }
-                }
-            } else {
-                // 使用传统路径
-                DebugLogger.logModelManagement(TAG, "📥 Copying V8 models from $ASSET_MODEL_DIR...")
-                appContext.assets.open("$ASSET_MODEL_DIR/$MEL_FILE_NAME").use { input ->
-                    melFile.outputStream().use { output -> input.copyTo(output) }
-                }
-                
-                appContext.assets.open("$ASSET_MODEL_DIR/$EMB_FILE_NAME").use { input ->
-                    embFile.outputStream().use { output -> input.copyTo(output) }
-                }
-                
-                appContext.assets.open("$ASSET_MODEL_DIR/$WAKE_FILE_NAME").use { input ->
-                    wakeFile.outputStream().use { output -> input.copyTo(output) }
-                }
+            appContext.assets.open("$ASSET_MODEL_DIR/$EMB_FILE_NAME").use { input ->
+                embFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            
+            appContext.assets.open("$ASSET_MODEL_DIR/$WAKE_FILE_NAME").use { input ->
+                wakeFile.outputStream().use { output -> input.copyTo(output) }
             }
             
             DebugLogger.logModelManagement(TAG, "✅ Copied all V8 models:")
@@ -284,6 +249,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
             
             // 初始化feature buffer (使用随机数据)
             featureBuffer = getEmbeddings(generateRandomFloatArray(SAMPLE_RATE * 4), 76, 8)
+            realDataFrames = 0
             DebugLogger.logWakeWord(TAG, "✅ Feature buffer initialized: ${featureBuffer.size} frames")
             
             val loadTime = System.currentTimeMillis() - loadStartTime
@@ -318,10 +284,10 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
             return false
         }
 
-        // 转换音频格式: Short[] -> Float[] (归一化)
+        // 转换音频格式: Short[] -> Float[] (保持int16值范围，不归一化)
         val audioFloat = FloatArray(audio16bitPcm.size)
         for (i in audio16bitPcm.indices) {
-            audioFloat[i] = audio16bitPcm[i] / 32768.0f
+            audioFloat[i] = audio16bitPcm[i].toFloat()
         }
 
         // 计算音频能量
@@ -386,14 +352,15 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         return detected
     }
 
-    /**
-     * 预测唤醒词 - 按照demo的流式处理
-     * 🔧 关键修复: V31模型训练时使用25帧特征 (input_shape: [25, 96])
-     */
     private fun predictWakeWord(audioBuffer: FloatArray): Float {
         return try {
             streamingFeatures(audioBuffer)
-            val features = getFeatures(25, -1)  // ✅ 修复: 改为25，匹配V31模型训练配置
+            
+            if (realDataFrames < WAKE_INPUT_FRAMES) {
+                return 0.0f
+            }
+            
+            val features = getFeatures(WAKE_INPUT_FRAMES, -1)
             predictWakeWordFromFeatures(features)
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error in predictWakeWord", e)
@@ -708,6 +675,8 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 if (x[0].size == 76) {
                     try {
                         val newFeatures = generateEmbeddings(x)
+                        realDataFrames += newFeatures.size
+                        
                         if (featureBuffer.isEmpty()) {
                             featureBuffer = newFeatures
                         } else {

@@ -8,36 +8,8 @@ echo "☕ 1. 设置Java 17环境..."
 export JAVA_HOME="/Users/user/Library/Java/JavaVirtualMachines/ms-17.0.15/Contents/Home"
 export PATH="$JAVA_HOME/bin:$PATH"
 
-# 验证Java版本
-java_version=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
-echo "✅ Java版本: $java_version"
 
-if [[ ! "$java_version" =~ ^17\. ]]; then
-    echo "⚠️  警告: 检测到的Java版本不是17，可能会导致构建问题"
-    echo "请确保已安装Java 17并正确设置JAVA_HOME路径"
-fi
-
-# 检查设备连接
-echo ""
-echo "📱 2. 检查Android设备连接..."
-device_count=$(adb devices | grep -v "List of devices" | grep -c "device")
-if [ $device_count -eq 0 ]; then
-    echo "❌ 未检测到连接的Android设备"
-    echo "请确保："
-    echo "- 设备已连接并启用USB调试"
-    echo "- 运行 'adb devices' 确认设备可见"
-    exit 1
-fi
-echo "✅ 检测到 $device_count 个设备"
-
-# 构建应用（普通版本，需要申请权限）
-echo ""
-echo "🔨 3. 构建普通版本 Release (normalRelease)..."
-echo "   - Flavor: normal"
-echo "   - BuildType: release"
-echo "   - 签名: 510en"
-echo "   - 权限: 需要申请RECORD_AUDIO和POST_NOTIFICATIONS"
-./gradlew assembleNormalRelease
+./gradlew clean assembleNormalRelease
 
 if [ $? -ne 0 ]; then
     echo "❌ 构建失败"
@@ -74,6 +46,7 @@ apk_name=$(basename "$apk_path")
 apk_size=$(ls -lh "$apk_path" | awk '{print $5}')
 echo "📦 APK文件: $apk_name"
 echo "📦 APK大小: $apk_size"
+
 
 # 安装应用
 echo ""

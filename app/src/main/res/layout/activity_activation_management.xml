@@ -3,9 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF1A1A1A"
+    android:background="#FF121212"
     android:fillViewport="true"
-    android:padding="48dp">
+    android:padding="11dp"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,32 +20,53 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="设备激活管理"
-            android:textColor="#FFFFFFFF"
-            android:textSize="64sp"
+            android:textColor="#FF4ADFFF"
+            android:textSize="19sp"
             android:textStyle="bold"
-            android:layout_marginBottom="32dp" />
+            android:layout_marginBottom="8dp"
+            android:shadowColor="#804ADFFF"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="4" />
 
-        <!-- 状态显示 -->
+        <!-- 状态显示卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/card_status_bg"
+            android:padding="7dp"
+            android:orientation="vertical">
+
         <TextView
             android:id="@+id/tv_status"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="检查中..."
-            android:textColor="#FFFFAA00"
-            android:textSize="48sp"
+                android:textColor="#FF4ADFFF"
+                android:textSize="13sp"
             android:textStyle="bold"
-            android:layout_marginBottom="24dp" />
+                android:gravity="center" />
 
-        <!-- 设备信息 -->
+        </LinearLayout>
+
+        <!-- 设备信息卡片 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/card_device_info_bg"
+            android:padding="7dp"
+            android:orientation="vertical">
+
         <TextView
             android:id="@+id/tv_device_info"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="设备信息"
-            android:textColor="#FFCCCCCC"
-            android:textSize="32sp"
-            android:lineSpacingMultiplier="1.3"
-            android:layout_marginBottom="16dp"
+                android:textColor="#FFFFFFFF"
+                android:textSize="9sp"
+                android:lineSpacingMultiplier="1.4"
             android:gravity="start" />
 
         <!-- 授权码 -->
@@ -53,10 +75,10 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="授权码: XXXX-XXXX-XXXX"
-            android:textColor="#FFCCCCCC"
-            android:textSize="32sp"
+                android:textColor="#FF4DFFB8"
+                android:textSize="9sp"
             android:visibility="gone"
-            android:layout_marginBottom="8dp" />
+                android:layout_marginTop="4dp" />
 
         <!-- 激活时间 -->
         <TextView
@@ -65,9 +87,9 @@
             android:layout_height="wrap_content"
             android:text="激活时间: 2024-01-01 00:00:00"
             android:textColor="#FFCCCCCC"
-            android:textSize="32sp"
+                android:textSize="9sp"
             android:visibility="gone"
-            android:layout_marginBottom="8dp" />
+                android:layout_marginTop="3dp" />
 
         <!-- 过期时间 -->
         <TextView
@@ -76,9 +98,11 @@
             android:layout_height="wrap_content"
             android:text="过期时间: 永久有效"
             android:textColor="#FFCCCCCC"
-            android:textSize="32sp"
+                android:textSize="9sp"
             android:visibility="gone"
-            android:layout_marginBottom="32dp" />
+                android:layout_marginTop="3dp" />
+
+        </LinearLayout>
 
         <!-- 操作按钮 -->
         <LinearLayout
@@ -86,52 +110,52 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center"
-            android:layout_marginBottom="32dp">
+            android:layout_marginBottom="8dp">
 
             <Button
                 android:id="@+id/btn_activate"
-                android:layout_width="280dp"
-                android:layout_height="88dp"
+                android:layout_width="80dp"
+                android:layout_height="27dp"
                 android:text="输入激活码"
-                android:textSize="36sp"
+                android:textSize="11sp"
                 android:textColor="#FFFFFFFF"
-                android:background="@drawable/btn_tv_selector"
+                android:background="@drawable/btn_activation_primary"
                 android:focusable="true"
-                android:layout_margin="12dp" />
+                android:layout_margin="3dp" />
 
             <Button
                 android:id="@+id/btn_check_status"
-                android:layout_width="280dp"
-                android:layout_height="88dp"
+                android:layout_width="80dp"
+                android:layout_height="27dp"
                 android:text="检查状态"
-                android:textSize="36sp"
-                android:textColor="#FFFFFFFF"
-                android:background="@drawable/btn_tv_selector"
+                android:textSize="11sp"
+                android:textColor="#FF4ADFFF"
+                android:background="@drawable/btn_activation_secondary"
                 android:focusable="true"
-                android:layout_margin="12dp" />
+                android:layout_margin="3dp" />
 
             <Button
                 android:id="@+id/btn_continue"
-                android:layout_width="280dp"
-                android:layout_height="88dp"
+                android:layout_width="80dp"
+                android:layout_height="27dp"
                 android:text="继续使用"
-                android:textSize="36sp"
-                android:textColor="#FFFFFFFF"
-                android:background="@drawable/btn_tv_selector_primary"
+                android:textSize="11sp"
+                android:textColor="#FF4DFFB8"
+                android:background="@drawable/btn_activation_success"
                 android:focusable="true"
                 android:visibility="gone"
-                android:layout_margin="12dp" />
+                android:layout_margin="3dp" />
 
             <Button
                 android:id="@+id/btn_clear_activation"
-                android:layout_width="240dp"
-                android:layout_height="88dp"
+                android:layout_width="67dp"
+                android:layout_height="27dp"
                 android:text="清除激活\n(长按)"
-                android:textSize="28sp"
+                android:textSize="8sp"
                 android:textColor="#FFFF4444"
-                android:background="@drawable/btn_tv_selector_danger"
+                android:background="@drawable/btn_activation_danger"
                 android:focusable="true"
-                android:layout_margin="12dp" />
+                android:layout_margin="3dp" />
 
         </LinearLayout>
 
@@ -140,306 +164,243 @@
             android:id="@+id/input_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:gravity="center"
+            android:layout_marginTop="5dp"
+            android:background="@drawable/card_input_bg"
             android:visibility="gone"
-            android:padding="24dp"
-            android:background="#FF2A2A2A">
+            android:padding="8dp"
+            android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="请输入激活码"
-                android:textColor="#FFFFFFFF"
-                android:textSize="40sp"
+                android:textColor="#FF9A4DFF"
+                android:textSize="12sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="16dp" />
+                android:layout_marginBottom="7dp"
+                android:layout_gravity="center"
+                android:shadowColor="#809A4DFF"
+                android:shadowDx="0"
+                android:shadowDy="0"
+                android:shadowRadius="3" />
 
-            <!-- 输入显示 -->
-            <TextView
-                android:id="@+id/tv_input_display"
-                android:layout_width="match_parent"
-                android:layout_height="96dp"
-                android:text=""
-                android:hint="激活码将显示在这里"
+            <!-- 激活码输入区域 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_gravity="center"
+                android:layout_marginBottom="7dp">
+
+                <!-- 固定前缀 LS- -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="LS-"
+                    android:textColor="#FF4ADFFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 第一段: 4个字符 -->
+                <EditText
+                    android:id="@+id/et_segment1_char1"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment1_char2"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment1_char3"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment1_char4"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 连字符 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-"
+                    android:textColor="#FF9A4DFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 第二段: 4个字符 -->
+                <EditText
+                    android:id="@+id/et_segment2_char1"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment2_char2"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment2_char3"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment2_char4"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 连字符 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-"
+                    android:textColor="#FF9A4DFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 第三段: 4个字符 -->
+                <EditText
+                    android:id="@+id/et_segment3_char1"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment3_char2"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment3_char3"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="1dp" />
+                <EditText
+                    android:id="@+id/et_segment3_char4"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
+                    android:textColor="#FFFFFFFF"
+                    android:gravity="center"
+                    android:background="@drawable/input_activation_code"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 连字符 -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="-"
+                    android:textColor="#FF9A4DFF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="3dp" />
+
+                <!-- 第四段: 1个字符 -->
+            <EditText
+                    android:id="@+id/et_segment4_char1"
+                    android:layout_width="20dp"
+                    android:layout_height="27dp"
+                    android:maxLength="1"
+                    android:inputType="textCapCharacters"
+                    android:textSize="16sp"
                 android:textColor="#FFFFFFFF"
-                android:textColorHint="#FF666666"
-                android:textSize="42sp"
                 android:gravity="center"
-                android:background="#FF1A1A1A"
-                android:padding="16dp"
-                android:layout_marginBottom="24dp" />
-
-            <!-- 虚拟键盘 - 数字行 0-9 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginBottom="12dp">
-
-                <Button
-                    android:id="@+id/btn_num_1"
-                    style="@style/TvKeyboardButton"
-                    android:text="1" />
-
-                <Button
-                    android:id="@+id/btn_num_2"
-                    style="@style/TvKeyboardButton"
-                    android:text="2" />
-
-                <Button
-                    android:id="@+id/btn_num_3"
-                    style="@style/TvKeyboardButton"
-                    android:text="3" />
-
-                <Button
-                    android:id="@+id/btn_num_4"
-                    style="@style/TvKeyboardButton"
-                    android:text="4" />
-
-                <Button
-                    android:id="@+id/btn_num_5"
-                    style="@style/TvKeyboardButton"
-                    android:text="5" />
-
-                <Button
-                    android:id="@+id/btn_num_6"
-                    style="@style/TvKeyboardButton"
-                    android:text="6" />
-
-                <Button
-                    android:id="@+id/btn_num_7"
-                    style="@style/TvKeyboardButton"
-                    android:text="7" />
-
-                <Button
-                    android:id="@+id/btn_num_8"
-                    style="@style/TvKeyboardButton"
-                    android:text="8" />
-
-                <Button
-                    android:id="@+id/btn_num_9"
-                    style="@style/TvKeyboardButton"
-                    android:text="9" />
-
-                <Button
-                    android:id="@+id/btn_num_0"
-                    style="@style/TvKeyboardButton"
-                    android:text="0" />
+                    android:background="@drawable/input_activation_code"
+                    android:imeOptions="actionDone" />
 
             </LinearLayout>
 
-            <!-- 虚拟键盘 - 字母行 A-J -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginBottom="12dp">
-
-                <Button
-                    android:id="@+id/btn_letter_a"
-                    style="@style/TvKeyboardButton"
-                    android:text="A" />
-
-                <Button
-                    android:id="@+id/btn_letter_b"
-                    style="@style/TvKeyboardButton"
-                    android:text="B" />
-
-                <Button
-                    android:id="@+id/btn_letter_c"
-                    style="@style/TvKeyboardButton"
-                    android:text="C" />
-
-                <Button
-                    android:id="@+id/btn_letter_d"
-                    style="@style/TvKeyboardButton"
-                    android:text="D" />
-
-                <Button
-                    android:id="@+id/btn_letter_e"
-                    style="@style/TvKeyboardButton"
-                    android:text="E" />
-
-                <Button
-                    android:id="@+id/btn_letter_f"
-                    style="@style/TvKeyboardButton"
-                    android:text="F" />
-
-                <Button
-                    android:id="@+id/btn_letter_g"
-                    style="@style/TvKeyboardButton"
-                    android:text="G" />
-
-                <Button
-                    android:id="@+id/btn_letter_h"
-                    style="@style/TvKeyboardButton"
-                    android:text="H" />
-
-                <Button
-                    android:id="@+id/btn_letter_i"
-                    style="@style/TvKeyboardButton"
-                    android:text="I" />
-
-                <Button
-                    android:id="@+id/btn_letter_j"
-                    style="@style/TvKeyboardButton"
-                    android:text="J" />
-
-            </LinearLayout>
-
-            <!-- 虚拟键盘 - 字母行 K-T -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginBottom="12dp">
-
-                <Button
-                    android:id="@+id/btn_letter_k"
-                    style="@style/TvKeyboardButton"
-                    android:text="K" />
-
-                <Button
-                    android:id="@+id/btn_letter_l"
-                    style="@style/TvKeyboardButton"
-                    android:text="L" />
-
-                <Button
-                    android:id="@+id/btn_letter_m"
-                    style="@style/TvKeyboardButton"
-                    android:text="M" />
-
-                <Button
-                    android:id="@+id/btn_letter_n"
-                    style="@style/TvKeyboardButton"
-                    android:text="N" />
-
-                <Button
-                    android:id="@+id/btn_letter_o"
-                    style="@style/TvKeyboardButton"
-                    android:text="O" />
-
-                <Button
-                    android:id="@+id/btn_letter_p"
-                    style="@style/TvKeyboardButton"
-                    android:text="P" />
-
-                <Button
-                    android:id="@+id/btn_letter_q"
-                    style="@style/TvKeyboardButton"
-                    android:text="Q" />
-
-                <Button
-                    android:id="@+id/btn_letter_r"
-                    style="@style/TvKeyboardButton"
-                    android:text="R" />
-
-                <Button
-                    android:id="@+id/btn_letter_s"
-                    style="@style/TvKeyboardButton"
-                    android:text="S" />
-
-                <Button
-                    android:id="@+id/btn_letter_t"
-                    style="@style/TvKeyboardButton"
-                    android:text="T" />
-
-            </LinearLayout>
-
-            <!-- 虚拟键盘 - 字母行 U-Z 和连字符 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:layout_marginBottom="24dp">
-
-                <Button
-                    android:id="@+id/btn_letter_u"
-                    style="@style/TvKeyboardButton"
-                    android:text="U" />
-
-                <Button
-                    android:id="@+id/btn_letter_v"
-                    style="@style/TvKeyboardButton"
-                    android:text="V" />
-
-                <Button
-                    android:id="@+id/btn_letter_w"
-                    style="@style/TvKeyboardButton"
-                    android:text="W" />
-
-                <Button
-                    android:id="@+id/btn_letter_x"
-                    style="@style/TvKeyboardButton"
-                    android:text="X" />
-
-                <Button
-                    android:id="@+id/btn_letter_y"
-                    style="@style/TvKeyboardButton"
-                    android:text="Y" />
-
-                <Button
-                    android:id="@+id/btn_letter_z"
-                    style="@style/TvKeyboardButton"
-                    android:text="Z" />
-
-                <Button
-                    android:id="@+id/btn_dash"
-                    style="@style/TvKeyboardButton"
-                    android:text="-" />
-
-            </LinearLayout>
-
-            <!-- 控制按钮 -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center">
-
-                <Button
-                    android:id="@+id/btn_backspace"
-                    android:layout_width="180dp"
-                    android:layout_height="72dp"
-                    android:text="退格"
-                    android:textSize="32sp"
-                    android:textColor="#FFFFFFFF"
-                    android:background="@drawable/btn_tv_selector"
-                    android:focusable="true"
-                    android:layout_margin="8dp" />
-
-                <Button
-                    android:id="@+id/btn_clear"
-                    android:layout_width="180dp"
-                    android:layout_height="72dp"
-                    android:text="清空"
-                    android:textSize="32sp"
-                    android:textColor="#FFFFFFFF"
-                    android:background="@drawable/btn_tv_selector"
-                    android:focusable="true"
-                    android:layout_margin="8dp" />
-
-                <Button
-                    android:id="@+id/btn_submit"
-                    android:layout_width="240dp"
-                    android:layout_height="72dp"
-                    android:text="提交激活"
-                    android:textSize="32sp"
-                    android:textColor="#FFFFFFFF"
-                    android:background="@drawable/btn_tv_selector_primary"
-                    android:focusable="true"
-                    android:layout_margin="8dp" />
-
-            </LinearLayout>
+            <!-- 提交按钮 -->
+            <Button
+                android:id="@+id/btn_submit"
+                android:layout_width="93dp"
+                android:layout_height="27dp"
+                android:text="提交激活"
+                android:textSize="11sp"
+                android:textColor="#FFFFFFFF"
+                android:background="@drawable/btn_activation_primary"
+                android:focusable="true"
+                android:layout_gravity="center"
+                android:layout_margin="3dp" />
 
         </LinearLayout>
 
     </LinearLayout>
 
 </ScrollView>
-

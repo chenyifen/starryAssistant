@@ -2,10 +2,15 @@ package com.ai.voice.license
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -15,6 +20,7 @@ import com.ai.voice.ui.floating.FloatingLauncherActivity
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.regex.Pattern
 
 /**
  * 激活管理Activity - TV友好界面
@@ -24,6 +30,9 @@ class ActivationManagementActivity : AppCompatActivity() {
     
     companion object {
         private const val TAG = "ActivationManagement"
+        private val ACTIVATION_CODE_PATTERN = Pattern.compile("^LS-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{1}$")
+        private const val ACTIVATION_CODE_LENGTH = 13  // 不含LS前缀的字符数：4+4+4+1=13
+        private const val PREFIX = "LS-"
     }
     
     // UI组件
@@ -39,17 +48,12 @@ class ActivationManagementActivity : AppCompatActivity() {
     private lateinit var btnContinue: Button
     private lateinit var btnClearActivation: Button
     
-    // 激活码输入
-    private lateinit var tvInputDisplay: TextView
+    // 激活码输入 - 分段输入
     private lateinit var inputContainer: View
-    
-    // 虚拟键盘按钮
-    private val numberButtons = mutableListOf<Button>()
-    private lateinit var btnBackspace: Button
-    private lateinit var btnClear: Button
     private lateinit var btnSubmit: Button
+    private val etInputs = mutableListOf<EditText>()
+    private val segmentSizes = listOf(4, 4, 4, 1)
     
-    private val inputBuffer = StringBuilder()
     private val activationManager by lazy { LicenseActivationManager.getInstance() }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,51 +86,24 @@ class ActivationManagementActivity : AppCompatActivity() {
         btnClearActivation = findViewById(R.id.btn_clear_activation)
         
         // 激活码输入
-        tvInputDisplay = findViewById(R.id.tv_input_display)
         inputContainer = findViewById(R.id.input_container)
-        
-        // 虚拟键盘
-        numberButtons.add(findViewById(R.id.btn_num_0))
-        numberButtons.add(findViewById(R.id.btn_num_1))
-        numberButtons.add(findViewById(R.id.btn_num_2))
-        numberButtons.add(findViewById(R.id.btn_num_3))
-        numberButtons.add(findViewById(R.id.btn_num_4))
-        numberButtons.add(findViewById(R.id.btn_num_5))
-        numberButtons.add(findViewById(R.id.btn_num_6))
-        numberButtons.add(findViewById(R.id.btn_num_7))
-        numberButtons.add(findViewById(R.id.btn_num_8))
-        numberButtons.add(findViewById(R.id.btn_num_9))
-        
-        // 字母按钮（A-Z）
-        val letterIds = listOf(
-            R.id.btn_letter_a, R.id.btn_letter_b, R.id.btn_letter_c, R.id.btn_letter_d,
-            R.id.btn_letter_e, R.id.btn_letter_f, R.id.btn_letter_g, R.id.btn_letter_h,
-            R.id.btn_letter_i, R.id.btn_letter_j, R.id.btn_letter_k, R.id.btn_letter_l,
-            R.id.btn_letter_m, R.id.btn_letter_n, R.id.btn_letter_o, R.id.btn_letter_p,
-            R.id.btn_letter_q, R.id.btn_letter_r, R.id.btn_letter_s, R.id.btn_letter_t,
-            R.id.btn_letter_u, R.id.btn_letter_v, R.id.btn_letter_w, R.id.btn_letter_x,
-            R.id.btn_letter_y, R.id.btn_letter_z
-        )
-        
-        letterIds.forEach { id ->
-            try {
-                val btn = findViewById<Button>(id)
-                numberButtons.add(btn)
-            } catch (e: Exception) {
-                // 按钮不存在，跳过
-            }
-        }
-        
-        // 连字符
-        try {
-            numberButtons.add(findViewById(R.id.btn_dash))
-        } catch (e: Exception) {
-            // 按钮不存在
-        }
-        
-        btnBackspace = findViewById(R.id.btn_backspace)
-        btnClear = findViewById(R.id.btn_clear)
         btnSubmit = findViewById(R.id.btn_submit)
+        
+        // 初始化分段输入框
+        etInputs.clear()
+        etInputs.add(findViewById(R.id.et_segment1_char1))
+        etInputs.add(findViewById(R.id.et_segment1_char2))
+        etInputs.add(findViewById(R.id.et_segment1_char3))
+        etInputs.add(findViewById(R.id.et_segment1_char4))
+        etInputs.add(findViewById(R.id.et_segment2_char1))
+        etInputs.add(findViewById(R.id.et_segment2_char2))
+        etInputs.add(findViewById(R.id.et_segment2_char3))
+        etInputs.add(findViewById(R.id.et_segment2_char4))
+        etInputs.add(findViewById(R.id.et_segment3_char1))
+        etInputs.add(findViewById(R.id.et_segment3_char2))
+        etInputs.add(findViewById(R.id.et_segment3_char3))
+        etInputs.add(findViewById(R.id.et_segment3_char4))
+        etInputs.add(findViewById(R.id.et_segment4_char1))
         
         // 默认隐藏输入面板
         inputContainer.visibility = View.GONE
@@ -157,27 +134,124 @@ class ActivationManagementActivity : AppCompatActivity() {
             true
         }
         
-        // 虚拟键盘 - 数字和字母
-        numberButtons.forEachIndexed { index, button ->
-            button.setOnClickListener {
-                val text = button.text.toString()
-                onKeyInput(text)
-            }
-        }
-        
-        // 退格键
-        btnBackspace.setOnClickListener {
-            onBackspace()
-        }
-        
-        // 清除键
-        btnClear.setOnClickListener {
-            onClear()
-        }
-        
-        // 提交键
+        // 提交按钮
         btnSubmit.setOnClickListener {
             onSubmit()
+        }
+        
+        // 设置分段输入框监听器
+        setupSegmentInputListeners()
+    }
+    
+    /**
+     * 设置分段输入框监听器
+     */
+    private fun setupSegmentInputListeners() {
+        for (i in etInputs.indices) {
+            val currentEditText = etInputs[i]
+            
+            // 文本变化监听 - 自动跳转到下一个输入框
+            currentEditText.addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                
+                override fun afterTextChanged(s: Editable?) {
+                    val text = s.toString().uppercase().filter { it.isLetterOrDigit() }
+                    if (text.isNotEmpty() && text != s.toString()) {
+                        s?.replace(0, s.length, text.take(1))
+        }
+        
+                    // 如果输入了字符，跳转到下一个输入框
+                    if (text.isNotEmpty() && i < etInputs.size - 1) {
+                        etInputs[i + 1].requestFocus()
+                    }
+                }
+            })
+            
+            // 按键监听 - 处理删除键
+            currentEditText.setOnKeyListener { _, keyCode, event ->
+                if (keyCode == KeyEvent.KEYCODE_DEL && event.action == KeyEvent.ACTION_DOWN) {
+                    if (currentEditText.text.isEmpty() && i > 0) {
+                        etInputs[i - 1].requestFocus()
+                        etInputs[i - 1].setSelection(etInputs[i - 1].text.length)
+                        return@setOnKeyListener true
+                    }
+                }
+                false
+            }
+            
+            // 最后一个输入框的完成按钮
+            if (i == etInputs.size - 1) {
+                currentEditText.setOnEditorActionListener { _, actionId, _ ->
+                    if (actionId == EditorInfo.IME_ACTION_DONE) {
+                onSubmit()
+                true
+            } else {
+                false
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 显示系统键盘
+     */
+    private fun showKeyboard() {
+        if (etInputs.isNotEmpty()) {
+            etInputs[0].requestFocus()
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(etInputs[0], InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
+    
+    /**
+     * 隐藏系统键盘
+     */
+    private fun hideKeyboard() {
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        val currentFocus = currentFocus
+        if (currentFocus != null) {
+            imm.hideSoftInputFromWindow(currentFocus.windowToken, 0)
+        }
+    }
+    
+    /**
+     * 收集激活码
+     * 格式: LS-XXXX-XXXX-XXXX-X (共13个字符，不含LS前缀)
+     */
+    private fun collectActivationCode(): String {
+        val code = StringBuilder(PREFIX)
+        var charCount = 0
+        for (i in etInputs.indices) {
+            val text = etInputs[i].text.toString().uppercase().filter { it.isLetterOrDigit() }
+            if (text.isNotEmpty()) {
+                code.append(text.take(1))
+                charCount++
+            }
+            
+            // 在适当位置添加连字符
+            // 索引: 0,1,2,3 (第一段4个) -> 在3后添加
+            // 索引: 4,5,6,7 (第二段4个) -> 在7后添加
+            // 索引: 8,9,10,11 (第三段4个) -> 在11后添加
+            // 索引: 12 (第四段1个) -> 不需要添加
+            when (i) {
+                3 -> code.append("-")  // 第一段后
+                7 -> code.append("-")  // 第二段后
+                11 -> code.append("-") // 第三段后
+            }
+        }
+        val result = code.toString()
+        Log.d(TAG, "收集激活码: $result, 字符数: $charCount, 期望: $ACTIVATION_CODE_LENGTH")
+        return result
+    }
+    
+    /**
+     * 清空所有输入框
+     */
+    private fun clearAllInputs() {
+        for (editText in etInputs) {
+            editText.setText("")
         }
     }
     
@@ -193,7 +267,7 @@ class ActivationManagementActivity : AppCompatActivity() {
                 // 显示激活状态
                 if (summary.isActivated) {
                     tvStatus.text = "✅ ${summary.message}"
-                    tvStatus.setTextColor(getColor(android.R.color.holo_green_dark))
+                    tvStatus.setTextColor(0xFF4DFFB8.toInt())
                     
                     tvLicenseKey.text = "授权码: ${summary.licenseKey?.take(16) ?: "无"}..."
                     tvLicenseKey.visibility = if (summary.licenseKey != null) View.VISIBLE else View.GONE
@@ -213,7 +287,7 @@ class ActivationManagementActivity : AppCompatActivity() {
                     btnContinue.visibility = View.VISIBLE
                 } else {
                     tvStatus.text = "⚠️ ${summary.message}"
-                    tvStatus.setTextColor(getColor(android.R.color.holo_orange_dark))
+                    tvStatus.setTextColor(0xFFFFAA00.toInt())
                     
                     tvLicenseKey.visibility = View.GONE
                     tvActivationTime.visibility = View.GONE
@@ -245,7 +319,7 @@ class ActivationManagementActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "更新UI失败", e)
                 tvStatus.text = "❌ 获取激活状态失败"
-                tvStatus.setTextColor(getColor(android.R.color.holo_red_dark))
+                tvStatus.setTextColor(0xFFFF4444.toInt())
             }
         }
     }
@@ -255,71 +329,150 @@ class ActivationManagementActivity : AppCompatActivity() {
      */
     private fun showInputPanel() {
         inputContainer.visibility = View.VISIBLE
-        inputBuffer.clear()
-        updateInputDisplay()
+        clearAllInputs()
         
-        // 聚焦到第一个按钮
-        numberButtons.firstOrNull()?.requestFocus()
-        
-        Toast.makeText(this, "请使用遥控器输入激活码", Toast.LENGTH_LONG).show()
+        // 聚焦到第一个输入框，自动弹出系统键盘
+        if (etInputs.isNotEmpty()) {
+            etInputs[0].requestFocus()
+        showKeyboard()
+        }
     }
     
     /**
      * 隐藏激活码输入面板
      */
     private fun hideInputPanel() {
+        hideKeyboard()
         inputContainer.visibility = View.GONE
         btnActivate.requestFocus()
     }
     
     /**
-     * 键盘输入
+     * 格式化激活码（实时添加连字符）
+     * 格式: LS-QYKHV-48YS5-DUKXE-SPJBF-3
      */
-    private fun onKeyInput(char: String) {
-        if (inputBuffer.length < 50) {  // 限制长度
-            inputBuffer.append(char)
-            updateInputDisplay()
+    private fun formatActivationCodeWithHyphens(input: String): String {
+        if (input.isEmpty()) return ""
+        
+        val sb = StringBuilder()
+        var index = 0
+        
+        // 第一部分: 2个字符
+        if (input.length > index) {
+            val end = minOf(index + 2, input.length)
+            sb.append(input.substring(index, end))
+            index = end
+            
+            // 如果还有字符，添加连字符
+            if (index < input.length) {
+                sb.append("-")
+            }
         }
+        
+        // 后续部分: 每5个字符一组，每组前添加连字符
+        while (index < input.length) {
+            val end = minOf(index + 5, input.length)
+            sb.append(input.substring(index, end))
+            index = end
+            
+            // 如果还有字符，添加连字符
+            if (index < input.length) {
+                sb.append("-")
+            }
+        }
+        
+        return sb.toString()
     }
     
     /**
-     * 退格
+     * 格式化激活码（完整格式）
+     * 格式: LS-XXXX-XXXX-XXXX-X (例如: LS-HQVT-LB94-46SR-9)
      */
-    private fun onBackspace() {
-        if (inputBuffer.isNotEmpty()) {
-            inputBuffer.deleteCharAt(inputBuffer.length - 1)
-            updateInputDisplay()
+    private fun formatActivationCode(input: String): String {
+        val cleaned = input.replace("-", "").uppercase().filter { it.isLetterOrDigit() }
+        if (cleaned.isEmpty()) return ""
+        
+        // 移除前缀LS（如果存在）
+        val withoutPrefix = if (cleaned.startsWith("LS", ignoreCase = true)) {
+            cleaned.substring(2)
+        } else {
+            cleaned
         }
+        
+        if (withoutPrefix.length != 13) {
+            return cleaned
+        }
+        
+        // 格式: 4-4-4-1
+        val part1 = withoutPrefix.substring(0, 4)
+        val part2 = withoutPrefix.substring(4, 8)
+        val part3 = withoutPrefix.substring(8, 12)
+        val part4 = withoutPrefix.substring(12, 13)
+        
+        return "LS-$part1-$part2-$part3-$part4"
     }
     
+    
     /**
-     * 清除
+     * 验证激活码格式
      */
-    private fun onClear() {
-        inputBuffer.clear()
-        updateInputDisplay()
+    private fun validateActivationCode(code: String): Boolean {
+        // 移除连字符和前缀，只保留字符部分
+        val cleaned = code.replace("-", "").uppercase().filter { it.isLetterOrDigit() }
+        
+        // 移除LS前缀（如果存在）
+        val withoutPrefix = if (cleaned.startsWith("LS", ignoreCase = true)) {
+            cleaned.substring(2)
+        } else {
+            cleaned
+        }
+        
+        // 检查长度：应该是13个字符（4+4+4+1）
+        if (withoutPrefix.length != 13) {
+            Log.d(TAG, "激活码长度不正确: ${withoutPrefix.length}, 期望: 13, 输入: $code, 清理后: $cleaned")
+            return false
+        }
+        
+        // 格式化为标准格式并验证
+        val formatted = formatActivationCode(cleaned)
+        val matches = ACTIVATION_CODE_PATTERN.matcher(formatted).matches()
+        if (!matches) {
+            Log.d(TAG, "激活码格式不匹配: $formatted, 模式: ${ACTIVATION_CODE_PATTERN.pattern()}")
+        }
+        return matches
     }
     
     /**
      * 提交激活码
      */
     private fun onSubmit() {
-        val licenseKey = inputBuffer.toString().trim()
+        val licenseKey = collectActivationCode()
         
-        if (licenseKey.isEmpty()) {
-            Toast.makeText(this, "请输入激活码", Toast.LENGTH_SHORT).show()
+        // 检查是否所有输入框都已填写
+        val allFilled = etInputs.all { it.text.toString().isNotEmpty() }
+        if (!allFilled) {
+            Toast.makeText(this, "请完整输入激活码", Toast.LENGTH_SHORT).show()
             return
         }
         
+        val validationResult = validateActivationCode(licenseKey)
+        if (!validationResult) {
+            val cleaned = licenseKey.replace("-", "").uppercase().filter { it.isLetterOrDigit() }
+            val withoutPrefix = if (cleaned.startsWith("LS", ignoreCase = true)) {
+                cleaned.substring(2)
+            } else {
+                cleaned
+            }
+            Toast.makeText(this, "激活码格式不正确\n输入长度: ${withoutPrefix.length}, 期望: $ACTIVATION_CODE_LENGTH\n格式: LS-XXXX-XXXX-XXXX-X\n实际输入: $licenseKey", Toast.LENGTH_LONG).show()
+            Log.d(TAG, "激活码验证失败: $licenseKey, 清理后: $cleaned, 不含前缀: $withoutPrefix, 长度: ${withoutPrefix.length}")
+            return
+        }
+        
+        // 隐藏键盘
+        hideKeyboard()
+        
         // 执行激活
         activateWithLicenseKey(licenseKey)
-    }
-    
-    /**
-     * 更新输入显示
-     */
-    private fun updateInputDisplay() {
-        tvInputDisplay.text = inputBuffer.toString()
     }
     
     /**
@@ -330,7 +483,7 @@ class ActivationManagementActivity : AppCompatActivity() {
             try {
                 // 显示加载提示
                 tvStatus.text = "正在激活..."
-                tvStatus.setTextColor(getColor(android.R.color.holo_blue_dark))
+                tvStatus.setTextColor(0xFF4ADFFF.toInt())
                 
                 val result = activationManager.activate(licenseKey)
                 
@@ -342,13 +495,13 @@ class ActivationManagementActivity : AppCompatActivity() {
                     val errorMsg = result.message ?: "激活失败，请检查激活码是否正确"
                     Toast.makeText(this@ActivationManagementActivity, "❌ $errorMsg", Toast.LENGTH_LONG).show()
                     tvStatus.text = "❌ 激活失败"
-                    tvStatus.setTextColor(getColor(android.R.color.holo_red_dark))
+                    tvStatus.setTextColor(0xFFFF4444.toInt())
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "激活失败", e)
                 Toast.makeText(this@ActivationManagementActivity, "❌ 激活过程中发生错误: ${e.message}", Toast.LENGTH_LONG).show()
                 tvStatus.text = "❌ 激活失败"
-                tvStatus.setTextColor(getColor(android.R.color.holo_red_dark))
+                tvStatus.setTextColor(0xFFFF4444.toInt())
             }
         }
     }
@@ -360,7 +513,7 @@ class ActivationManagementActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 tvStatus.text = "正在验证..."
-                tvStatus.setTextColor(getColor(android.R.color.holo_blue_dark))
+                tvStatus.setTextColor(0xFF4ADFFF.toInt())
                 
                 val result = activationManager.checkOnStartup()
                 
@@ -430,36 +583,19 @@ class ActivationManagementActivity : AppCompatActivity() {
      */
     override fun onBackPressed() {
         if (inputContainer.visibility == View.VISIBLE) {
-            // 如果输入面板可见，隐藏它
-            hideInputPanel()
+            // 如果输入面板可见，先隐藏键盘，再隐藏面板
+            val hasFocus = etInputs.any { it.hasFocus() }
+            if (hasFocus) {
+                hideKeyboard()
+                etInputs.forEach { it.clearFocus() }
+            } else {
+                hideInputPanel()
+            }
         } else {
             // 否则继续到应用（即使未激活也允许）
             continueToApp()
         }
     }
     
-    /**
-     * 处理按键事件（支持遥控器数字键直接输入）
-     */
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // 如果输入面板可见，支持遥控器数字键直接输入
-        if (inputContainer.visibility == View.VISIBLE) {
-            when (keyCode) {
-                KeyEvent.KEYCODE_0 -> { onKeyInput("0"); return true }
-                KeyEvent.KEYCODE_1 -> { onKeyInput("1"); return true }
-                KeyEvent.KEYCODE_2 -> { onKeyInput("2"); return true }
-                KeyEvent.KEYCODE_3 -> { onKeyInput("3"); return true }
-                KeyEvent.KEYCODE_4 -> { onKeyInput("4"); return true }
-                KeyEvent.KEYCODE_5 -> { onKeyInput("5"); return true }
-                KeyEvent.KEYCODE_6 -> { onKeyInput("6"); return true }
-                KeyEvent.KEYCODE_7 -> { onKeyInput("7"); return true }
-                KeyEvent.KEYCODE_8 -> { onKeyInput("8"); return true }
-                KeyEvent.KEYCODE_9 -> { onKeyInput("9"); return true }
-                KeyEvent.KEYCODE_DEL -> { onBackspace(); return true }
-            }
-        }
-        
-        return super.onKeyDown(keyCode, event)
-    }
 }
 
