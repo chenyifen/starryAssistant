@@ -246,6 +246,11 @@ class HiNudgeOnnxWakeDevice @Inject constructor(
         return HiNudgeOnnxModel.MEL_INPUT_COUNT
     }
 
+    override fun reset() {
+        // HiNudgeOnnxModel内部会处理状态重置
+        DebugLogger.logWakeWord(TAG, "🔄 Reset called (HiNudgeOnnxModel handles reset internally)")
+    }
+
     override fun destroy() {
         DebugLogger.logWakeWord(TAG, "🧹 Destroying HiNudgeOnnxWakeDevice")
         

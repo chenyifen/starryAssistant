@@ -35,7 +35,7 @@ class LicenseActivationManager private constructor(
         private const val TAG = "LicenseActivation"
         
         // 默认配置（可通过initialize方法覆盖）
-        private var defaultAppId: String = "com.ai.voice"
+        private var defaultAppId: String = "20e6f2ea2769f8e5e8e77fe7eceed485" // 固定应用ID
         private var defaultApiBaseUrl: String = "https://namingyou.com"
         
         @Volatile

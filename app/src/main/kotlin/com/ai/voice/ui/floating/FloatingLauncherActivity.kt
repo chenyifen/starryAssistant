@@ -108,11 +108,24 @@ class FloatingLauncherActivity : ComponentActivity() {
      * 检查下一个权限
      */
     private fun checkNextPermission() {
+        Log.d(TAG, "🔍 checkNextPermission - currentStep: $currentStep")
         when (currentStep) {
-            PermissionStep.CHECK_BASIC -> checkBasicPermissions()
-            PermissionStep.CHECK_STORAGE -> checkStoragePermission()
-            PermissionStep.CHECK_OVERLAY -> checkOverlayPermission()
-            PermissionStep.START_SERVICE -> startServiceAndFinish()
+            PermissionStep.CHECK_BASIC -> {
+                Log.d(TAG, "  -> 检查基础权限")
+                checkBasicPermissions()
+            }
+            PermissionStep.CHECK_STORAGE -> {
+                Log.d(TAG, "  -> 检查存储权限")
+                checkStoragePermission()
+            }
+            PermissionStep.CHECK_OVERLAY -> {
+                Log.d(TAG, "  -> 检查悬浮窗权限")
+                checkOverlayPermission()
+            }
+            PermissionStep.START_SERVICE -> {
+                Log.d(TAG, "  -> 启动服务")
+                startServiceAndFinish()
+            }
         }
     }
     
@@ -329,7 +342,8 @@ class FloatingLauncherActivity : ComponentActivity() {
      */
     private fun startServiceAndFinish() {
         Log.d(TAG, "✅ 所有权限已具备，检查激活状态...")
-        
+        doStartService()
+        return 
         // 严格验证激活状态
         lifecycleScope.launch {
             try {

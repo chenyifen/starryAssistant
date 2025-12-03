@@ -1,0 +1,51 @@
+{
+  "devices": [
+    {
+      "device_id": "device1",
+      "adb_serial": "ABC123",
+      "device_model": "SM-G998B",
+      "android_version": "13"
+    }
+  ],
+  "audio_source": {
+    "wake_word_file": "audio/wake_word.wav",
+    "command_files": [
+      "audio/command1.wav",
+      "audio/command2.wav"
+    ],
+    "playback_device": "PC"
+  },
+  "test_suite": {
+    "name": "完整压力测试",
+    "wake_word_stability": {
+      "enabled": true,
+      "duration_minutes": 60
+    },
+    "asr_accuracy": {
+      "enabled": true,
+      "test_cases": [
+        {
+          "name": "测试1",
+          "audio_file": "audio/command1.wav",
+          "expected_text": "截图"
+        },
+        {
+          "name": "测试2",
+          "audio_file": "audio/command2.wav",
+          "expected_text": "返回主屏幕"
+        }
+      ]
+    },
+    "long_running": {
+      "enabled": false,
+      "duration_hours": 24
+    },
+    "high_frequency": {
+      "enabled": true,
+      "ops_per_sec": 10,
+      "duration_seconds": 60
+    }
+  }
+}
+
+

@@ -43,6 +43,7 @@ interface WakeDeviceWrapper {
     fun download()
     fun processFrame(audio16bitPcm: ShortArray): Boolean
     fun frameSize(): Int
+    fun reset()
     fun reinitializeToReleaseResources()
 }
 
@@ -170,6 +171,10 @@ class WakeDeviceWrapperImpl(
 
     override fun frameSize(): Int {
         return currentDevice.value?.frameSize() ?: 0
+    }
+
+    override fun reset() {
+        currentDevice.value?.reset()
     }
 
     override fun reinitializeToReleaseResources() {

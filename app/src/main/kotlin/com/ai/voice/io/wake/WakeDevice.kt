@@ -18,6 +18,12 @@ interface WakeDevice {
      */
     fun frameSize(): Int
 
+    /**
+     * Reset internal state (e.g., clear feature buffers)
+     * Should be called when AudioRecord is restarted to avoid using stale data
+     */
+    fun reset()
+
     fun destroy()
 
     /**

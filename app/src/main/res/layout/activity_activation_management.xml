@@ -3,401 +3,450 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FF121212"
+    android:background="#FFF5F5F7"
     android:fillViewport="true"
-    android:padding="11dp"
-    android:scrollbars="none">
+    android:scrollbars="vertical"
+    android:fadeScrollbars="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingHorizontal="@dimen/activation_padding"
+        android:paddingTop="@dimen/activation_section_margin"
+        android:paddingBottom="@dimen/activation_padding">
 
-        <!-- 标题 -->
-        <TextView
-            android:id="@+id/tv_title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="设备激活管理"
-            android:textColor="#FF4ADFFF"
-            android:textSize="19sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"
-            android:shadowColor="#804ADFFF"
-            android:shadowDx="0"
-            android:shadowDy="0"
-            android:shadowRadius="4" />
-
-        <!-- 状态显示卡片 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/card_status_bg"
-            android:padding="7dp"
-            android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/tv_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="检查中..."
-                android:textColor="#FF4ADFFF"
-                android:textSize="13sp"
-            android:textStyle="bold"
-                android:gravity="center" />
-
-        </LinearLayout>
-
-        <!-- 设备信息卡片 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/card_device_info_bg"
-            android:padding="7dp"
-            android:orientation="vertical">
-
-        <TextView
-            android:id="@+id/tv_device_info"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="设备信息"
-                android:textColor="#FFFFFFFF"
-                android:textSize="9sp"
-                android:lineSpacingMultiplier="1.4"
-            android:gravity="start" />
-
-        <!-- 授权码 -->
-        <TextView
-            android:id="@+id/tv_license_key"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="授权码: XXXX-XXXX-XXXX"
-                android:textColor="#FF4DFFB8"
-                android:textSize="9sp"
-            android:visibility="gone"
-                android:layout_marginTop="4dp" />
-
-        <!-- 激活时间 -->
-        <TextView
-            android:id="@+id/tv_activation_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="激活时间: 2024-01-01 00:00:00"
-            android:textColor="#FFCCCCCC"
-                android:textSize="9sp"
-            android:visibility="gone"
-                android:layout_marginTop="3dp" />
-
-        <!-- 过期时间 -->
-        <TextView
-            android:id="@+id/tv_expiry_time"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="过期时间: 永久有效"
-            android:textColor="#FFCCCCCC"
-                android:textSize="9sp"
-            android:visibility="gone"
-                android:layout_marginTop="3dp" />
-
-        </LinearLayout>
-
-        <!-- 操作按钮 -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center"
-            android:layout_marginBottom="8dp">
-
-            <Button
-                android:id="@+id/btn_activate"
-                android:layout_width="80dp"
-                android:layout_height="27dp"
-                android:text="输入激活码"
-                android:textSize="11sp"
-                android:textColor="#FFFFFFFF"
-                android:background="@drawable/btn_activation_primary"
-                android:focusable="true"
-                android:layout_margin="3dp" />
-
-            <Button
-                android:id="@+id/btn_check_status"
-                android:layout_width="80dp"
-                android:layout_height="27dp"
-                android:text="检查状态"
-                android:textSize="11sp"
-                android:textColor="#FF4ADFFF"
-                android:background="@drawable/btn_activation_secondary"
-                android:focusable="true"
-                android:layout_margin="3dp" />
-
-            <Button
-                android:id="@+id/btn_continue"
-                android:layout_width="80dp"
-                android:layout_height="27dp"
-                android:text="继续使用"
-                android:textSize="11sp"
-                android:textColor="#FF4DFFB8"
-                android:background="@drawable/btn_activation_success"
-                android:focusable="true"
-                android:visibility="gone"
-                android:layout_margin="3dp" />
-
-            <Button
-                android:id="@+id/btn_clear_activation"
-                android:layout_width="67dp"
-                android:layout_height="27dp"
-                android:text="清除激活\n(长按)"
-                android:textSize="8sp"
-                android:textColor="#FFFF4444"
-                android:background="@drawable/btn_activation_danger"
-                android:focusable="true"
-                android:layout_margin="3dp" />
-
-        </LinearLayout>
-
-        <!-- 激活码输入容器 -->
-        <LinearLayout
-            android:id="@+id/input_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
-            android:background="@drawable/card_input_bg"
-            android:visibility="gone"
-            android:padding="8dp"
-            android:orientation="vertical">
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_activation_card_jony"
+            android:elevation="4dp"
+            android:gravity="center_horizontal"
+            android:maxWidth="@dimen/activation_card_max_width"
+            android:orientation="vertical"
+            android:padding="@dimen/activation_card_padding">
 
             <TextView
+                android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="请输入激活码"
-                android:textColor="#FF9A4DFF"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="7dp"
-                android:layout_gravity="center"
-                android:shadowColor="#809A4DFF"
-                android:shadowDx="0"
-                android:shadowDy="0"
-                android:shadowRadius="3" />
+                android:layout_marginBottom="@dimen/activation_item_margin"
+                android:fontFamily="sans-serif-medium"
+                android:text="Device Activation"
+                android:textColor="#FF1D1D1F"
+                android:textSize="@dimen/activation_title_size" />
 
-            <!-- 激活码输入区域 -->
             <LinearLayout
+                android:id="@+id/status_container"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_gravity="center"
-                android:layout_marginBottom="7dp">
-
-                <!-- 固定前缀 LS- -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="LS-"
-                    android:textColor="#FF4ADFFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 第一段: 4个字符 -->
-                <EditText
-                    android:id="@+id/et_segment1_char1"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment1_char2"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment1_char3"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment1_char4"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 连字符 -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-"
-                    android:textColor="#FF9A4DFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 第二段: 4个字符 -->
-                <EditText
-                    android:id="@+id/et_segment2_char1"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment2_char2"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment2_char3"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment2_char4"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 连字符 -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-"
-                    android:textColor="#FF9A4DFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 第三段: 4个字符 -->
-                <EditText
-                    android:id="@+id/et_segment3_char1"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment3_char2"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment3_char3"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="1dp" />
-                <EditText
-                    android:id="@+id/et_segment3_char4"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                    android:textColor="#FFFFFFFF"
-                    android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 连字符 -->
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="-"
-                    android:textColor="#FF9A4DFF"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:layout_marginEnd="3dp" />
-
-                <!-- 第四段: 1个字符 -->
-            <EditText
-                    android:id="@+id/et_segment4_char1"
-                    android:layout_width="20dp"
-                    android:layout_height="27dp"
-                    android:maxLength="1"
-                    android:inputType="textCapCharacters"
-                    android:textSize="16sp"
-                android:textColor="#FFFFFFFF"
+                android:layout_marginBottom="@dimen/activation_section_margin"
+                android:background="@drawable/bg_status_pending"
                 android:gravity="center"
-                    android:background="@drawable/input_activation_code"
-                    android:imeOptions="actionDone" />
+                android:orientation="horizontal"
+                android:paddingHorizontal="20dp"
+                android:paddingVertical="12dp">
+
+                <TextView
+                    android:id="@+id/tv_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Checking..."
+                    android:textColor="#FFFF9500"
+                    android:textSize="@dimen/activation_status_size" />
 
             </LinearLayout>
 
-            <!-- 提交按钮 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/activation_section_margin"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_device_info"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif"
+                    android:gravity="center"
+                    android:lineSpacingMultiplier="1.6"
+                    android:text="Device Info"
+                    android:textColor="#FF86868B"
+                    android:textSize="@dimen/activation_body_size" />
+
+                <TextView
+                    android:id="@+id/tv_license_key"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="@dimen/activation_item_margin"
+                    android:fontFamily="monospace"
+                    android:text="License: XXXX-XXXX-XXXX"
+                    android:textColor="#FF34C759"
+                    android:textSize="@dimen/activation_body_size"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_activation_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="sans-serif"
+                    android:text="Activated: 2024-01-01"
+                    android:textColor="#FF86868B"
+                    android:textSize="@dimen/activation_caption_size"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tv_expiry_time"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:fontFamily="sans-serif"
+                    android:text="Expires: Permanent"
+                    android:textColor="#FF86868B"
+                    android:textSize="@dimen/activation_caption_size"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="@dimen/activation_section_margin"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_activate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/activation_button_height"
+                    android:layout_margin="@dimen/activation_button_margin"
+                    android:background="@drawable/btn_activation_jony_primary"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:minWidth="@dimen/activation_button_min_width"
+                    android:paddingHorizontal="32dp"
+                    android:text="Enter License"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="@dimen/activation_button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_check_status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/activation_button_height"
+                    android:layout_margin="@dimen/activation_button_margin"
+                    android:background="@drawable/btn_activation_jony_secondary"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:minWidth="@dimen/activation_button_min_width"
+                    android:paddingHorizontal="32dp"
+                    android:text="Verify"
+                    android:textAllCaps="false"
+                    android:textColor="#FF007AFF"
+                    android:textSize="@dimen/activation_button_text_size" />
+
+                <Button
+                    android:id="@+id/btn_continue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/activation_button_height"
+                    android:layout_margin="@dimen/activation_button_margin"
+                    android:background="@drawable/btn_activation_jony_success"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:minWidth="@dimen/activation_button_min_width"
+                    android:paddingHorizontal="32dp"
+                    android:text="Continue"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="@dimen/activation_button_text_size"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/input_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:paddingBottom="@dimen/activation_section_margin"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="@dimen/activation_item_margin"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="Enter Activation Code"
+                    android:textColor="#FF1D1D1F"
+                    android:textSize="@dimen/activation_subtitle_size" />
+
+                <EditText
+                    android:id="@+id/et_barcode_input"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:imeOptions="actionDone"
+                    android:visibility="gone" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fillViewport="true"
+                    android:scrollbars="none">
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginBottom="@dimen/activation_item_margin"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:fontFamily="sans-serif-medium"
+                            android:text="LS-"
+                            android:textColor="#FF007AFF"
+                            android:textSize="@dimen/activation_code_prefix_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment1_char1"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment1_char2"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment1_char3"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment1_char4"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_segment_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/activation_segment_margin"
+                            android:fontFamily="sans-serif-light"
+                            android:text="-"
+                            android:textColor="#FF86868B"
+                            android:textSize="@dimen/activation_code_separator_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment2_char1"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment2_char2"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment2_char3"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment2_char4"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_segment_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/activation_segment_margin"
+                            android:fontFamily="sans-serif-light"
+                            android:text="-"
+                            android:textColor="#FF86868B"
+                            android:textSize="@dimen/activation_code_separator_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment3_char1"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment3_char2"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment3_char3"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_input_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment3_char4"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:layout_marginEnd="@dimen/activation_segment_margin"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="@dimen/activation_segment_margin"
+                            android:fontFamily="sans-serif-light"
+                            android:text="-"
+                            android:textColor="#FF86868B"
+                            android:textSize="@dimen/activation_code_separator_size" />
+
+                        <EditText
+                            android:id="@+id/et_segment4_char1"
+                            android:layout_width="@dimen/activation_input_width"
+                            android:layout_height="@dimen/activation_input_height"
+                            android:background="@drawable/bg_activation_input_jony"
+                            android:fontFamily="monospace"
+                            android:gravity="center"
+                            android:imeOptions="actionDone"
+                            android:inputType="textCapCharacters"
+                            android:maxLength="1"
+                            android:textColor="#FF1D1D1F"
+                            android:textSize="@dimen/activation_code_char_size" />
+
+                    </LinearLayout>
+
+                </HorizontalScrollView>
+
+                <Button
+                    android:id="@+id/btn_submit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="@dimen/activation_button_height"
+                    android:layout_marginTop="@dimen/activation_item_margin"
+                    android:background="@drawable/btn_activation_jony_primary"
+                    android:focusable="true"
+                    android:fontFamily="sans-serif-medium"
+                    android:minWidth="@dimen/activation_button_min_width"
+                    android:paddingHorizontal="48dp"
+                    android:text="Activate"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="@dimen/activation_button_text_size" />
+
+            </LinearLayout>
+
             <Button
-                android:id="@+id/btn_submit"
-                android:layout_width="93dp"
-                android:layout_height="27dp"
-                android:text="提交激活"
-                android:textSize="11sp"
-                android:textColor="#FFFFFFFF"
-                android:background="@drawable/btn_activation_primary"
+                android:id="@+id/btn_clear_activation"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activation_section_margin"
+                android:background="@android:color/transparent"
                 android:focusable="true"
-                android:layout_gravity="center"
-                android:layout_margin="3dp" />
+                android:fontFamily="sans-serif"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="12dp"
+                android:text="Reset Activation (Long Press)"
+                android:textAllCaps="false"
+                android:textColor="#FF86868B"
+                android:textSize="@dimen/activation_caption_size" />
 
         </LinearLayout>
 

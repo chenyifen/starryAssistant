@@ -423,6 +423,11 @@ class SherpaOnnxWakeDevice(
         return detected
     }
 
+    override fun reset() {
+        // SherpaOnnx内部会通过reset(stream)重置，这里不需要额外操作
+        DebugLogger.logWakeWord(TAG, "🔄 Reset called (SherpaOnnx handles reset internally)")
+    }
+
     override fun frameSize(): Int {
         // SherpaOnnx typically uses 16kHz audio. Frame size depends on internal buffer.
         // A common frame size for 16kHz audio is 1600 samples (100ms).

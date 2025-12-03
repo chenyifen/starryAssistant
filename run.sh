@@ -105,15 +105,7 @@ echo "✅ 检测到 $device_count 个设备"
 # 安装应用
 echo ""
 echo "📲 6. 安装应用到设备..."
-apk_dir=$(dirname "$apk_path")
-split_apks=("$apk_dir"/*.apk)
-if [ ${#split_apks[@]} -gt 1 ]; then
-  echo "🔧 检测到${#split_apks[@]}个APK拆分文件，使用多APK安装"
-  printf "   -> %s\n" "${split_apks[@]}"
-  adb install-multiple -r "${split_apks[@]}"
-else
-  adb install -r "$apk_path"
-fi
+adb install -r "$apk_path"
 
 if [ $? -ne 0 ]; then
     echo "❌ 安装失败"

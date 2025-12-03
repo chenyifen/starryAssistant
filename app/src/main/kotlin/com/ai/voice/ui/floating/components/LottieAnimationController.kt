@@ -186,16 +186,15 @@ class LottieAnimationStateManager {
     }
 }
 
-/**
- * 预定义的动画文本
- */
 object LottieAnimationTexts {
     const val DEFAULT = "I'm here for you!"
-    const val LISTENING = "正在听取..."
-    const val PROCESSING = "正在处理..."
-    const val THINKING = "正在思考..."
-    const val READY = "我在这里！"
-    const val WAKE_WORD_DETECTED = "唤醒词检测到"
-    const val ERROR = "出现错误"
-    const val OFFLINE = "离线模式"
+    const val LISTENING = "Listening..."
+    const val PROCESSING = "Processing..."
+    const val THINKING = "Thinking..."
+    const val READY = "Ready"
+    const val WAKE_WORD_DETECTED = "Wake word detected"
+    const val ERROR = "Error"
+    const val OFFLINE = "Offline"
+    const val NOT_ACTIVATED = "Not Activated"
+    const val ACTIVATED = "Activated"
 }

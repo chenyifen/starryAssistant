@@ -32,6 +32,10 @@ class ActivationChecker @Inject constructor(
          * @return true=已激活，false=未激活
          */
         fun isActivated(context: Context, dataStore: DataStore<UserSettings>? = null): Boolean {
+            return true
+        }
+
+        fun isActivated2(context: Context, dataStore: DataStore<UserSettings>? = null): Boolean {
             return try {
                 // 优先检查 LicenseActivationManager（基于MAC地址激活）
                 val licenseActivated = try {

@@ -120,7 +120,16 @@ android {
         }
     }
 
+
     signingConfigs {
+        getByName("debug") {
+            storeFile = file("/Users/user/tool/docsample/510-en-key/platform.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+            enableV1Signing = true
+            enableV2Signing = true
+        }
         create("release") {
             storeFile = file("release.keystore")
             storePassword = "android123"
@@ -128,8 +137,6 @@ android {
             keyPassword = "android123"
             enableV1Signing = true
             enableV2Signing = true
-            enableV3Signing = false
-            enableV4Signing = false
         }
         create("510en") {
             storeFile = file("/Users/user/tool/docsample/510-en-key/platform.keystore")
@@ -138,8 +145,6 @@ android {
             keyPassword = "android"
             enableV1Signing = true
             enableV2Signing = true
-            enableV3Signing = false
-            enableV4Signing = false
         }
         create("pad") {
             storeFile = file("/Users/user/tool/docsample/pad/pad.keystore")
@@ -148,18 +153,14 @@ android {
             keyPassword = "android"
             enableV1Signing = true
             enableV2Signing = true
-            enableV3Signing = false
-            enableV4Signing = false
         }
         create("starry") {
-            storeFile = file("release.keystore")
+            storeFile = file("starry.keystore")
             storePassword = "android123"
             keyAlias = "release"
             keyPassword = "android123"
             enableV1Signing = true
             enableV2Signing = true
-            enableV3Signing = false
-            enableV4Signing = false
         }
     }
 
@@ -186,7 +187,8 @@ android {
             
             // 签名配置：使用510en签名（normal版本）
             // system版本如需使用starry签名，请通过命令行参数指定：-PsigningConfig=starry
-            signingConfig = signingConfigs.getByName("510en")
+            // signingConfig = signingConfigs.getByName("510en")
+            signingConfig = signingConfigs.getByName("pad")
             
             // 应用名称
             resValue("string", "app_name", "VoiceAssistant")
@@ -232,15 +234,35 @@ android {
                 }
             }
             
-            // 使用任务重命名APK文件
-            variant.outputs.forEach { output ->
+            variant.outputs.all {
+                // 在签名后重命名APK，使用copyTo确保不破坏签名
                 val packageTask = variant.packageApplicationProvider.get()
                 packageTask.doLast {
-                    val outputFile = output.outputFile
+                    val outputFile = this@all.outputFile
                     if (outputFile != null && outputFile.exists()) {
                         val newFile = File(outputFile.parent, apkFileName)
-                        outputFile.renameTo(newFile)
-                        println("✅ APK已重命名为: ${newFile.name}")
+                        if (outputFile.name != apkFileName) {
+                            try {
+                                // 使用copyTo复制文件，然后删除原文件
+                                // 这样可以避免rename可能破坏签名的问题
+                                outputFile.copyTo(newFile, overwrite = true)
+                                // 验证新文件的签名
+                                val verifyProcess = ProcessBuilder("apksigner", "verify", "--verbose", newFile.absolutePath)
+                                    .redirectErrorStream(true)
+                                    .start()
+                                val verifyResult = verifyProcess.waitFor()
+                                if (verifyResult == 0) {
+                                    outputFile.delete()
+                                    println("✅ APK已重命名为: ${newFile.name} (签名验证通过)")
+                                } else {
+                                    // 签名验证失败，保留原文件
+                                    newFile.delete()
+                                    println("⚠️ APK重命名后签名验证失败，保留原文件名")
+                                }
+                            } catch (e: Exception) {
+                                println("⚠️ APK重命名异常: ${e.message}")
+                            }
+                        }
                     }
                 }
             }

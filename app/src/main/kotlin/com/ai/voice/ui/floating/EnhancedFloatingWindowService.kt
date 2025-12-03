@@ -151,6 +151,9 @@ class EnhancedFloatingWindowService : Service(),
         // 显示悬浮球
         showFloatingOrb()
         
+        // 检查并运行唤醒词测试
+        checkAndRunWakeWordTest()
+        
         // 监听设置变化
         observeSettings()
         
@@ -483,6 +486,20 @@ class EnhancedFloatingWindowService : Service(),
                 }
             } catch (e: Exception) {
                 DebugLogger.logUI(TAG, "❌ Skill evaluation observation failed: ${e.message}")
+            }
+        }
+    }
+    
+    /**
+     * 检查并运行唤醒词测试
+     */
+    private fun checkAndRunWakeWordTest() {
+        serviceScope.launch {
+            try {
+                val wakeDevice = com.ai.voice.io.wake.onnx.HiNudgeOnnxV8WakeDevice(applicationContext)
+                com.ai.voice.io.wake.onnx.WakeWordTestRunner.checkAndRunTests(applicationContext, wakeDevice)
+            } catch (e: Exception) {
+                Log.w(TAG, "唤醒词测试失败: ${e.message}")
             }
         }
     }

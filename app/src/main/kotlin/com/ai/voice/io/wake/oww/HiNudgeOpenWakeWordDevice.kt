@@ -263,6 +263,11 @@ class HiNudgeOpenWakeWordDevice(
 
     override fun frameSize(): Int = N_PREPARED_SAMPLES
 
+    override fun reset() {
+        // OpenWakeWord模型内部会处理状态重置
+        DebugLogger.logWakeWord(TAG, "🔄 Reset called (HiNudgeOpenWakeWord handles reset internally)")
+    }
+
     override fun destroy() {
         DebugLogger.logWakeWord(TAG, "🗑️ Releasing HiNudge resources...")
         

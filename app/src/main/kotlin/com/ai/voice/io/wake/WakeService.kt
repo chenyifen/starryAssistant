@@ -602,8 +602,10 @@ class WakeService : Service() {
                     // 重新启动AudioRecord
                     if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
                         try {
+                            // 重置WakeDevice状态，清空旧的特征缓冲区
+                            wakeDevice.reset()
                             ar.startRecording()
-                            DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after AsrHandler")
+                            DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after AsrHandler, WakeDevice reset")
                         } catch (e: Exception) {
                             DebugLogger.logWakeWordError(TAG, "❌ Failed to restart AudioRecord after AsrHandler", e)
                             break
@@ -878,8 +880,10 @@ class WakeService : Service() {
             currentAudioRecord?.let { ar ->
                 try {
                     if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING && listening.get()) {
+                        // 重置WakeDevice状态，清空旧的特征缓冲区
+                        wakeDevice.reset()
                         ar.startRecording()
-                        DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR completion")
+                        DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR completion, WakeDevice reset")
                     } else {
                         DebugLogger.logWakeWord(TAG, "📊 AudioRecord状态: ${ar.recordingState}, listening: ${listening.get()}")
                     }

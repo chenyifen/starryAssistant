@@ -36,7 +36,7 @@ data class DeviceFingerprint(
                     android.provider.Settings.Secure.ANDROID_ID
                 ) ?: "UNKNOWN"
             } catch (e: Exception) {
-                Log.e(TAG, "获取Android ID失败", e)
+                Log.w(TAG, "获取Android ID失败: ${e.message}")
                 "UNKNOWN"
             }
             
@@ -49,7 +49,7 @@ data class DeviceFingerprint(
                     Build.SERIAL
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "获取序列号失败", e)
+                Log.d(TAG, "获取序列号失败: ${e.message}")
                 null
             }
             
@@ -109,7 +109,7 @@ data class DeviceFingerprint(
                 val hash = digest.digest(input.toByteArray(Charsets.UTF_8))
                 hash.joinToString("") { "%02x".format(it) }
             } catch (e: Exception) {
-                Log.e(TAG, "SHA-256哈希失败", e)
+                Log.w(TAG, "SHA-256哈希失败: ${e.message}")
                 "HASH_ERROR"
             }
         }

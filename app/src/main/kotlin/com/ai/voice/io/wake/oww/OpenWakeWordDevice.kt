@@ -211,6 +211,11 @@ class OpenWakeWordDevice(
         return OwwModel.MEL_INPUT_COUNT
     }
 
+    override fun reset() {
+        // OpenWakeWord模型内部会处理状态重置
+        DebugLogger.logWakeWord(TAG, "🔄 Reset called (OpenWakeWord handles reset internally)")
+    }
+
     override fun destroy() {
         model?.close()
         model = null

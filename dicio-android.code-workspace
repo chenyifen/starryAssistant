@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../openWakeWord/release/korean_wake_word_v41"
+		},
+		{
+			"path": "../openWakeWord"
+		}
+	],
+	"settings": {}
+}

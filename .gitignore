@@ -28,3 +28,7 @@ AI语音助手应用集成指南.pdf
 # 忽略整个 AiVoiceRelease_202511 文件夹
 AiVoiceRelease_202511/
 AiVoiceRelease_202511.zip
+
+# 忽略测试数据中的大文件
+test_data/*.apk
+*.apk

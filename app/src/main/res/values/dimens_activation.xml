@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="activation_padding">24dp</dimen>
+    <dimen name="activation_card_padding">32dp</dimen>
+    <dimen name="activation_card_max_width">560dp</dimen>
+    
+    <dimen name="activation_title_size">28sp</dimen>
+    <dimen name="activation_subtitle_size">16sp</dimen>
+    <dimen name="activation_body_size">14sp</dimen>
+    <dimen name="activation_caption_size">12sp</dimen>
+    
+    <dimen name="activation_status_size">18sp</dimen>
+    <dimen name="activation_code_prefix_size">24sp</dimen>
+    <dimen name="activation_code_char_size">22sp</dimen>
+    <dimen name="activation_code_separator_size">24sp</dimen>
+    
+    <dimen name="activation_input_width">44dp</dimen>
+    <dimen name="activation_input_height">56dp</dimen>
+    <dimen name="activation_input_margin">4dp</dimen>
+    <dimen name="activation_segment_margin">12dp</dimen>
+    
+    <dimen name="activation_button_height">56dp</dimen>
+    <dimen name="activation_button_min_width">140dp</dimen>
+    <dimen name="activation_button_text_size">16sp</dimen>
+    <dimen name="activation_button_margin">8dp</dimen>
+    
+    <dimen name="activation_section_margin">24dp</dimen>
+    <dimen name="activation_item_margin">16dp</dimen>
+    
+    <dimen name="activation_icon_size">48dp</dimen>
+    <dimen name="activation_corner_radius">16dp</dimen>
+</resources>
+
+

@@ -27,11 +27,17 @@
     
     <!-- 
         激活API服务器配置（HTTPS）
+        添加 Let's Encrypt 证书支持（兼容 Android 10 及以下）
+        - ISRG Root X1: 根证书，有效期至 2035-06-04
+        - R13: 中间证书，有效期至 2027-03-12
+        证书过期后系统证书会自动接管（优先使用 system）
     -->
     <domain-config cleartextTrafficPermitted="false">
         <domain includeSubdomains="true">namingyou.com</domain>
         <trust-anchors>
             <certificates src="system" />
+            <certificates src="@raw/isrg_root_x1" />
+            <certificates src="@raw/letsencrypt_r13" />
         </trust-anchors>
     </domain-config>
     

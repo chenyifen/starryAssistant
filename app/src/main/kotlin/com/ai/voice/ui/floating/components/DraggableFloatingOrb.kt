@@ -26,6 +26,7 @@ import com.ai.voice.ui.floating.state.VoiceAssistantFullState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
+import com.ai.voice.license.LicenseActivationManager
 
 /**
  * 悬浮球组件（简化版 - 不可拖动、不可点击）
@@ -48,25 +49,20 @@ class DraggableFloatingOrb(
     private var floatingView: View? = null
     private var isShowing = false
     
-    // 动画状态管理器
     private val animationStateManager = LottieAnimationStateManager()
     
-    // 当前文本状态 - 使用MutableState以便Compose能检测变化
     private val currentAsrText = mutableStateOf("")
     private val currentTtsText = mutableStateOf("")
+    private val activationStatusText = mutableStateOf("")
     
-    // 监听 AsrHandler 结果列表变化
     private var lastResultListSize = 0
     
-    // 性能优化：状态缓存
     private var lastUiState: VoiceAssistantUIState? = null
     private var lastDisplayText = ""
     
-    // VoiceAssistantStateProvider监听
     private var stateProvider: VoiceAssistantStateProvider? = null
     private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
     
-    // 配置项：是否启用ASR文本过滤（只保留英语和韩语，去除标点符号）
     var filterAsrTextEnabled: Boolean = true
     
     /**
@@ -107,32 +103,22 @@ class DraggableFloatingOrb(
             composeView.setViewTreeSavedStateRegistryOwner(savedStateRegistryOwner)
             
             composeView.setContent {
-                // 不使用AppTheme，因为Service不是Activity
-                // 使用完全透明的背景
-                
-                // ⚡ 性能优化：延迟加载复杂UI，避免阻塞主线程
                 var isFullyInitialized by remember { mutableStateOf(false) }
                 
                 LaunchedEffect(Unit) {
-                    // 延迟100ms，让主线程有时间处理其他任务
                     kotlinx.coroutines.delay(100)
                     isFullyInitialized = true
                 }
                 
-                // 监听 AsrHandler 结果列表变化
                 LaunchedEffect(Unit) {
                     while (true) {
-                        kotlinx.coroutines.delay(100) // 每100ms检查一次
+                        kotlinx.coroutines.delay(100)
                         val resultList = AsrHandler.getResultList()
                         if (resultList.isNotEmpty()) {
-                            // 显示最新的结果文本
                             var latestText = resultList.last()
-                            
-                            // 如果启用过滤，则过滤文本
                             if (filterAsrTextEnabled) {
                                 latestText = filterAsrText(latestText)
                             }
-                            
                             if (currentAsrText.value != latestText) {
                                 currentAsrText.value = latestText
                             }
@@ -140,17 +126,23 @@ class DraggableFloatingOrb(
                     }
                 }
                 
+                LaunchedEffect(Unit) {
+                    while (true) {
+                        kotlinx.coroutines.delay(2000)
+                        checkAndUpdateActivationStatus()
+                    }
+                }
+                
                 if (!isFullyInitialized) {
-                    // 简单占位符 - 快速渲染
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(Color.Transparent)
                     )
                 } else {
-                    // 在Composable内部读取状态，以便触发重组
                     val asrText by currentAsrText
                     val ttsText by currentTtsText
+                    val statusText by activationStatusText
                     
                     Box(
                         modifier = Modifier
@@ -161,7 +153,8 @@ class DraggableFloatingOrb(
                         FloatingOrbContent(
                             animationStateManager = animationStateManager,
                             currentAsrText = asrText,
-                            currentTtsText = ttsText
+                            currentTtsText = ttsText,
+                            activationStatus = statusText
                         )
                     }
                 }
@@ -177,11 +170,9 @@ class DraggableFloatingOrb(
             composeView.isClickable = false
             composeView.isFocusable = false
             
-            // 默认设置为待机状态
             animationStateManager.setIdle()
-            
-            // 设置VoiceAssistantStateProvider监听
             setupStateProviderListener()
+            checkAndUpdateActivationStatus()
             
         } catch (e: Exception) {
             DebugLogger.logUI(TAG, "❌ Error showing floating orb: ${e.message}")
@@ -223,9 +214,17 @@ class DraggableFloatingOrb(
      */
     fun getCurrentTtsText(): String = currentTtsText.value
     
-    /**
-     * 创建WindowManager布局参数
-     */
+    private fun checkAndUpdateActivationStatus() {
+        try {
+            val manager = LicenseActivationManager.getInstance()
+            val isActivated = manager.isActivated()
+            activationStatusText.value = if (isActivated) "" else LottieAnimationTexts.NOT_ACTIVATED
+        } catch (e: Exception) {
+            DebugLogger.logUI(TAG, "Check activation failed: ${e.message}")
+            activationStatusText.value = ""
+        }
+    }
+    
     private fun createWindowLayoutParams(): WindowManager.LayoutParams {
         return WindowManager.LayoutParams().apply {
             // 窗口类型
@@ -375,57 +374,70 @@ class DraggableFloatingOrb(
     
 }
 
-/**
- * 悬浮球内容组件 (包含Lottie动画和右侧的ASR/TTS文本显示)
- * 简化版 - 不支持交互，文本显示在球体右侧
- */
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
     currentAsrText: String,
-    currentTtsText: String
+    currentTtsText: String,
+    activationStatus: String = ""
 ) {
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
     
-    // 性能优化：使用 remember 缓存计算结果
     val shouldShowText = remember(currentAsrText, currentTtsText) {
         currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
     }
     
-    // 性能优化：使用固定的动画尺寸
     val animationSize = FloatingOrbConfig.animationSizeDp
     val animationSizeInt = FloatingOrbConfig.animationSizeInt
 
-    // 横向布局 - 球体在左，文本在右
-    Row(
+    Column(
         modifier = Modifier
             .wrapContentSize()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.Start
     ) {
-        // 悬浮球 - 不可点击，仅显示
-        Box(
-            modifier = Modifier.size(animationSize),
-            contentAlignment = Alignment.Center
-        ) {
-            // Lottie动画
-            LottieAnimationController(
-                animationState = animationState,
-                displayText = displayText,
-                size = animationSizeInt
-            )
+        if (activationStatus.isNotEmpty()) {
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(4.dp))
+            androidx.compose.material3.Surface(
+                color = Color(0xFFFF3B30).copy(alpha = 0.9f),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+            ) {
+                androidx.compose.material3.Text(
+                    text = activationStatus,
+                    color = Color.White,
+                    fontSize = androidx.compose.ui.unit.TextUnit(12f, androidx.compose.ui.unit.TextUnitType.Sp),
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                )
+            }
         }
         
-        // ASR/TTS文本显示区域 - 在悬浮球右侧
-        if (shouldShowText) {
-            FloatingTextDisplay(
-                userText = currentAsrText,
-                aiText = currentTtsText,
-                isVisible = true,
-                modifier = Modifier.wrapContentWidth()
-            )
+        Row(
+            modifier = Modifier.wrapContentSize(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(animationSize),
+                contentAlignment = Alignment.Center
+            ) {
+                LottieAnimationController(
+                    animationState = animationState,
+                    displayText = displayText,
+                    size = animationSizeInt
+                )
+            }
+            
+            if (shouldShowText) {
+                FloatingTextDisplay(
+                    userText = currentAsrText,
+                    aiText = currentTtsText,
+                    isVisible = true,
+                    modifier = Modifier.wrapContentWidth()
+                )
+            }
         }
     }
 }

@@ -40,7 +40,7 @@ class App : Application() {
         try {
             LicenseActivationManager.initialize(
                 context = this,
-                appId = packageName, // 使用包名作为应用ID
+                appId = "20e6f2ea2769f8e5e8e77fe7eceed485", // 固定应用ID
                 apiBaseUrl = "https://namingyou.com"
             )
             Log.i(TAG, "✅ 授权激活管理器初始化完成")

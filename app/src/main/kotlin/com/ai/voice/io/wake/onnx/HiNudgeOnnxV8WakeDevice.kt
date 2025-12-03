@@ -22,10 +22,10 @@ import java.nio.FloatBuffer
 import java.util.*
 
 /**
- * HiNudge韩语唤醒词设备 - ONNX V8版本 (使用V31模型)
+ * HiNudge韩语唤醒词设备 - ONNX V8版本 (使用V41模型)
  * 
- * 完全按照OpenwakewordforAndroid-main的流式处理实现
- * V31模型特点: 最新训练的韩语唤醒词模型，性能优化
+ * 完全按照WakeWordDetector.java的v41模型调用方式实现
+ * V41模型特点: 高精度，召回93%，精确95%，F1=94%，误报率仅2%
  */
 class HiNudgeOnnxV8WakeDevice @Inject constructor(
     @ApplicationContext private val appContext: Context,
@@ -48,8 +48,8 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         private const val FEATURE_BUFFER_MAX_LEN = 120
         private const val BATCH_SIZE = 1
         
-        // 检测阈值 - V31模型优化 (提高阈值以减少噪声和TTS误报)
-        private const val DETECTION_THRESHOLD = 0.75f
+        // 检测阈值 - V41模型推荐阈值 (召回93%，精确95%，F1=94%)
+        private const val DETECTION_THRESHOLD = 0.6f
     }
 
     private val _state: MutableStateFlow<WakeState>
@@ -81,13 +81,9 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     private var frameCount = 0
     private var lastLogTime = System.currentTimeMillis()
     
-    // 噪声过滤机制 - V31优化
-    private var consecutiveHighScores = 0
-    private var lastHighScoreTime = 0L
-    private var lastDetectionTime = 0L
-    private val minAudioEnergy = 5e-5f  // 提高最小音频能量阈值(避免TTS回声)
-    private val consecutiveThreshold = 3  // 提高连续检测次数
-    private val minDetectionInterval = 1000L  // 两次检测之间的最小间隔(ms)
+    // 最新预测分数（用于测试）
+    @Volatile
+    private var lastScore: Float = 0.0f
 
     init {
         DebugLogger.logWakeWord(TAG, "=".repeat(60))
@@ -239,18 +235,26 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
 
             val loadStartTime = System.currentTimeMillis()
             
-            // 🔧 验证模型文件存在性 - 严格按照OpenwakewordforAndroid-main实现（不预加载session）
-            DebugLogger.logWakeWord(TAG, "✅ Mel spectrogram model file verified")
-            DebugLogger.logWakeWord(TAG, "✅ Embedding model file verified")
+            // 🔧 改为重用session（与Java测试代码一致）
+            melSession = ortEnv.createSession(melFile.absolutePath)
+            DebugLogger.logWakeWord(TAG, "✅ Mel spectrogram model loaded")
             
-            // 只加载wake word session，因为它需要重用
+            embSession = ortEnv.createSession(embFile.absolutePath)
+            DebugLogger.logWakeWord(TAG, "✅ Embedding model loaded")
+            
             wakeSession = ortEnv.createSession(wakeFile.absolutePath)
             DebugLogger.logWakeWord(TAG, "✅ Wake word model loaded")
             
-            // 初始化feature buffer (使用随机数据)
-            featureBuffer = getEmbeddings(generateRandomFloatArray(SAMPLE_RATE * 4), 76, 8)
+            // 🔧 v41模型: 使用随机音频预热feature buffer (与WakeWordDetector.java一致)
+            try {
+                val initAudio = generateInitAudio(SAMPLE_RATE * 4)
+                featureBuffer = getEmbeddings(initAudio, 76, 8)
+                DebugLogger.logWakeWord(TAG, "✅ Feature buffer pre-warmed with ${featureBuffer.size} frames")
+            } catch (e: Exception) {
+                DebugLogger.logWakeWordError(TAG, "⚠️ Failed to pre-warm feature buffer, using empty", e)
+                featureBuffer = Array(0) { FloatArray(96) }
+            }
             realDataFrames = 0
-            DebugLogger.logWakeWord(TAG, "✅ Feature buffer initialized: ${featureBuffer.size} frames")
             
             val loadTime = System.currentTimeMillis() - loadStartTime
 
@@ -258,10 +262,10 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
             DebugLogger.logWakeWord(TAG, "=".repeat(60))
             DebugLogger.logWakeWord(TAG, "✅ HiNudge ONNX V8 models loaded successfully in ${loadTime}ms")
             DebugLogger.logWakeWord(TAG, "=".repeat(60))
-            DebugLogger.logWakeWord(TAG, "🎯 V8 Model Performance:")
-            DebugLogger.logWakeWord(TAG, "  - Recall: 100% (不会漏检)")
-            DebugLogger.logWakeWord(TAG, "  - Precision: 72% (28%误报率)")
-            DebugLogger.logWakeWord(TAG, "  - F1 Score: 84%")
+            DebugLogger.logWakeWord(TAG, "🎯 V41 Model Performance:")
+            DebugLogger.logWakeWord(TAG, "  - Recall: 93.04% (不会漏检)")
+            DebugLogger.logWakeWord(TAG, "  - Precision: 94.77% (误报率2.08%)")
+            DebugLogger.logWakeWord(TAG, "  - F1 Score: 93.90%")
             DebugLogger.logWakeWord(TAG, "  - Detection Threshold: $DETECTION_THRESHOLD")
             DebugLogger.logWakeWord(TAG, "  - Frame Size: $N_PREPARED_SAMPLES samples (80ms @ 16kHz)")
             DebugLogger.logWakeWord(TAG, "=".repeat(60))
@@ -277,96 +281,141 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     override fun processFrame(audio16bitPcm: ShortArray): Boolean {
         frameCount++
         
+        DebugLogger.logWakeWord(TAG, "▶▶▶ processFrame #$frameCount START ◀◀◀")
+        DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] 输入音频大小: ${audio16bitPcm.size} samples")
+        
         if (wakeSession == null) {
-            if (frameCount % 1000 == 0) {
-                DebugLogger.logWakeWordError(TAG, "❌ V8 Model not loaded (frame #$frameCount)")
-            }
+            DebugLogger.logWakeWordError(TAG, "[Frame#$frameCount] ❌ wakeSession is NULL")
             return false
         }
 
-        // 转换音频格式: Short[] -> Float[] (保持int16值范围，不归一化)
+        // 转换音频格式: Short[] -> Float[]
         val audioFloat = FloatArray(audio16bitPcm.size)
         for (i in audio16bitPcm.indices) {
             audioFloat[i] = audio16bitPcm[i].toFloat()
         }
-
-        // 计算音频能量
-        val audioEnergy = audioFloat.map { it * it }.average()
         
-        // 流式处理并预测
+        // 统计输入音频
+        val audioStats = getAudioStats(audioFloat)
+        DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] 音频统计: min=${audioStats.min}, max=${audioStats.max}, mean=${audioStats.mean}, std=${audioStats.std}, zeros=${audioStats.zeros}")
+        
+        // 前10帧显示详细样本值
+        if (frameCount <= 10) {
+            val sampleStr = audioFloat.take(20).joinToString(", ") { "%.1f".format(it) }
+            DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] 前20个样本: $sampleStr")
+        }
+
+        // 预测前状态
+        DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] 预测前状态: featureBuffer.size=${featureBuffer.size}, realDataFrames=$realDataFrames, rawDataBuffer.size=${rawDataBuffer.size}")
+        
         val score = predictWakeWord(audioFloat)
         
-        // 噪声过滤和连续检测机制
-        val currentTime = System.currentTimeMillis()
-        val basicDetection = score > DETECTION_THRESHOLD
-        val hasMinEnergy = audioEnergy > minAudioEnergy
+        DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] ⭐ 预测得分: $score (阈值: $DETECTION_THRESHOLD)")
         
-        // 连续检测逻辑
-        if (basicDetection && hasMinEnergy) {
-            if (currentTime - lastHighScoreTime < 500) { // 500ms内的连续检测
-                consecutiveHighScores++
-            } else {
-                consecutiveHighScores = 1 // 重置计数
-            }
-            lastHighScoreTime = currentTime
+        val detected = score >= DETECTION_THRESHOLD
+        
+        if (detected) {
+            DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] 🎉🎉🎉 检测到唤醒词! Score=$score 🎉🎉🎉")
         } else {
-            if (currentTime - lastHighScoreTime > 1000) { // 1秒后重置
-                consecutiveHighScores = 0
-            }
+            val percentage = (score / DETECTION_THRESHOLD * 100).toInt()
+            DebugLogger.logWakeWord(TAG, "[Frame#$frameCount] 未唤醒: Score=$score (${percentage}% of threshold)")
         }
         
-        // 防止短时间内重复检测 (避免TTS触发)
-        val timeSinceLastDetection = currentTime - lastDetectionTime
-        val cooldownPassed = timeSinceLastDetection > minDetectionInterval
-        
-        // 最终检测结果：需要连续检测、足够音频能量、冷却时间已过
-        val detected = consecutiveHighScores >= consecutiveThreshold && hasMinEnergy && cooldownPassed
-        
-        // 记录日志：只在检测到唤醒词时打印，减少日志输出
-        // 如需调试，可以临时启用：frameCount % 1000 == 0 条件
-        if (detected) {
-            val timeSinceLastLog = currentTime - lastLogTime
-            DebugLogger.logWakeWord(TAG, "🎤 V31 Frame #$frameCount | Score: %.4f | Threshold: %.2f | Energy: %.6f | Consecutive: %d | Cooldown: %dms | Detected: %s | Δt: %dms".format(
-                score, DETECTION_THRESHOLD, audioEnergy, consecutiveHighScores, timeSinceLastDetection, if (detected) "✅" else "❌", timeSinceLastLog
-            ))
-            lastLogTime = currentTime
-        }
-        
-        if (detected) {
-            DebugLogger.logWakeWord(TAG, "🎉🎉🎉 V31 WAKE WORD DETECTED! 🎉🎉🎉")
-            DebugLogger.logWakeWord(TAG, "📊 Detection Details:")
-            DebugLogger.logWakeWord(TAG, "  - Score: %.4f (%.1f%% above threshold)".format(
-                score, ((score - DETECTION_THRESHOLD) / DETECTION_THRESHOLD) * 100
-            ))
-            DebugLogger.logWakeWord(TAG, "  - Threshold: %.2f".format(DETECTION_THRESHOLD))
-            DebugLogger.logWakeWord(TAG, "  - Audio Energy: %.6f (min: %.6f)".format(audioEnergy, minAudioEnergy))
-            DebugLogger.logWakeWord(TAG, "  - Consecutive Detections: %d (threshold: %d)".format(consecutiveHighScores, consecutiveThreshold))
-            DebugLogger.logWakeWord(TAG, "  - Time Since Last: %dms (min: %dms)".format(timeSinceLastDetection, minDetectionInterval))
-            DebugLogger.logWakeWord(TAG, "  - Frame: #$frameCount")
-            
-            // 更新最后检测时间并重置连续检测计数
-            lastDetectionTime = currentTime
-            consecutiveHighScores = 0
-        }
+        DebugLogger.logWakeWord(TAG, "▶▶▶ processFrame #$frameCount END (detected=$detected) ◀◀◀\n")
         
         return detected
     }
 
     private fun predictWakeWord(audioBuffer: FloatArray): Float {
         return try {
+            DebugLogger.logWakeWord(TAG, "  [predictWakeWord] 输入音频大小: ${audioBuffer.size}")
+            
             streamingFeatures(audioBuffer)
             
+            DebugLogger.logWakeWord(TAG, "  [predictWakeWord] streamingFeatures后: realDataFrames=$realDataFrames, featureBuffer.size=${featureBuffer.size}")
+            
             if (realDataFrames < WAKE_INPUT_FRAMES) {
+                DebugLogger.logWakeWord(TAG, "  [predictWakeWord] ⏳ 数据不足: realDataFrames=$realDataFrames < $WAKE_INPUT_FRAMES, 返回0.0")
                 return 0.0f
             }
             
+            DebugLogger.logWakeWord(TAG, "  [predictWakeWord] 开始获取特征: nFrames=$WAKE_INPUT_FRAMES")
             val features = getFeatures(WAKE_INPUT_FRAMES, -1)
-            predictWakeWordFromFeatures(features)
+            DebugLogger.logWakeWord(TAG, "  [predictWakeWord] 特征形状: [${features.size}, ${features[0].size}, ${features[0][0].size}]")
+            
+            // 特征统计
+            val featStats = getFeatureStats(features)
+            DebugLogger.logWakeWord(TAG, "  [predictWakeWord] 特征统计: min=${featStats.min}, max=${featStats.max}, mean=${featStats.mean}, std=${featStats.std}")
+            
+            val score = predictWakeWordFromFeatures(features)
+            DebugLogger.logWakeWord(TAG, "  [predictWakeWord] 最终得分: $score")
+            
+            score
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error in predictWakeWord", e)
+            DebugLogger.logWakeWordError(TAG, "  [predictWakeWord] ❌ 异常", e)
             0.0f
         }
     }
+    
+    /**
+     * 获取音频数据统计信息
+     */
+    private fun getAudioStats(audio: FloatArray): AudioStats {
+        if (audio.isEmpty()) {
+            return AudioStats(0f, 0f, 0f, 0f, 0)
+        }
+        val min = audio.minOrNull() ?: 0f
+        val max = audio.maxOrNull() ?: 0f
+        val mean = audio.average().toFloat()
+        val variance = audio.map { (it - mean) * (it - mean) }.average().toFloat()
+        val std = kotlin.math.sqrt(variance)
+        val zeros = audio.count { kotlin.math.abs(it) < 1e-6f }
+        return AudioStats(min, max, mean, std, zeros)
+    }
+    
+    /**
+     * 获取特征数据统计信息
+     */
+    private fun getFeatureStats(features: Array<Array<FloatArray>>): FeatureStats {
+        if (features.isEmpty() || features[0].isEmpty() || features[0][0].isEmpty()) {
+            return FeatureStats(0f, 0f, 0f, 0f)
+        }
+        val allValues = mutableListOf<Float>()
+        for (i in features.indices) {
+            for (j in features[i].indices) {
+                for (k in features[i][j].indices) {
+                    allValues.add(features[i][j][k])
+                }
+            }
+        }
+        val min = allValues.minOrNull() ?: 0f
+        val max = allValues.maxOrNull() ?: 0f
+        val mean = allValues.average().toFloat()
+        val variance = allValues.map { (it - mean) * (it - mean) }.average().toFloat()
+        val std = kotlin.math.sqrt(variance)
+        return FeatureStats(min, max, mean, std)
+    }
+    
+    /**
+     * 音频统计信息数据类
+     */
+    private data class AudioStats(
+        val min: Float,
+        val max: Float,
+        val mean: Float,
+        val std: Float,
+        val zeros: Int
+    )
+    
+    /**
+     * 特征统计信息数据类
+     */
+    private data class FeatureStats(
+        val min: Float,
+        val max: Float,
+        val mean: Float,
+        val std: Float
+    )
     
     /**
      * 获取Mel频谱图 - 使用ONNX (重用Session)
@@ -376,23 +425,28 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         var inputTensor: OnnxTensor? = null
         
         return try {
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] 输入大小: ${inputArray.size}")
+            
             if (inputArray.isEmpty()) {
-                Log.e(TAG, "❌ Input array is empty for mel spectrogram generation")
+                DebugLogger.logWakeWordError(TAG, "    [getMelSpectrogram] ❌ 输入为空")
                 return Array(76) { FloatArray(32) { 1.0f } }
             }
             
             val samples = inputArray.size
             if (samples <= 0) {
-                Log.e(TAG, "❌ Invalid sample size: $samples")
+                DebugLogger.logWakeWordError(TAG, "    [getMelSpectrogram] ❌ 样本数无效: $samples")
                 return Array(76) { FloatArray(32) { 1.0f } }
             }
             
-            // 严格按照OpenwakewordforAndroid-main的实现：每次创建新的session
+            val audioStats = getAudioStats(inputArray)
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] 输入音频: samples=$samples, min=${audioStats.min}, max=${audioStats.max}, mean=${audioStats.mean}")
+            
             val modelInputStream = appContext.assets.open("melspectrogram.onnx")
             val modelBytes = ByteArray(modelInputStream.available())
             modelInputStream.read(modelBytes)
             modelInputStream.close()
             session = ortEnv.createSession(modelBytes)
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] Mel session创建成功")
             
             val floatBuffer = FloatBuffer.wrap(inputArray)
             inputTensor = OnnxTensor.createTensor(
@@ -400,18 +454,27 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 floatBuffer, 
                 longArrayOf(BATCH_SIZE.toLong(), samples.toLong())
             )
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] 输入tensor创建: shape=[1, $samples]")
             
             val results = session.run(mapOf(session.inputNames.iterator().next() to inputTensor))
             val outputTensor = results[0].value as Array<Array<Array<FloatArray>>>
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] 原始输出: shape=[${outputTensor.size}, ${outputTensor[0].size}, ${outputTensor[0][0].size}, ${outputTensor[0][0][0].size}]")
             
             val squeezed = squeeze(outputTensor)
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] squeeze后: shape=[${squeezed.size}, ${squeezed[0].size}]")
+            
             val transformed = applyMelSpecTransform(squeezed)
+            val transStats = transformed.flatMap { it.toList() }
+            val transMin = transStats.minOrNull() ?: 0f
+            val transMax = transStats.maxOrNull() ?: 0f
+            val transMean = transStats.average().toFloat()
+            DebugLogger.logWakeWord(TAG, "    [getMelSpectrogram] 变换后统计: min=$transMin, max=$transMax, mean=$transMean")
             
             results.close()
             transformed
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error generating mel spectrogram", e)
+            DebugLogger.logWakeWordError(TAG, "    [getMelSpectrogram] ❌ 异常", e)
             Array(76) { FloatArray(32) { 1.0f } }
         } finally {
             inputTensor?.close()
@@ -447,34 +510,51 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         var inputTensor: OnnxTensor? = null
         
         return try {
+            DebugLogger.logWakeWord(TAG, "      [generateEmbeddings] 输入shape: [${input.size}, ${input[0].size}, ${input[0][0].size}, ${input[0][0][0].size}]")
+            
             if (input.isEmpty()) {
-                Log.e(TAG, "❌ Input array is empty for embedding generation")
+                DebugLogger.logWakeWordError(TAG, "      [generateEmbeddings] ❌ 输入为空")
                 return arrayOf()
             }
             
-            // 严格按照OpenwakewordforAndroid-main的实现：每次创建新的session
+            // 统计输入
+            val inputVals = input.flatMap { it.flatMap { it.flatMap { it.toList() } } }
+            val inMin = inputVals.minOrNull() ?: 0f
+            val inMax = inputVals.maxOrNull() ?: 0f
+            val inMean = inputVals.average().toFloat()
+            DebugLogger.logWakeWord(TAG, "      [generateEmbeddings] 输入统计: min=$inMin, max=$inMax, mean=$inMean, count=${inputVals.size}")
+            
             val modelInputStream = appContext.assets.open("embedding_model.onnx")
             val modelBytes = ByteArray(modelInputStream.available())
             modelInputStream.read(modelBytes)
             modelInputStream.close()
             session = ortEnv.createSession(modelBytes)
+            DebugLogger.logWakeWord(TAG, "      [generateEmbeddings] Emb session创建成功")
             
             inputTensor = OnnxTensor.createTensor(ortEnv, input)
             
             val results = session.run(mapOf("input_1" to inputTensor))
             val rawOutput = results[0].value as Array<Array<Array<FloatArray>>>
+            DebugLogger.logWakeWord(TAG, "      [generateEmbeddings] 原始输出shape: [${rawOutput.size}, ${rawOutput[0].size}, ${rawOutput[0][0].size}, ${rawOutput[0][0][0].size}]")
             
-            // 重塑输出 - 与OpenwakewordforAndroid-main保持一致
             val reshapedOutput = Array(rawOutput.size) { FloatArray(rawOutput[0][0][0].size) }
             for (i in rawOutput.indices) {
                 System.arraycopy(rawOutput[i][0][0], 0, reshapedOutput[i], 0, rawOutput[i][0][0].size)
             }
+            DebugLogger.logWakeWord(TAG, "      [generateEmbeddings] reshape后: [${reshapedOutput.size}, ${reshapedOutput[0].size}]")
+            
+            // 统计输出
+            val outVals = reshapedOutput.flatMap { it.toList() }
+            val outMin = outVals.minOrNull() ?: 0f
+            val outMax = outVals.maxOrNull() ?: 0f
+            val outMean = outVals.average().toFloat()
+            DebugLogger.logWakeWord(TAG, "      [generateEmbeddings] 输出统计: min=$outMin, max=$outMax, mean=$outMean, count=${outVals.size}")
             
             results.close()
             reshapedOutput
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error generating embeddings", e)
+            DebugLogger.logWakeWordError(TAG, "      [generateEmbeddings] ❌ 异常", e)
             arrayOf()
         } finally {
             inputTensor?.close()
@@ -486,49 +566,102 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         var inputTensor: OnnxTensor? = null
         
         return try {
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 输入shape: [${inputArray.size}, ${inputArray[0].size}, ${inputArray[0][0].size}]")
+            
             if (inputArray.isEmpty() || inputArray[0].isEmpty()) {
-                Log.e(TAG, "❌ Input array is empty for wake word prediction")
+                DebugLogger.logWakeWordError(TAG, "    [predictWakeWordFromFeatures] ❌ 输入为空")
                 return 0.0f
             }
+            
+            val inputValues = inputArray.flatMap { it.flatMap { it.toList() } }
+            val inputMin = inputValues.minOrNull() ?: 0f
+            val inputMax = inputValues.maxOrNull() ?: 0f
+            val inputMean = inputValues.average().toFloat()
+            val inputStd = kotlin.math.sqrt(inputValues.map { (it - inputMean) * (it - inputMean) }.average().toFloat())
+            
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 输入统计: min=$inputMin, max=$inputMax, mean=$inputMean, std=$inputStd, count=${inputValues.size}")
+            
+            // 显示部分输入值
+            val sample = inputValues.take(10).joinToString(", ") { "%.3f".format(it) }
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 前10个值: $sample")
+            
+            // 检查是否有NaN或Inf
+            val hasNaN = inputValues.any { it.isNaN() }
+            val hasInf = inputValues.any { it.isInfinite() }
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] hasNaN=$hasNaN, hasInf=$hasInf")
+            
+            // 检查全0或全相同的异常情况
+            val allSame = inputValues.distinct().size == 1
+            val allZero = inputValues.all { kotlin.math.abs(it) < 1e-6f }
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] allSame=$allSame, allZero=$allZero, distinct=${inputValues.distinct().size}")
             
             try {
                 inputTensor = OnnxTensor.createTensor(ortEnv, inputArray)
+                DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] Tensor创建成功")
             } catch (e: Exception) {
-                Log.e(TAG, "❌ Error creating tensor for wake word prediction", e)
+                DebugLogger.logWakeWordError(TAG, "    [predictWakeWordFromFeatures] ❌ Tensor创建失败", e)
                 return 0.0f
             }
             
-            val results = wakeSession!!.run(mapOf(wakeSession!!.inputNames.iterator().next() to inputTensor))
+            val inputName = wakeSession!!.inputNames.iterator().next()
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 运行推理, inputName=$inputName")
             
-            // 处理不同的输出类型，与OpenwakewordforAndroid-main保持一致
+            val results = wakeSession!!.run(mapOf(inputName to inputTensor))
+            
             val outputValue = results[0].value
-            val score = when (outputValue) {
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 输出类型: ${outputValue.javaClass.simpleName}")
+            
+            val rawScore = when (outputValue) {
                 is Array<*> -> {
                     val result = outputValue as Array<FloatArray>
+                    DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 输出Array: [${result.size}, ${result[0].size}]")
                     if (result.isNotEmpty() && result[0].isNotEmpty()) {
-                        result[0][0]
+                        val s = result[0][0]
+                        DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 提取rawScore: $s")
+                        s
                     } else {
+                        DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] ⚠️ 输出Array为空")
                         0.0f
                     }
                 }
                 is FloatArray -> {
+                    DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 输出FloatArray: size=${outputValue.size}")
                     if (outputValue.isNotEmpty()) {
-                        outputValue[0]
+                        val s = outputValue[0]
+                        DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 提取rawScore: $s")
+                        s
                     } else {
+                        DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] ⚠️ 输出FloatArray为空")
                         0.0f
                     }
                 }
                 else -> {
-                    Log.e(TAG, "❌ Unexpected output type: ${outputValue.javaClass.name}")
+                    DebugLogger.logWakeWordError(TAG, "    [predictWakeWordFromFeatures] ❌ 未知输出类型: ${outputValue.javaClass.name}")
                     0.0f
                 }
             }
             
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] 原始输出rawScore: $rawScore")
+            
+            // 🔧 检查是否需要sigmoid：如果出现负数或>1的值，说明是logits
+            val needsSigmoid = rawScore < 0.0f || rawScore > 1.0f
+            val score = if (needsSigmoid) {
+                // 应用sigmoid: σ(x) = 1 / (1 + e^(-x))
+                val sigmoid = 1.0f / (1.0f + kotlin.math.exp(-rawScore))
+                DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] ⚠️ 检测到logits输出，应用sigmoid: $rawScore -> $sigmoid")
+                sigmoid
+            } else {
+                rawScore
+            }
+            
+            DebugLogger.logWakeWord(TAG, "    [predictWakeWordFromFeatures] ⭐⭐⭐ 最终Score: $score ⭐⭐⭐")
+            
             results.close()
+            lastScore = score
             score
             
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error predicting wake word", e)
+            DebugLogger.logWakeWordError(TAG, "    [predictWakeWordFromFeatures] ❌ 异常", e)
             0.0f
         } finally {
             inputTensor?.close()
@@ -536,11 +669,16 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     }
     
     private fun getFeatures(nFeatureFrames: Int, startNdx: Int): Array<Array<FloatArray>> {
+        DebugLogger.logWakeWord(TAG, "    [getFeatures] nFeatureFrames=$nFeatureFrames, startNdx=$startNdx, featureBuffer.size=${featureBuffer.size}, realDataFrames=$realDataFrames")
+        
+        // 🔧 完全按照Java测试代码：直接取最后nFeatureFrames帧，不跳过预热
         val actualStartNdx = if (startNdx != -1) startNdx 
             else maxOf(0, featureBuffer.size - nFeatureFrames)
         val endNdx = if (startNdx != -1) actualStartNdx + nFeatureFrames 
             else featureBuffer.size
         val length = endNdx - actualStartNdx
+        
+        DebugLogger.logWakeWord(TAG, "    [getFeatures] actualStartNdx=$actualStartNdx, endNdx=$endNdx, length=$length (含预热帧)")
         
         val result = Array(1) { Array(length) { FloatArray(if (featureBuffer.isNotEmpty()) featureBuffer[0].size else 96) } }
         for (i in 0 until length) {
@@ -548,11 +686,17 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 System.arraycopy(featureBuffer[actualStartNdx + i], 0, result[0][i], 0, featureBuffer[actualStartNdx + i].size)
             }
         }
+        
+        DebugLogger.logWakeWord(TAG, "    [getFeatures] 返回特征: shape=[${result.size}, ${result[0].size}, ${result[0][0].size}]")
         return result
     }
     
     private fun getEmbeddings(x: FloatArray, windowSize: Int, stepSize: Int): Array<FloatArray> {
+        DebugLogger.logWakeWord(TAG, "      [getEmbeddings] x.size=${x.size}, windowSize=$windowSize, stepSize=$stepSize")
+        
         val spec = getMelSpectrogram(x)
+        DebugLogger.logWakeWord(TAG, "      [getEmbeddings] spec shape: [${spec.size}, ${spec[0].size}]")
+        
         val windows = ArrayList<Array<FloatArray>>()
         
         for (i in 0..spec.size - windowSize step stepSize) {
@@ -564,6 +708,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 windows.add(window)
             }
         }
+        DebugLogger.logWakeWord(TAG, "      [getEmbeddings] 创建${windows.size}个windows")
         
         val batch = Array(windows.size) { Array(windowSize) { Array(spec[0].size) { FloatArray(1) } } }
         for (i in windows.indices) {
@@ -573,11 +718,14 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 }
             }
         }
+        DebugLogger.logWakeWord(TAG, "      [getEmbeddings] batch shape: [${batch.size}, ${batch[0].size}, ${batch[0][0].size}, ${batch[0][0][0].size}]")
         
         return try {
-            generateEmbeddings(batch)
+            val embeddings = generateEmbeddings(batch)
+            DebugLogger.logWakeWord(TAG, "      [getEmbeddings] 返回embeddings: [${embeddings.size}, ${if (embeddings.isNotEmpty()) embeddings[0].size else 0}]")
+            embeddings
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error getting embeddings", e)
+            DebugLogger.logWakeWordError(TAG, "      [getEmbeddings] ❌ 异常", e)
             arrayOf()
         }
     }
@@ -602,33 +750,56 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     }
     
     private fun streamingMelSpectrogram(nSamples: Int) {
-        if (rawDataBuffer.size < 400) return
+        DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] nSamples=$nSamples, rawDataBuffer.size=${rawDataBuffer.size}")
+        
+        if (rawDataBuffer.size < 400) {
+            DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] ⚠️ rawDataBuffer太小: ${rawDataBuffer.size} < 400, 跳过")
+            return
+        }
         
         val tempArray = FloatArray(nSamples + 480)
         val rawDataArray = rawDataBuffer.toTypedArray()
-        for (i in maxOf(0, rawDataArray.size - nSamples - 480) until rawDataArray.size) {
-            tempArray[i - maxOf(0, rawDataArray.size - nSamples - 480)] = rawDataArray[i]
+        val startIdx = maxOf(0, rawDataArray.size - nSamples - 480)
+        DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] 提取音频: startIdx=$startIdx, length=${rawDataArray.size - startIdx}, tempArray.size=${tempArray.size}")
+        
+        for (i in startIdx until rawDataArray.size) {
+            tempArray[i - startIdx] = rawDataArray[i]
         }
         
-        val newMelSpectrogram = getMelSpectrogram(tempArray)
+        val audioStats = getAudioStats(tempArray)
+        DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] 提取音频统计: min=${audioStats.min}, max=${audioStats.max}, mean=${audioStats.mean}")
         
+        val newMelSpectrogram = getMelSpectrogram(tempArray)
+        DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] 新mel频谱图: shape=[${newMelSpectrogram.size}, ${newMelSpectrogram[0].size}]")
+        
+        val oldSize = melspectrogramBuffer.size
         val combined = Array(melspectrogramBuffer.size + newMelSpectrogram.size) { FloatArray(32) }
         System.arraycopy(melspectrogramBuffer, 0, combined, 0, melspectrogramBuffer.size)
         System.arraycopy(newMelSpectrogram, 0, combined, melspectrogramBuffer.size, newMelSpectrogram.size)
         melspectrogramBuffer = combined
+        DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] 合并后: $oldSize + ${newMelSpectrogram.size} = ${melspectrogramBuffer.size}")
         
         if (melspectrogramBuffer.size > MELSPECTROGRAM_MAX_LEN) {
+            val beforeTrim = melspectrogramBuffer.size
             val trimmed = Array(MELSPECTROGRAM_MAX_LEN) { FloatArray(32) }
             System.arraycopy(melspectrogramBuffer, melspectrogramBuffer.size - MELSPECTROGRAM_MAX_LEN, trimmed, 0, MELSPECTROGRAM_MAX_LEN)
             melspectrogramBuffer = trimmed
+            DebugLogger.logWakeWord(TAG, "      [streamingMelSpectrogram] 裁剪: $beforeTrim -> ${melspectrogramBuffer.size}")
         }
     }
     
     private fun streamingFeatures(audioBuffer: FloatArray) {
+        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] START: audioBuffer.size=${audioBuffer.size}")
+        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 初始状态: featureBuffer.size=${featureBuffer.size}, realDataFrames=$realDataFrames, rawDataRemainder.size=${rawDataRemainder.size}")
+        
+        val audioStats = getAudioStats(audioBuffer)
+        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 音频统计: min=${audioStats.min}, max=${audioStats.max}, mean=${audioStats.mean}, std=${audioStats.std}")
+        
         var processedSamples = 0
         accumulatedSamples = 0
         
         val fullBuffer = if (rawDataRemainder.isNotEmpty()) {
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 合并remainder: ${rawDataRemainder.size} + ${audioBuffer.size}")
             val concatenated = FloatArray(rawDataRemainder.size + audioBuffer.size)
             System.arraycopy(rawDataRemainder, 0, concatenated, 0, rawDataRemainder.size)
             System.arraycopy(audioBuffer, 0, concatenated, rawDataRemainder.size, audioBuffer.size)
@@ -637,9 +808,12 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         } else {
             audioBuffer
         }
+        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] fullBuffer.size=${fullBuffer.size}")
         
         if (accumulatedSamples + fullBuffer.size >= 1280) {
             val remainder = (accumulatedSamples + fullBuffer.size) % 1280
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 检测到足够数据: total=${accumulatedSamples + fullBuffer.size}, remainder=$remainder")
+            
             if (remainder != 0) {
                 val xEvenChunks = FloatArray(fullBuffer.size - remainder)
                 System.arraycopy(fullBuffer, 0, xEvenChunks, 0, fullBuffer.size - remainder)
@@ -647,24 +821,37 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 accumulatedSamples += xEvenChunks.size
                 rawDataRemainder = FloatArray(remainder)
                 System.arraycopy(fullBuffer, fullBuffer.size - remainder, rawDataRemainder, 0, remainder)
+                DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 处理: evenChunks=${xEvenChunks.size}, newRemainder=$remainder")
             } else {
                 bufferRawData(fullBuffer)
                 accumulatedSamples += fullBuffer.size
+                DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 处理完整块: ${fullBuffer.size}")
             }
         } else {
             accumulatedSamples += fullBuffer.size
             bufferRawData(fullBuffer)
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 数据不足1280: accumulated=$accumulatedSamples")
         }
         
+        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] rawDataBuffer.size=${rawDataBuffer.size}, accumulatedSamples=$accumulatedSamples")
+        
         if (accumulatedSamples >= 1280 && accumulatedSamples % 1280 == 0) {
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] ✅ 开始处理mel和embedding: accumulatedSamples=$accumulatedSamples")
+            
             streamingMelSpectrogram(accumulatedSamples)
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] mel处理后: melspectrogramBuffer.size=${melspectrogramBuffer.size}")
             
             val x = Array(1) { Array(76) { Array(32) { FloatArray(1) } } }
             
-            for (i in (accumulatedSamples / 1280) - 1 downTo 0) {
+            val numChunks = accumulatedSamples / 1280
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 处理chunks数量: $numChunks")
+            
+            for (i in numChunks - 1 downTo 0) {
                 val ndx = if (-8 * i == 0) melspectrogramBuffer.size else -8 * i
                 val start = maxOf(0, ndx - 76)
                 val end = ndx
+                
+                DebugLogger.logWakeWord(TAG, "    [streamingFeatures] chunk[$i]: ndx=$ndx, start=$start, end=$end")
                 
                 for (j in start until end) {
                     for (w in 0 until 32) {
@@ -674,11 +861,30 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                 
                 if (x[0].size == 76) {
                     try {
+                        val melValues = x[0].flatMap { it.flatMap { it.toList() } }
+                        val melMin = melValues.minOrNull() ?: 0f
+                        val melMax = melValues.maxOrNull() ?: 0f
+                        val melMean = melValues.average().toFloat()
+                        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] Mel准备送入embedding: shape=[${x.size}, ${x[0].size}, ${x[0][0].size}, ${x[0][0][0].size}], min=$melMin, max=$melMax, mean=$melMean")
+                        
                         val newFeatures = generateEmbeddings(x)
-                        realDataFrames += newFeatures.size
+                        
+                        if (newFeatures.isNotEmpty()) {
+                            val featValues = newFeatures.flatMap { it.toList() }
+                            val featMin = featValues.minOrNull() ?: 0f
+                            val featMax = featValues.maxOrNull() ?: 0f
+                            val featMean = featValues.average().toFloat()
+                            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 新特征生成: count=${newFeatures.size}, dim=${newFeatures[0].size}, min=$featMin, max=$featMax, mean=$featMean")
+                            
+                            realDataFrames += newFeatures.size
+                            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] realDataFrames更新: $realDataFrames")
+                        } else {
+                            DebugLogger.logWakeWordError(TAG, "    [streamingFeatures] ⚠️ newFeatures为空")
+                        }
                         
                         if (featureBuffer.isEmpty()) {
                             featureBuffer = newFeatures
+                            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 初始化featureBuffer: size=${newFeatures.size}")
                         } else {
                             val totalRows = featureBuffer.size + newFeatures.size
                             val numColumns = featureBuffer[0].size
@@ -693,26 +899,73 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
                             }
                             
                             featureBuffer = updatedBuffer
+                            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] featureBuffer合并: ${featureBuffer.size - newFeatures.size} + ${newFeatures.size} = ${featureBuffer.size}")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "❌ Error in streaming features", e)
+                        DebugLogger.logWakeWordError(TAG, "    [streamingFeatures] ❌ 处理异常", e)
                     }
                 }
             }
             processedSamples = accumulatedSamples
             accumulatedSamples = 0
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] 处理完成: processedSamples=$processedSamples")
         }
         
         if (featureBuffer.size > FEATURE_BUFFER_MAX_LEN) {
+            val oldSize = featureBuffer.size
             val trimmedFeatureBuffer = Array(FEATURE_BUFFER_MAX_LEN) { FloatArray(featureBuffer[0].size) }
             for (i in 0 until FEATURE_BUFFER_MAX_LEN) {
                 trimmedFeatureBuffer[i] = featureBuffer[featureBuffer.size - FEATURE_BUFFER_MAX_LEN + i]
             }
             featureBuffer = trimmedFeatureBuffer
+            DebugLogger.logWakeWord(TAG, "    [streamingFeatures] featureBuffer裁剪: $oldSize -> ${featureBuffer.size}")
         }
+        
+        DebugLogger.logWakeWord(TAG, "    [streamingFeatures] END: featureBuffer.size=${featureBuffer.size}, realDataFrames=$realDataFrames")
+    }
+
+    /**
+     * 生成随机音频数据用于feature buffer预热
+     * 与WakeWordDetector.java保持一致
+     */
+    private fun generateInitAudio(size: Int): FloatArray {
+        val arr = FloatArray(size)
+        val random = java.util.Random(42)  // 固定种子，确保可重复
+        for (i in 0 until size) {
+            arr[i] = (random.nextInt(2000) - 1000).toFloat()  // [-1000, 1000]
+        }
+        return arr
     }
 
     override fun frameSize(): Int = N_PREPARED_SAMPLES
+
+    override fun reset() {
+        DebugLogger.logWakeWord(TAG, "🔄 Resetting HiNudgeOnnxV8WakeDevice state (frame #$frameCount)")
+        
+        // 清空缓冲区
+        rawDataBuffer.clear()
+        rawDataRemainder = floatArrayOf()
+        melspectrogramBuffer = Array(76) { FloatArray(32) { 1.0f } }
+        accumulatedSamples = 0
+        
+        // 🔧 v41模型: 使用随机音频预热feature buffer
+        try {
+            val initAudio = generateInitAudio(SAMPLE_RATE * 4)
+            featureBuffer = getEmbeddings(initAudio, 76, 8)
+            DebugLogger.logWakeWord(TAG, "✅ Feature buffer pre-warmed with ${featureBuffer.size} frames")
+        } catch (e: Exception) {
+            DebugLogger.logWakeWordError(TAG, "⚠️ Failed to pre-warm feature buffer in reset", e)
+            featureBuffer = Array(0) { FloatArray(96) }
+        }
+        
+        realDataFrames = 0
+        DebugLogger.logWakeWord(TAG, "✅ HiNudgeOnnxV8WakeDevice state reset complete")
+    }
+    
+    /**
+     * 获取最新预测分数（用于测试）
+     */
+    fun getLastScore(): Float = lastScore
 
     override fun destroy() {
         DebugLogger.logWakeWord(TAG, "🧹 Destroying HiNudgeOnnxV8WakeDevice")
