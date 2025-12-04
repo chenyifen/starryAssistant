@@ -98,38 +98,9 @@ class FloatingLauncherActivity : ComponentActivity() {
      * Hyundai IT版本：模型文件已内置到assets，无需外部存储权限
      */
     private fun checkStoragePermission() {
-        // Hyundai IT版本跳过存储权限检查
-        Log.d(TAG, "✅ Hyundai IT版本 - 模型已内置，跳过存储权限检查")
+        Log.d(TAG, "✅ 模型已内置，跳过存储权限检查")
         currentStep = PermissionStep.CHECK_OVERLAY
         checkNextPermission()
-        
-        /* 原始存储权限检查逻辑已禁用
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ 检查 MANAGE_EXTERNAL_STORAGE
-            if (Environment.isExternalStorageManager()) {
-                Log.d(TAG, "✅ 存储权限已具备")
-                currentStep = PermissionStep.CHECK_OVERLAY
-                checkNextPermission()
-            } else {
-                Log.d(TAG, "❌ 缺少存储权限，请求 MANAGE_EXTERNAL_STORAGE")
-                // 显示说明对话框后跳转到设置
-                showStoragePermissionDialog()
-            }
-        } else {
-            // Android 10 及以下检查 READ_EXTERNAL_STORAGE
-            if (PermissionHelper.hasExternalStoragePermission(this)) {
-                Log.d(TAG, "✅ 存储权限已具备")
-                currentStep = PermissionStep.CHECK_OVERLAY
-                checkNextPermission()
-            } else {
-                Log.d(TAG, "❌ 缺少存储权限，请求 READ_EXTERNAL_STORAGE")
-                requestPermissions(
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                    REQUEST_STORAGE_PERMISSION
-                )
-            }
-        }
-        */
     }
     
     /**

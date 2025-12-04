@@ -92,19 +92,7 @@ class VoiceAssistantStateProvider @Inject constructor(
         observeServices()
     }
     
-    /**
-     * 直接监听底层服务
-     */
     private fun observeServices() {
-        // 🔧 已禁用：不再监听 sttInputDeviceWrapper，改用 AsrHandler
-        // 1. 监听STT状态变化
-        // scope.launch {
-        //     sttInputDeviceWrapper.uiState.collect { sttState ->
-        //         handleSttStateChange(sttState)
-        //     }
-        // }
-        
-        // 🔧 改为监听 AsrHandler 状态变化
         scope.launch {
             while (true) {
                 kotlinx.coroutines.delay(200) // 每200ms检查一次
@@ -211,20 +199,11 @@ class VoiceAssistantStateProvider @Inject constructor(
                 speechOutputDeviceWrapper.setAsrLocale(null)
                 skillContext.asrLocale = null
                 
-                // 🔥 关键修复：确保状态切换到IDLE
                 updateState(
                     uiState = VoiceAssistantUIState.IDLE,
                     displayText = "",
                     ttsText = ""
                 )
-                
-                try {
-                    // 🔧 已禁用：不再使用 sttInputDeviceWrapper，改用 AsrHandler
-                    // sttInputDeviceWrapper.stopListening()
-                    DebugLogger.logUI(TAG, "⏭️ 跳过停止STT监听（已改用 AsrHandler）")
-                } catch (e: Exception) {
-                    DebugLogger.logUI(TAG, "⚠️ 停止STT失败: ${e.message}")
-                }
             }
         }
     }

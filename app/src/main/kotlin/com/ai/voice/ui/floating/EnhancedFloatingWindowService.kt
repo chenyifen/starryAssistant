@@ -78,9 +78,6 @@ class EnhancedFloatingWindowService : Service(),
     // 悬浮球组件
     private var floatingOrb: DraggableFloatingOrb? = null
     
-    // UI控制器
-    private var assistantUIController: AssistantUIController? = null
-    
     // 自动化测试相关
     private var autoTestReceiver: BroadcastReceiver? = null
     
@@ -163,7 +160,6 @@ class EnhancedFloatingWindowService : Service(),
         hideFloatingOrb()
         
         // 清理资源
-        assistantUIController?.cleanup()
         serviceScope.cancel()
         
         // 生命周期结束
@@ -196,13 +192,6 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun initializeComponents() {
         DebugLogger.logUI(TAG, "🔧 Initializing components")
-        
-        // 创建UI控制器 (已屏蔽半屏功能)
-        assistantUIController = AssistantUIController(this).apply {
-            // 屏蔽半屏相关回调，改为文本显示模式
-            onExpandToHalfScreen = { handleTextDisplayMode() }
-            onContractToOrb = { handleContractToOrb() }
-        }
         
         // 创建悬浮球
         floatingOrb = DraggableFloatingOrb(
@@ -238,17 +227,9 @@ class EnhancedFloatingWindowService : Service(),
      * 处理悬浮球点击
      */
     private fun handleOrbClick() {
-        Log.d(TAG, "🎯 [CLICK] handleOrbClick 开始执行")
-        DebugLogger.logUI(TAG, "👆 Orb clicked - expanding to half screen")
-        
-        Log.d(TAG, "🔄 [CLICK] 设置Loading状态")
-        // 设置加载状态
+        DebugLogger.logUI(TAG, "👆 Orb clicked")
         floatingOrb?.getAnimationStateManager()?.setLoading()
-        
-        Log.d(TAG, "📈 [CLICK] 调用expandToHalfScreen")
-        // 展开到半屏
-        assistantUIController?.expandToHalfScreen()
-        Log.d(TAG, "✅ [CLICK] handleOrbClick 执行完成")
+        handleTextDisplayMode()
     }
     
     /**
@@ -298,23 +279,6 @@ class EnhancedFloatingWindowService : Service(),
             DebugLogger.logUI(TAG, "❌ Error starting AsrHandler: ${e.message}")
             floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
         }
-    }
-    
-    /**
-     * 处理收缩到悬浮球（已禁用 sttInputDeviceWrapper）
-     */
-    private fun handleContractToOrb() {
-        DebugLogger.logUI(TAG, "📉 Contracting to orb")
-        
-        // 停止 AsrHandler
-        AsrHandler.stop(this)
-        DebugLogger.logUI(TAG, "⏹️ AsrHandler stopped")
-        
-        // 重新显示悬浮球
-        floatingOrb?.show()
-        
-        // 设置待机状态
-        floatingOrb?.getAnimationStateManager()?.setIdle()
     }
     
     /**
