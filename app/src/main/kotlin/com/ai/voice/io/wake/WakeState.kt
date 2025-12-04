@@ -1,6 +1,6 @@
 package com.ai.voice.io.wake
 
-import com.ai.voice.ui.util.Progress
+import com.ai.voice.util.Progress
 
 sealed interface WakeState {
     /**

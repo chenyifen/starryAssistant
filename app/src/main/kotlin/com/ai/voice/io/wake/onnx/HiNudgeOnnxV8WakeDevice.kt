@@ -9,8 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import com.ai.voice.io.wake.WakeState
-import com.ai.voice.ui.util.Progress
 import com.ai.voice.util.DebugLogger
+import com.ai.voice.util.Progress
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject

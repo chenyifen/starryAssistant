@@ -25,11 +25,21 @@ import kotlinx.coroutines.yield
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import com.ai.voice.ui.util.Progress
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
+
+data class Progress(
+    val currentFile: Int,
+    val totalFiles: Int,
+    val currentBytes: Long,
+    val totalBytes: Long
+) {
+    companion object {
+        val UNKNOWN = Progress(0, 0, 0, 0)
+    }
+}
 
 private const val CHUNK_SIZE = 1024 * 256 // 0.25 MB
 private const val CONTENT_LENGTH = "Content-Length"
