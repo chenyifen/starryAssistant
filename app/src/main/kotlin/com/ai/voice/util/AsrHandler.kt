@@ -9,10 +9,6 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import com.ai.voice.util.ActivationChecker
-import com.ai.voice.settings.datastore.UserSettingsEntryPoint
-import dagger.hilt.android.EntryPointAccessors
-import com.ai.voice.settings.datastore.UserSettings
-import androidx.datastore.core.DataStore
 import androidx.core.app.ActivityCompat
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
@@ -202,16 +198,7 @@ object AsrHandler {
         Log.i(TAG, "🚀 开始初始化 AsrHandler (应用启动时)...")
         
         // 🔒 检查激活状态（15天试用期）
-        val dataStore = try {
-            EntryPointAccessors.fromApplication(
-                context.applicationContext,
-                UserSettingsEntryPoint::class.java
-            ).userSettings()
-        } catch (e: Exception) {
-            null
-        }
-        
-        val isActivated = ActivationChecker.isActivated(context, dataStore)
+        val isActivated = ActivationChecker.isActivated(context)
         if (!isActivated) {
             Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法初始化")
             Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
@@ -251,16 +238,7 @@ object AsrHandler {
         Log.i(TAG, "🚀 开始启动 AsrHandler...")
         
         // 🔒 检查激活状态（15天试用期）
-        val dataStore = try {
-            EntryPointAccessors.fromApplication(
-                context.applicationContext,
-                UserSettingsEntryPoint::class.java
-            ).userSettings()
-        } catch (e: Exception) {
-            null
-        }
-        
-        val isActivated = ActivationChecker.isActivated(context, dataStore)
+        val isActivated = ActivationChecker.isActivated(context)
         if (!isActivated) {
             Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法启动")
             Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")

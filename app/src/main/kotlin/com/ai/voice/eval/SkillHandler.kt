@@ -2,22 +2,17 @@ package com.ai.voice.eval
 
 import android.content.Context
 import android.util.Log
-import androidx.datastore.core.DataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import org.dicio.skill.skill.Skill
 import org.dicio.skill.skill.SkillInfo
 import com.ai.voice.di.LocaleManager
 import com.ai.voice.di.SkillContextImpl
 import com.ai.voice.di.SkillContextInternal
-import com.ai.voice.settings.datastore.UserSettings
-import com.ai.voice.settings.datastore.UserSettingsModule
 import com.ai.voice.skills.power_control.PowerControlInfo
 import com.ai.voice.skills.input_source.InputSourceControlInfo
 import com.ai.voice.skills.app_launcher.AppLauncherInfo
@@ -29,11 +24,9 @@ import javax.inject.Singleton
 
 @Singleton
 class SkillHandler @Inject constructor(
-    private val dataStore: DataStore<UserSettings>,
     private val localeManager: LocaleManager,
     private val skillContext: SkillContextInternal,
 ) {
-    // TODO improve id handling (maybe just use an int that can point to an Android resource)
     val allSkillInfoList = listOf(
         PowerControlInfo,
         InputSourceControlInfo,
@@ -42,52 +35,39 @@ class SkillHandler @Inject constructor(
         SystemNavigationInfo,
     )
 
-    // TODO add more fallback skills (e.g. search)
     private val fallbackSkillInfoList = listOf(
         TextFallbackInfo,
     )
 
     private val scope = CoroutineScope(Dispatchers.Default)
 
-    // will be null when it has not been initialized yet
     private val _enabledSkillsInfo: MutableStateFlow<List<SkillInfo>?> = MutableStateFlow(null)
     val enabledSkillsInfo: StateFlow<List<SkillInfo>?> = _enabledSkillsInfo
 
     private val _skillRanker = MutableStateFlow(
-        // an initial dummy value, will be overwritten directly by the launched job
         SkillRanker(listOf(), buildSkillFromInfo(fallbackSkillInfoList[0]))
     )
     val skillRanker: StateFlow<SkillRanker> = _skillRanker
 
     init {
         scope.launch {
-            localeManager.locale
-                .combine(dataStore.data) { locale, data -> Pair(locale, data.enabledSkillsMap) }
-                .distinctUntilChanged()
-                .collectLatest { (_, enabledSkills) ->
-                    // locale is not used here, because the skills directly use the sections locale
+            localeManager.locale.collectLatest { _ ->
+                // 默认启用所有可用技能
+                val newEnabledSkillsInfo = allSkillInfoList
+                    .filter { skillInfo ->
+                        val available = skillInfo.isAvailable(skillContext)
+                        Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
+                        available
+                    }
 
-                    val newEnabledSkillsInfo = allSkillInfoList
-                        .filter { skillInfo ->
-                            val enabled = enabledSkills.getOrDefault(skillInfo.id, true)
-                            Log.d(TAG, "🔧 技能启用检查: ${skillInfo.id} -> enabled=$enabled")
-                            enabled
-                        }
-                        .filter { skillInfo ->
-                            val available = skillInfo.isAvailable(skillContext)
-                            Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
-                            available
-                        }
-
-                    _enabledSkillsInfo.value = newEnabledSkillsInfo
-                    _skillRanker.value = SkillRanker(
-                        newEnabledSkillsInfo.map(::buildSkillFromInfo),
-                        buildSkillFromInfo(fallbackSkillInfoList[0]),
-                    )
-                    
-                    // 🔥 技能列表初始化完成
-                    Log.d(TAG, "✅ 技能列表初始化完成，共 ${allSkillInfoList.size} 个技能")
-                }
+                _enabledSkillsInfo.value = newEnabledSkillsInfo
+                _skillRanker.value = SkillRanker(
+                    newEnabledSkillsInfo.map(::buildSkillFromInfo),
+                    buildSkillFromInfo(fallbackSkillInfoList[0]),
+                )
+                
+                Log.d(TAG, "✅ 技能列表初始化完成，共 ${newEnabledSkillsInfo.size} 个技能")
+            }
         }
     }
 
@@ -100,7 +80,6 @@ class SkillHandler @Inject constructor(
         
         fun newForPreviews(context: Context): SkillHandler {
             return SkillHandler(
-                UserSettingsModule.newDataStoreForPreviews(),
                 LocaleManager.newForPreviews(context),
                 SkillContextImpl.newForPreviews(context),
             )

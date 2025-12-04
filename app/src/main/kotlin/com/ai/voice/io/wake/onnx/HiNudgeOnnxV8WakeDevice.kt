@@ -8,7 +8,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import com.ai.voice.io.wake.WakeDevice
 import com.ai.voice.io.wake.WakeState
 import com.ai.voice.ui.util.Progress
 import com.ai.voice.util.DebugLogger
@@ -29,7 +28,7 @@ import java.util.*
  */
 class HiNudgeOnnxV8WakeDevice @Inject constructor(
     @ApplicationContext private val appContext: Context,
-) : WakeDevice {
+) {
 
     companion object {
         private const val TAG = "HiNudgeOnnxV8WakeDevice"
@@ -56,7 +55,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     }
 
     private val _state: MutableStateFlow<WakeState>
-    override val state: StateFlow<WakeState>
+    val state: StateFlow<WakeState>
 
     // 模型文件路径
     private val modelFolder = File(appContext.filesDir, "hiNudgeOnnxV8")
@@ -231,7 +230,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         }
     }
 
-    override fun download() {
+    fun download() {
         scope.launch {
             try {
                 _state.value = WakeState.Downloading(Progress.UNKNOWN)
@@ -308,7 +307,7 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         }
     }
 
-    override fun processFrame(audio16bitPcm: ShortArray): Boolean {
+    fun processFrame(audio16bitPcm: ShortArray): Boolean {
         frameCount++
         
         if (wakeSession == null) {
@@ -743,9 +742,9 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         }
     }
 
-    override fun frameSize(): Int = N_PREPARED_SAMPLES
+    fun frameSize(): Int = N_PREPARED_SAMPLES
 
-    override fun destroy() {
+    fun destroy() {
         DebugLogger.logWakeWord(TAG, "🧹 Destroying HiNudgeOnnxV8WakeDevice")
         
         scope.launch {
@@ -766,6 +765,4 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
             }
         }
     }
-
-    override fun isHeyDicio(): Boolean = false
 }

@@ -3,22 +3,20 @@ package com.ai.voice.error
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.core.content.IntentCompat
 import dagger.hilt.android.AndroidEntryPoint
 import com.ai.voice.BuildConfig
 import com.ai.voice.R
-import com.ai.voice.util.BaseActivity
+import com.ai.voice.ui.theme.AppTheme
 import com.ai.voice.util.ShareUtils
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-/**
- * This activity is used to show error details and allow reporting them in various ways. Use [ErrorUtils.openActivity] to correctly open this activity.
- * @implNote Taken with some modifications from NewPipe, file error/ErrorActivity.java
- */
 @AndroidEntryPoint
-class ErrorActivity : BaseActivity() {
+class ErrorActivity : ComponentActivity() {
 
     private lateinit var errorInfo: ErrorInfo
     private lateinit var locale: Locale
@@ -29,36 +27,34 @@ class ErrorActivity : BaseActivity() {
         super.onCreate(savedInstanceState)
 
         errorInfo = IntentCompat.getParcelableExtra(intent, ERROR_INFO, ErrorInfo::class.java)
-            ?: ErrorInfo(
-                Exception("Could not get ErrorInfo from intent extras"),
-                UserAction.UNKNOWN,
-            )
-        // print stack trace once again for debugging:
+            ?: ErrorInfo(Exception("Could not get ErrorInfo from intent extras"))
         Log.e(TAG, errorInfo.stackTrace)
 
         locale = Locale.getDefault()
         currentTimeStamp = CURRENT_TIMESTAMP_FORMATTER.format(LocalDateTime.now())
         osInfo = getOsInfo()
 
-        composeSetContent {
-            ErrorScreen(
-                errorInfo = errorInfo,
-                locale = locale,
-                timestamp = currentTimeStamp,
-                osInfo = osInfo,
-                onCopy = {
-                    ShareUtils.copyToClipboard(this, buildMarkdown())
-                },
-                onShare = {
-                    ShareUtils.shareText(this, getString(R.string.error_title), buildMarkdown())
-                },
-                onReport = {
-                    ShareUtils.openUrlInBrowser(this, ERROR_GITHUB_ISSUE_URL, false)
-                },
-                onBack = {
-                    finish()
-                },
-            )
+        setContent {
+            AppTheme {
+                ErrorScreen(
+                    errorInfo = errorInfo,
+                    locale = locale,
+                    timestamp = currentTimeStamp,
+                    osInfo = osInfo,
+                    onCopy = {
+                        ShareUtils.copyToClipboard(this, buildMarkdown())
+                    },
+                    onShare = {
+                        ShareUtils.shareText(this, getString(R.string.error_title), buildMarkdown())
+                    },
+                    onReport = {
+                        ShareUtils.openUrlInBrowser(this, ERROR_GITHUB_ISSUE_URL, false)
+                    },
+                    onBack = {
+                        finish()
+                    },
+                )
+            }
         }
     }
 
@@ -66,17 +62,14 @@ class ErrorActivity : BaseActivity() {
         return try {
             val htmlErrorReport = StringBuilder()
 
-            // basic error info
             htmlErrorReport
                 .append("## Exception")
                 .append("\n* __User action:__ ")
-                .append(errorInfo.userAction.message)
+                .append(errorInfo.userAction)
                 .append("\n* __App locale:__ ").append(locale.toString())
                 .append("\n* __Version:__ ").append(BuildConfig.VERSION_NAME)
                 .append("\n* __OS:__ ").append(osInfo).append("\n")
 
-            // Collapse the log to a single paragraph when there are more than one
-            // to keep the GitHub issue clean.
             if (errorInfo.stackTrace.isNotEmpty()) {
                 htmlErrorReport
                     .append("<details><summary><b>Crash log</b></summary><p>\n")

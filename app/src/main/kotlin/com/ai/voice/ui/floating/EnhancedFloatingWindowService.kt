@@ -38,8 +38,6 @@ import com.ai.voice.ui.floating.components.LottieAnimationTexts
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.di.SpeechOutputDeviceWrapper
-import com.ai.voice.settings.datastore.UserSettings
-import androidx.datastore.core.DataStore
 import com.ai.voice.R
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
@@ -67,7 +65,6 @@ class EnhancedFloatingWindowService : Service(),
     
     @Inject lateinit var skillEvaluator: SkillEvaluator
     @Inject lateinit var voiceAssistantStateProvider: VoiceAssistantStateProvider
-    @Inject lateinit var dataStore: DataStore<UserSettings>
     @Inject lateinit var speechOutputDevice: SpeechOutputDeviceWrapper
     
     // 生命周期管理
@@ -327,7 +324,7 @@ class EnhancedFloatingWindowService : Service(),
         DebugLogger.logUI(TAG, "🎤 Wake word detected: $wakeWord (confidence: $confidence)")
         
         // 🔒 检查激活状态（15天试用期）
-        val isActivated = ActivationChecker.isActivated(this, dataStore)
+        val isActivated = ActivationChecker.isActivated(this)
         if (!isActivated) {
             DebugLogger.logUI(TAG, "❌ 应用试用期已过期，无法使用")
             // 播放"Not Activated"提示

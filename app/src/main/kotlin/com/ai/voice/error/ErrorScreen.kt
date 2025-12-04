@@ -113,7 +113,7 @@ private fun ErrorScreen(
 private fun ErrorScreenPreview() {
     AppTheme {
         ErrorScreen(
-            errorInfo = ErrorInfo(Exception(), UserAction.STT_POPUP_SPEECH_TO_TEXT),
+            errorInfo = ErrorInfo(Exception(), "Preview error"),
             locale = Locale.getDefault(),
             timestamp = "2024-05-27 08:52 ".repeat(10),
             osInfo = "Linux Android 14 - 34",
@@ -127,7 +127,7 @@ private fun ErrorScreenPreview() {
 
 @Composable
 private fun DetailsSection(
-    userAction: UserAction,
+    userAction: String,
     locale: Locale,
     timestamp: String,
     osInfo: String,
@@ -148,7 +148,7 @@ private fun DetailsSection(
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = StringBuilder(userAction.message)
+                text = StringBuilder(userAction)
                     .append('\n').append(locale.toString())
                     .append('\n').append(timestamp)
                     .append('\n').append(BuildConfig.APPLICATION_ID)

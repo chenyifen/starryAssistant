@@ -39,13 +39,10 @@ import kotlinx.coroutines.runBlocking
 import com.ai.voice.R
 import com.ai.voice.di.WakeDeviceWrapper
 import com.ai.voice.eval.SkillEvaluator
-import com.ai.voice.settings.datastore.UserSettings
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AudioDebugSaver
 import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.util.ActivationChecker
-import com.ai.voice.settings.datastore.UserSettingsEntryPoint
-import dagger.hilt.android.EntryPointAccessors
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -71,8 +68,6 @@ class WakeService : Service() {
     @Inject
     lateinit var wakeDevice: WakeDeviceWrapper
     @Inject
-    lateinit var dataStore: DataStore<UserSettings>
-    @Inject
     lateinit var speechOutputDevice: com.ai.voice.di.SpeechOutputDeviceWrapper
 
     private val handler = Handler(Looper.getMainLooper())
@@ -92,13 +87,6 @@ class WakeService : Service() {
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
         scope.launch {
-            // Recreate the notification so that it says the correct thing (i.e. there is a
-            // different string for the "Hey Dicio" wake word and for a custom one).
-            // Ignore the first one (i.e. the current value), which is handled in onStartCommand.
-            wakeDevice.isHeyDicio.drop(1).collect { isHeyDicio ->
-                DebugLogger.logWakeWord(TAG, "🔄 Wake word type changed: ${if (isHeyDicio) "Hey Dicio" else "Custom"}")
-                createForegroundNotification(isHeyDicio)
-            }
         }
         
         // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
@@ -123,7 +111,7 @@ class WakeService : Service() {
         }
 
         try {
-            createForegroundNotification(wakeDevice.isHeyDicio.value)
+            createForegroundNotification()
         } catch (t: Throwable) {
             stopWithMessage("could not create WakeService foreground notification", t)
             return START_NOT_STICKY
@@ -228,7 +216,7 @@ class WakeService : Service() {
         // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
         
         job.cancel()
-        wakeDevice.reinitializeToReleaseResources()
+        wakeDevice.destroy()
         super.onDestroy()
     }
 
@@ -447,7 +435,7 @@ class WakeService : Service() {
         }
     }
 
-    private fun createForegroundNotification(isHeyDicio: Boolean) {
+    private fun createForegroundNotification() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 FOREGROUND_NOTIFICATION_CHANNEL_ID,
@@ -460,12 +448,7 @@ class WakeService : Service() {
 
         val notification = NotificationCompat.Builder(this, FOREGROUND_NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_hearing_white)
-            .setContentTitle(
-                getString(
-                    if (isHeyDicio) R.string.wake_service_foreground_notification
-                    else R.string.wake_custom_service_foreground_notification
-                )
-            )
+            .setContentTitle(getString(R.string.wake_service_foreground_notification))
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setShowWhen(false)
@@ -498,7 +481,6 @@ class WakeService : Service() {
     private fun listenForWakeWord() {
         DebugLogger.logWakeWord(TAG, "🎤 Starting wake word listening...")
         DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
-        DebugLogger.logWakeWord(TAG, "🔊 Wake word type: ${if (wakeDevice.isHeyDicio.value) "Hey Dicio" else "Custom"}")
         
         // 🔧 不再使用 AudioResourceManager，直接创建 AudioRecord
         // WakeService 通过检查 AsrHandler.isStarted() 来决定是否继续监听
@@ -676,16 +658,7 @@ class WakeService : Service() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
         
         // 🔒 检查激活状态（15天试用期）
-        val dataStore = try {
-            EntryPointAccessors.fromApplication(
-                this,
-                UserSettingsEntryPoint::class.java
-            ).userSettings()
-        } catch (e: Exception) {
-            null
-        }
-        
-        val isActivated = ActivationChecker.isActivated(this, dataStore)
+        val isActivated = ActivationChecker.isActivated(this)
         if (!isActivated) {
             DebugLogger.logWakeWord(TAG, "❌ 应用试用期已过期，无法使用")
             // 播放"Not Activated"提示
@@ -721,10 +694,8 @@ class WakeService : Service() {
      * 暂停WakeService的AudioRecord以让ASR使用音频资源
      */
     private fun pauseAudioRecordForASR() {
-        // 读取设置：是否需要在ASR时暂停唤醒服务
-        val shouldPause = runBlocking { 
-            dataStore.data.first().pauseWakeDuringAsr 
-        }
+        // 在ASR时暂停唤醒服务
+        val shouldPause = true
         
         if (!shouldPause) {
             DebugLogger.logWakeWord(TAG, "⏭️ 跳过暂停WakeService（用户设置：持续运行）")
@@ -765,10 +736,8 @@ class WakeService : Service() {
      * 恢复WakeService的AudioRecord在ASR完成后
      */
     private fun resumeAudioRecordAfterASR() {
-        // 读取设置：是否需要在ASR时暂停唤醒服务
-        val shouldPause = runBlocking { 
-            dataStore.data.first().pauseWakeDuringAsr 
-        }
+        // 在ASR时暂停唤醒服务
+        val shouldPause = true
         
         if (!shouldPause) {
             DebugLogger.logWakeWord(TAG, "⏭️ 跳过恢复WakeService（用户设置：持续运行）")

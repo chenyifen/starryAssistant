@@ -20,7 +20,6 @@ import com.ai.voice.di.SkillContextImpl
 import com.ai.voice.error.ErrorInfo
 import com.ai.voice.error.ErrorUtils
 import com.ai.voice.error.ExceptionUtils
-import com.ai.voice.error.UserAction
 import com.ai.voice.util.getString
 
 data class ErrorSkillOutput(
@@ -70,10 +69,7 @@ data class ErrorSkillOutput(
                             context,
                             ErrorInfo(
                                 throwable,
-                                if (fromSkillEvaluation)
-                                    UserAction.SKILL_EVALUATION
-                                else
-                                    UserAction.GENERIC_EVALUATION
+                                if (fromSkillEvaluation) "Skill evaluation" else "Evaluation"
                             )
                         )
                     },
