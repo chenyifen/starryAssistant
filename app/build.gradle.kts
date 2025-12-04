@@ -116,6 +116,16 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+
+
+    }
+
+    flavorDimensions += "channel"
+    productFlavors {
+        create("home") {
+            dimension = "channel"
+            signingConfig = signingConfigs.getByName("510en")
+        }
     }
 
     buildTypes {

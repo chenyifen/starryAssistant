@@ -6,15 +6,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import org.dicio.skill.skill.SkillOutput
 import com.ai.voice.di.SpeechOutputDeviceWrapper
-// import com.ai.voice.di.SttInputDeviceWrapper // 🔧 已禁用：不再使用，改用 AsrHandler
 import com.ai.voice.di.SkillContextInternal
 import com.ai.voice.eval.SkillEvaluator
+import com.ai.voice.eval.InteractionLog
 import com.ai.voice.io.input.InputEvent
-import com.ai.voice.io.input.SttState
 import com.ai.voice.io.wake.WakeWordCallback
 import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.ui.floating.VoiceAssistantUIState
-import com.ai.voice.ui.home.InteractionLog
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
 import javax.inject.Inject
@@ -31,7 +29,6 @@ import javax.inject.Singleton
  */
 @Singleton
 class VoiceAssistantStateProvider @Inject constructor(
-    // private val sttInputDeviceWrapper: SttInputDeviceWrapper, // 🔧 已禁用：不再使用，改用 AsrHandler
     private val skillEvaluator: SkillEvaluator,
     private val speechOutputDeviceWrapper: SpeechOutputDeviceWrapper,
     private val skillContext: SkillContextInternal
@@ -137,81 +134,6 @@ class VoiceAssistantStateProvider @Inject constructor(
         scope.launch {
             skillEvaluator.state.collect { interactionLog ->
                 handleSkillEvaluatorState(interactionLog)
-            }
-        }
-    }
-    
-    /**
-     * 处理STT状态变化
-     */
-    private fun handleSttStateChange(sttState: SttState?) {
-        when (sttState) {
-            is SttState.Loaded -> {
-                DebugLogger.logUI(TAG, "😴 STT device loaded and ready")
-                // 🆕 修复：如果ASR正在监听，不应该强制设置为IDLE
-                // 只有在确实没有监听时才设置为IDLE（10秒静音超时的情况）
-                // SttState.Loaded只是表示设备准备就绪，不代表停止监听
-                if (_currentState.uiState == VoiceAssistantUIState.IDLE || 
-                    _currentState.uiState == VoiceAssistantUIState.ERROR) {
-                    // 只有在IDLE或ERROR状态时才更新，保持LISTENING状态不变
-                    updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
-                } else {
-                    DebugLogger.logUI(TAG, "⏭️ STT设备已就绪，但ASR仍在监听，保持LISTENING状态")
-                }
-            }
-            
-            is SttState.Listening -> {
-                DebugLogger.logUI(TAG, "🎧 STT device listening")
-                // 🆕 确保设置为LISTENING状态，无论当前是什么状态
-                updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
-            }
-            
-            is SttState.Loading -> {
-                DebugLogger.logUI(TAG, "⏳ STT device loading")
-                // 🆕 THINKING状态不影响ASR监听，只是UI显示
-                updateState(uiState = VoiceAssistantUIState.THINKING, displayText = "")
-            }
-            
-            is SttState.NotAvailable -> {
-                DebugLogger.logUI(TAG, "❌ STT device not available")
-                updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
-            }
-            
-            is SttState.ErrorLoading -> {
-                val errorMessage = sttState.throwable.message ?: ""
-                if (errorMessage.contains("was cancelled", ignoreCase = true)) {
-                    DebugLogger.logUI(TAG, "⚠️ STT device loading cancelled (normal), returning to IDLE")
-                    updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
-                } else {
-                    DebugLogger.logUI(TAG, "❌ STT device loading error: $errorMessage")
-                    updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
-                }
-            }
-            
-            is SttState.ErrorDownloading -> {
-                DebugLogger.logUI(TAG, "❌ STT device download error: ${sttState.throwable.message}")
-                updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
-            }
-            
-            is SttState.ErrorUnzipping -> {
-                DebugLogger.logUI(TAG, "❌ STT device unzip error: ${sttState.throwable.message}")
-                updateState(uiState = VoiceAssistantUIState.ERROR, displayText = "ERROR")
-            }
-            
-            is SttState.WaitingForResult -> {
-                DebugLogger.logUI(TAG, "⏳ STT waiting for external result")
-                // 🆕 保持LISTENING状态
-                updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
-            }
-            
-            null -> {
-                DebugLogger.logUI(TAG, "🚫 STT device disabled")
-                // STT设备被禁用，保持当前状态
-            }
-            
-            else -> {
-                DebugLogger.logUI(TAG, "🔄 STT device state: $sttState")
-                // 其他状态暂时不处理
             }
         }
     }

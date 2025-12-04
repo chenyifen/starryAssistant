@@ -13,7 +13,6 @@ import android.os.Build
 import android.util.Log
 import android.os.IBinder
 import android.provider.Settings
-import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.*
 import androidx.savedstate.SavedStateRegistry
@@ -26,10 +25,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import com.ai.voice.io.input.InputEvent
-import com.ai.voice.ui.home.InteractionLog
-import org.dicio.skill.context.SkillContext
-import com.ai.voice.di.WakeDeviceWrapper
 import com.ai.voice.eval.SkillEvaluator
+import com.ai.voice.eval.InteractionLog
 import com.ai.voice.io.wake.WakeService
 import com.ai.voice.io.wake.WakeWordCallback
 import android.Manifest
@@ -37,35 +34,17 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.ui.floating.components.DraggableFloatingOrb
-import com.ai.voice.ui.floating.components.LottieAnimationState
 import com.ai.voice.ui.floating.components.LottieAnimationTexts
-import com.ai.voice.ui.floating.state.VoiceAssistantFullState
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.di.SpeechOutputDeviceWrapper
 import com.ai.voice.settings.datastore.UserSettings
 import androidx.datastore.core.DataStore
-import kotlinx.coroutines.flow.collectLatest
-import com.ai.voice.BuildConfig
-import com.ai.voice.MainActivity
 import com.ai.voice.R
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
 import com.ai.voice.util.ActivationChecker
 import javax.inject.Inject
-
-/**
- * 语音助手状态枚举
- */
-enum class VoiceAssistantState {
-    IDLE,           // 空闲状态，等待唤醒
-    WAKE_DETECTED,  // 检测到唤醒词
-    LISTENING,      // 正在听取用户语音
-    PROCESSING,     // 正在处理语音识别结果
-    THINKING,       // 正在进行技能评估和处理
-    SPEAKING,       // 正在播放TTS回复
-    ERROR           // 错误状态
-}
 
 /**
  * 增强版悬浮窗服务
@@ -86,9 +65,6 @@ class EnhancedFloatingWindowService : Service(),
     
     private val TAG = "EnhancedFloatingWindowService"
     
-    // 依赖注入
-    // @Inject lateinit var sttInputDeviceWrapper: SttInputDeviceWrapper // 🔧 已禁用：不再使用，改用 AsrHandler
-    @Inject lateinit var wakeDeviceWrapper: WakeDeviceWrapper
     @Inject lateinit var skillEvaluator: SkillEvaluator
     @Inject lateinit var voiceAssistantStateProvider: VoiceAssistantStateProvider
     @Inject lateinit var dataStore: DataStore<UserSettings>
@@ -107,9 +83,6 @@ class EnhancedFloatingWindowService : Service(),
     
     // UI控制器
     private var assistantUIController: AssistantUIController? = null
-    
-    // 当前语音助手状态
-    private var currentVoiceState = VoiceAssistantState.IDLE
     
     // 自动化测试相关
     private var autoTestReceiver: BroadcastReceiver? = null
@@ -150,9 +123,6 @@ class EnhancedFloatingWindowService : Service(),
         
         // 显示悬浮球
         showFloatingOrb()
-        
-        // 监听设置变化
-        observeSettings()
         
         // 监听技能评估结果，匹配到技能后停止ASR并设置orb为idle
         observeSkillEvaluation()
@@ -285,16 +255,6 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     /**
-     * 处理悬浮球长按
-     */
-    private fun handleOrbLongPress() {
-        DebugLogger.logUI(TAG, "👆 Orb long pressed - showing settings")
-        
-        // TODO: 显示设置菜单或开始拖动
-        floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.READY)
-    }
-    
-    /**
      * 处理文本显示模式 (替代半屏展开)
      */
     private fun handleTextDisplayMode() {
@@ -404,30 +364,6 @@ class EnhancedFloatingWindowService : Service(),
         DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
     }
     
-    
-    /**
-     * 更新动画状态
-     */
-    fun updateAnimationState(state: LottieAnimationState, text: String? = null) {
-        DebugLogger.logUI(TAG, "🎭 Updating animation state to: $state")
-        
-        val animationManager = floatingOrb?.getAnimationStateManager()
-        when (state) {
-            LottieAnimationState.IDLE -> animationManager?.setIdle()
-            LottieAnimationState.LOADING -> animationManager?.setLoading()
-            LottieAnimationState.ACTIVE -> animationManager?.setActive(text ?: LottieAnimationTexts.DEFAULT)
-            LottieAnimationState.WAKE_WORD -> animationManager?.triggerWakeWord(text ?: LottieAnimationTexts.WAKE_WORD_DETECTED)
-        }
-    }
-    
-    // ========================================
-    // VoiceAssistantStateProvider 状态处理
-    // ========================================
-    
-    // 注意：状态处理现在完全由DraggableFloatingOrb处理，避免重复监听
-    
-    // 废弃的方法已移除，现在完全由DraggableFloatingOrb处理状态变化
-    
     /**
      * 启动WakeService
      */
@@ -447,8 +383,6 @@ class EnhancedFloatingWindowService : Service(),
             DebugLogger.logUI(TAG, "❌ Failed to start WakeService: ${e.message}")
         }
     }
-    
-    // handleSkillEvaluatorState 方法已移除，现在完全由VoiceAssistantStateProvider统一处理
     
     /**
      * 监听技能评估结果，匹配到技能后停止ASR并设置orb为idle
@@ -485,23 +419,6 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     /**
-     * 监听设置变化
-     */
-    private fun observeSettings() {
-        serviceScope.launch {
-            try {
-                dataStore.data.collectLatest { settings ->
-                    // Settings observation placeholder
-                    // 可以在这里添加其他设置的监听
-                }
-            } catch (e: Exception) {
-                // 错误隔离：设置观察失败不应影响服务运行
-                DebugLogger.logUI(TAG, "❌ Settings observation failed: ${e.message}")
-            }
-        }
-    }
-    
-    /**
      * 创建前台服务通知
      * Android 8.0+ 要求使用 startForegroundService() 启动的服务必须在 5 秒内调用 startForeground()
      */
@@ -521,15 +438,7 @@ class EnhancedFloatingWindowService : Service(),
             notificationManager.createNotificationChannel(channel)
         }
         
-        // 创建点击通知打开主界面的 Intent
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            Intent(this, MainActivity::class.java),
-            PendingIntent.FLAG_IMMUTABLE
-        )
-        
-        // 构建通知
+        // 构建通知（无点击行为，悬浮球已在屏幕上）
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_hearing_white)
             .setContentTitle("语音助手运行中")
@@ -537,7 +446,6 @@ class EnhancedFloatingWindowService : Service(),
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .setShowWhen(false)
-            .setContentIntent(pendingIntent)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
         
@@ -570,7 +478,7 @@ class EnhancedFloatingWindowService : Service(),
         
         val filter = IntentFilter(ACTION_AUTO_TEST_START)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(autoTestReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(autoTestReceiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             registerReceiver(autoTestReceiver, filter)
         }

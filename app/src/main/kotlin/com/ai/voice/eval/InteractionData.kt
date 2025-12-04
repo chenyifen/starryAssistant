@@ -1,16 +1,16 @@
-package com.ai.voice.ui.home
+package com.ai.voice.eval
 
 import org.dicio.skill.skill.SkillInfo
 import org.dicio.skill.skill.SkillOutput
 
 data class QuestionAnswer(
-    val question: String?,
+    val userInput: String?,
     val answer: SkillOutput,
 )
 
 data class Interaction(
     val skill: SkillInfo?,
-    val questionsAnswers: List<QuestionAnswer>
+    val questionsAnswers: List<QuestionAnswer>,
 )
 
 data class PendingQuestion(
@@ -23,3 +23,4 @@ data class InteractionLog(
     val interactions: List<Interaction>,
     val pendingQuestion: PendingQuestion?,
 )
+

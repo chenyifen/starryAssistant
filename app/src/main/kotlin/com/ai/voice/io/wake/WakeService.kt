@@ -36,8 +36,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import com.ai.voice.MainActivity
-import com.ai.voice.MainActivity.Companion.ACTION_WAKE_WORD
 import com.ai.voice.R
 import com.ai.voice.di.WakeDeviceWrapper
 import com.ai.voice.eval.SkillEvaluator
@@ -70,7 +68,6 @@ class WakeService : Service() {
 
     @Inject
     lateinit var skillEvaluator: SkillEvaluator
-    // @Inject lateinit var sttInputDevice: SttInputDeviceWrapper // 🔧 已禁用：不再使用，改用 AsrHandler
     @Inject
     lateinit var wakeDevice: WakeDeviceWrapper
     @Inject
@@ -79,14 +76,6 @@ class WakeService : Service() {
     lateinit var speechOutputDevice: com.ai.voice.di.SpeechOutputDeviceWrapper
 
     private val handler = Handler(Looper.getMainLooper())
-    private val releaseSttResourcesRunnable = Runnable {
-        // 🔧 已禁用：不再使用 sttInputDevice，改用 AsrHandler
-        // if (MainActivity.isCreated <= 0) {
-        //     // if the main activity is neither visible nor in the background,
-        //     // then unload the STT after a while because it would be using resources uselessly
-        //     sttInputDevice.reinitializeToReleaseResources()
-        // }
-    }
 
     private lateinit var notificationManager: NotificationManager
 
@@ -709,85 +698,9 @@ class WakeService : Service() {
             return
         }
         
-        // 🔧 取消之前的恢复任务，避免重复唤醒导致状态混乱
-        handler.removeCallbacks(releaseSttResourcesRunnable)
-        
-        // 通知所有注册的回调
+        // 通知所有注册的回调（EnhancedFloatingWindowService会处理ASR启动）
         WakeWordCallbackManager.notifyWakeWordDetected()
-        
-        // ⚠️ 注意：用户唤醒时不播放TTS
-        // 原因：
-        // 1. 唤醒状态会播放提示音
-        // 2. 马上要进入ASR状态，不应该被TTS打断
-        // 3. 只有在ASR识别过程中检测到唤醒词时才播放TTS
-        DebugLogger.logWakeWord(TAG, "⏭️ 跳过TTS播放（用户唤醒不需要TTS回复）")
-
-        // 检查悬浮球服务是否正在运行
-        val isFloatingServiceRunning = isServiceRunning(com.ai.voice.ui.floating.EnhancedFloatingWindowService::class.java)
-        DebugLogger.logWakeWord(TAG, "🔍 悬浮球服务运行状态: $isFloatingServiceRunning")
-        
-        val intent = Intent(this, MainActivity::class.java)
-        intent.setAction(ACTION_WAKE_WORD)
-        intent.setFlags(FLAG_ACTIVITY_NEW_TASK)
-        DebugLogger.logWakeWord(TAG, "📱 Created MainActivity intent with ACTION_WAKE_WORD")
-
-        // 🔧 不再使用 AudioResourceManager 释放资源
-        // WakeService 通过检查 AsrHandler.isStarted() 来决定是否暂停监听
-        // AsrHandler 和 WakeService 各自管理自己的 AudioRecord
-
-        // 🔧 已禁用：不再使用 SenseVoiceInputDevice，改为使用 AsrHandler
-        // ASR 现在由 EnhancedFloatingWindowService 通过 AsrHandler 管理
-        // EnhancedFloatingWindowService.onWakeWordDetected() 会调用 AsrHandler.start()
-        // WakeService 会在 listenForWakeWord() 循环中检查 AsrHandler.isStarted() 来决定是否暂停
-        DebugLogger.logVoiceRecognition(TAG, "⏭️ 跳过 STT 输入设备启动（已改用 AsrHandler，由 EnhancedFloatingWindowService 管理）")
-
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0) {
-            // start the activity directly on versions prior to Android 10,
-            // or if the MainActivity is already running in the foreground
-            startActivity(intent)
-
-        } else {
-            // Android 10+ does not allow starting activities from the background
-            // 如果悬浮球已经打开，就不显示通知，直接启动ASR
-            if (isFloatingServiceRunning) {
-                DebugLogger.logWakeWord(TAG, "✅ 悬浮球已打开，跳过通知，直接启动ASR")
-                // ASR已经在上面启动了，这里不需要额外操作
-            } else {
-                // 悬浮球未打开，显示通知让用户点击打开
-                DebugLogger.logWakeWord(TAG, "📱 悬浮球未打开，显示通知")
-                
-                // 修改intent的目标为启动悬浮球服务
-                val floatingIntent = Intent(this, com.ai.voice.ui.floating.EnhancedFloatingWindowService::class.java)
-                
-                val channel = NotificationChannel(
-                    TRIGGERED_NOTIFICATION_CHANNEL_ID,
-                    getString(R.string.wake_service_triggered_notification),
-                    NotificationManager.IMPORTANCE_HIGH
-                )
-                channel.description = getString(R.string.wake_service_triggered_notification_summary)
-                notificationManager.createNotificationChannel(channel)
-
-                val pendingIntent = PendingIntent.getService(
-                    this,
-                    0,
-                    floatingIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                )
-
-                val notification = NotificationCompat.Builder(this, TRIGGERED_NOTIFICATION_CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_hearing_white)
-                    .setContentTitle(getString(R.string.wake_service_triggered_notification))
-                    .setStyle(NotificationCompat.BigTextStyle().bigText(
-                        getString(R.string.wake_service_triggered_notification_summary)))
-                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                    .setContentIntent(pendingIntent)
-                    .setAutoCancel(true)
-                    .build()
-
-                notificationManager.cancel(TRIGGERED_NOTIFICATION_ID)
-                notificationManager.notify(TRIGGERED_NOTIFICATION_ID, notification)
-            }
-        }
+        DebugLogger.logWakeWord(TAG, "✅ 已通知回调，悬浮球服务将处理ASR启动")
     }
     
     /**

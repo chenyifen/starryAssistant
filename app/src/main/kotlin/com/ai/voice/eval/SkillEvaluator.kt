@@ -21,14 +21,9 @@ import org.dicio.skill.skill.InteractionPlan
 import org.dicio.skill.skill.Permission
 import org.dicio.skill.skill.SkillOutput
 import com.ai.voice.di.SkillContextInternal
-import com.ai.voice.di.SttInputDeviceWrapper
 import com.ai.voice.io.graphical.ErrorSkillOutput
 import com.ai.voice.io.graphical.MissingPermissionsSkillOutput
 import com.ai.voice.io.input.InputEvent
-import com.ai.voice.ui.home.Interaction
-import com.ai.voice.ui.home.InteractionLog
-import com.ai.voice.ui.home.PendingQuestion
-import com.ai.voice.ui.home.QuestionAnswer
 import javax.inject.Singleton
 
 interface SkillEvaluator {
@@ -43,7 +38,6 @@ interface SkillEvaluator {
 class SkillEvaluatorImpl(
     private val skillContext: SkillContextInternal,
     private val skillHandler: SkillHandler,
-    private val sttInputDevice: SttInputDeviceWrapper,
 ) : SkillEvaluator {
 
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -525,14 +519,6 @@ class SkillEvaluatorImpl(
                 }
             }
 
-            if (interactionPlan.reopenMicrophone) {
-                // 🔧 已禁用：不再使用 sttInputDevice，ASR 现在由 EnhancedFloatingWindowService 通过 AsrHandler 管理
-                // 如果需要重新打开麦克风，应该通知 EnhancedFloatingWindowService 重新启动 AsrHandler
-                // skillContext.speechOutputDevice.runWhenFinishedSpeaking {
-                //     sttInputDevice.tryLoad(this::processInputEvent)
-                // }
-                Log.d(TAG, "⏭️ 跳过自动重新打开麦克风（已改用 AsrHandler，由 EnhancedFloatingWindowService 管理）")
-            }
 
         } catch (throwable: Throwable) {
             addErrorInteractionFromPending(throwable)
@@ -586,8 +572,7 @@ class SkillEvaluatorModule {
     fun provideSkillEvaluator(
         skillContext: SkillContextInternal,
         skillHandler: SkillHandler,
-        sttInputDevice: SttInputDeviceWrapper,
     ): SkillEvaluator {
-        return SkillEvaluatorImpl(skillContext, skillHandler, sttInputDevice)
+        return SkillEvaluatorImpl(skillContext, skillHandler)
     }
 }
