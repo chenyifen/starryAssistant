@@ -1,6 +1,5 @@
 package com.ai.voice.ui.floating.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -12,14 +11,6 @@ import com.airbnb.lottie.compose.*
 import com.airbnb.lottie.LottieProperty
 import com.ai.voice.util.DebugLogger
 
-/**
- * Lottie动画控制器
- * 
- * 管理ai_robot.json动画的不同状态：
- * - IDLE: 待机状态 (0-116帧) - 呼吸效果
- * - LOADING: 加载状态 (116-168帧) - 跳动小点
- * - ACTIVE: 激活状态 (168-360帧) - 显示文本和光晕
- */
 @Composable
 fun LottieAnimationController(
     animationState: LottieAnimationState,
@@ -57,11 +48,6 @@ fun LottieAnimationController(
         }
     )
     
-    // 记录状态变化
-    LaunchedEffect(animationState) {
-        DebugLogger.logUI(TAG, "🎭 Animation state changed to: $animationState")
-    }
-    
     Box(
         modifier = modifier
             .size(size.dp)
@@ -92,103 +78,46 @@ fun LottieAnimationController(
                 )
             )
         )
-        
-        // 文本已通过 LottieProperty.TEXT 动态替换，无需额外处理
-        LaunchedEffect(displayText) {
-            if (displayText.isNotEmpty()) {
-                DebugLogger.logUI(TAG, "🎨 Animation text updated: $displayText")
-            }
-        }
     }
 }
 
-/**
- * Lottie动画状态枚举
- */
 enum class LottieAnimationState {
-    /**
-     * 待机状态 - 缓慢呼吸效果
-     * 对应动画帧: 0-116
-     */
     IDLE,
-    
-    /**
-     * 加载状态 - 跳动小点动画
-     * 对应动画帧: 116-168
-     */
     LOADING,
-    
-    /**
-     * 激活状态 - 显示文本和光晕
-     * 对应动画帧: 168-360
-     */
     ACTIVE,
-    
-    /**
-     * 唤醒词触发状态 - 快速播放激活动画
-     * 对应动画帧: 168-360 (加速播放)
-     */
     WAKE_WORD
 }
 
-/**
- * 动画状态管理器
- */
 class LottieAnimationStateManager {
-    private val TAG = "LottieAnimationStateManager"
-    
     private val _currentState = mutableStateOf(LottieAnimationState.IDLE)
     val currentState: State<LottieAnimationState> = _currentState
     
     private val _displayText = mutableStateOf("I'm here for you!")
     val displayText: State<String> = _displayText
     
-    /**
-     * 切换到待机状态
-     */
     fun setIdle() {
-        DebugLogger.logUI(TAG, "🔄 Switching to IDLE state")
         _currentState.value = LottieAnimationState.IDLE
     }
     
-    /**
-     * 切换到加载状态
-     */
     fun setLoading() {
-        DebugLogger.logUI(TAG, "🔄 Switching to LOADING state")
         _currentState.value = LottieAnimationState.LOADING
     }
     
-    /**
-     * 切换到激活状态
-     */
     fun setActive(text: String = "I'm here for you!") {
-        DebugLogger.logUI(TAG, "🔄 Switching to ACTIVE state with text: $text")
         _displayText.value = text
         _currentState.value = LottieAnimationState.ACTIVE
     }
     
-    /**
-     * 触发唤醒词动画
-     */
     fun triggerWakeWord(text: String = "正在听取...") {
-        DebugLogger.logUI(TAG, "🔄 Triggering WAKE_WORD animation with text: $text")
         _displayText.value = text
         _currentState.value = LottieAnimationState.WAKE_WORD
     }
     
-    /**
-     * 设置显示文本
-     */
     fun setDisplayText(text: String) {
-        DebugLogger.logUI(TAG, "📝 Setting display text: $text")
         _displayText.value = text
     }
 }
 
-/**
- * 预定义的动画文本
- */
 object LottieAnimationTexts {
     const val DEFAULT = "I'm here for you!"
     const val LISTENING = "正在听取..."

@@ -21,7 +21,6 @@ plugins {
     alias(libs.plugins.org.jetbrains.kotlin.plugin.serialization)
     alias(libs.plugins.com.google.devtools.ksp)
     alias(libs.plugins.com.google.dagger.hilt.android)
-    alias(libs.plugins.com.google.protobuf)
 
     // 使用传统方式应用插件，避免与buildscript冲突
     id("org.stypox.dicio.sentencesCompilerPlugin")
@@ -228,39 +227,6 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
-protobuf {
-    protoc {
-        artifact = libs.protobuf.protoc.get().toString()
-    }
-    plugins {
-        generateProtoTasks {
-            all().forEach {
-                it.builtins {
-                    create("kotlin") {
-                        option("lite")
-                    }
-                    create("java") {
-                        option("lite")
-                    }
-                }
-            }
-        }
-    }
-}
-
-// workaround for https://github.com/google/ksp/issues/1590
-// remove when not needed anymore
-androidComponents {
-    onVariants(selector().all()) { variant ->
-        afterEvaluate {
-            val capName = variant.name.replaceFirstChar { it.uppercase() }
-            tasks.getByName<KotlinCompile>("ksp${capName}Kotlin") {
-                setSource(tasks.getByName("generate${capName}Proto").outputs)
-            }
-        }
-    }
-}
-
 dependencies {
     // Desugaring
     coreLibraryDesugaring(libs.desugar.jdk.libs)
@@ -296,11 +262,6 @@ dependencies {
     //androidTestAnnotationProcessor(libs.hilt.android.compiler)
     testImplementation(libs.hilt.android.testing)
     testAnnotationProcessor(libs.hilt.android.compiler)
-
-    // Protobuf and Datastore
-    implementation(libs.protobuf.kotlin.lite)
-    implementation(libs.protobuf.java.lite)
-    implementation(libs.datastore)
 
     // Navigation
     implementation(libs.kotlin.serialization)

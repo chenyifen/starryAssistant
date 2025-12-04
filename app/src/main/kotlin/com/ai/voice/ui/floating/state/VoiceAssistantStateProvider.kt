@@ -69,17 +69,7 @@ class VoiceAssistantStateProvider @Inject constructor(
     private val conversationHistory = mutableListOf<ConversationMessage>()
     private val maxHistorySize = 50 // 最多保留50条对话记录
     
-    // 性能优化：ASR文本去重
     private var lastAsrText = ""
-    private var lastTtsText = ""
-    
-    // 性能优化：状态变化类型
-    enum class StateChangeType {
-        ASR_TEXT_ONLY,      // 仅ASR文本变化 - 轻量更新
-        TTS_TEXT_ONLY,      // 仅TTS文本变化 - 轻量更新  
-        UI_STATE_CHANGE,    // UI状态变化 - 完整更新
-        MIXED_CHANGE        // 混合变化 - 完整更新
-    }
     
     init {
         // 初始化全局实例
@@ -260,49 +250,11 @@ class VoiceAssistantStateProvider @Inject constructor(
         }
     }
     
-    /**
-     * 将技能输出转换为SimpleResult
-     */
     private fun convertSkillOutputToSimpleResult(skillOutput: SkillOutput): SimpleResult {
         return try {
-            // 获取技能的基本信息
-            val skillClassName = skillOutput::class.java.simpleName
             val speechText = skillOutput.getSpeechOutput(skillContext)
-            
-            DebugLogger.logUI(TAG, "🔄 Converting skill output: $skillClassName")
-            
-            // 根据具体的技能输出类型创建相应的SimpleResult
-            // 首先尝试精确匹配已知的技能输出类
-            when (skillOutput) {
-                // 已删除的技能已移除
-                
-                // 其他技能使用模糊匹配
-                else -> {
-                    // 基于类名进行模糊匹配作为备用方案
-                    when {
-                        skillClassName.contains("Power", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("电源", "控制", true)
-                        }
-                        skillClassName.contains("Input", ignoreCase = true) || skillClassName.contains("Source", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("输入源", "切换", true)
-                        }
-                        skillClassName.contains("App", ignoreCase = true) || skillClassName.contains("Launcher", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("应用", "启动", true)
-                        }
-                        skillClassName.contains("Whiteboard", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("白板", "工具", true)
-                        }
-                        skillClassName.contains("System", ignoreCase = true) || skillClassName.contains("Navigation", ignoreCase = true) -> {
-                            SimpleResultBuilder.appAction("系统", "导航", true)
-                        }
-                        else -> {
-                            SimpleResultBuilder.info("命令执行", speechText)
-                        }
-                    }
-                }
-            }
+            SimpleResultBuilder.info("命令执行", speechText)
         } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error converting skill output: ${e.message}")
             SimpleResultBuilder.error("技能处理错误: ${e.message}")
         }
     }
@@ -496,24 +448,9 @@ class VoiceAssistantStateProvider @Inject constructor(
             _currentState = _currentState.copy(displayText = "")
         }
         
-        // 只有状态真正改变时才通知（忽略timestamp字段）
         if (hasSignificantChange(previousState, _currentState)) {
-            // 性能优化：分析变化类型，选择通知策略
-            val changeType = analyzeStateChange(previousState, _currentState)
-            DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}', changeType: $changeType")
-            
-            when (changeType) {
-                StateChangeType.ASR_TEXT_ONLY, StateChangeType.TTS_TEXT_ONLY -> {
-                    // 轻量级通知：仅文本变化，直接在主线程调用
-                    notifyListenersLight()
-            }
-                else -> {
-                    // 完整通知：UI状态变化，使用协程
-                    notifyListeners()
-                }
-            }
-        } else {
-            DebugLogger.logUI(TAG, "⏭️ No significant state change, skipping notification")
+            DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}'")
+            notifyListeners()
         }
     }
     
@@ -530,42 +467,6 @@ class VoiceAssistantStateProvider @Inject constructor(
                 oldState.conversationHistory != newState.conversationHistory
     }
     
-    /**
-     * 分析状态变化类型
-     */
-    private fun analyzeStateChange(oldState: VoiceAssistantFullState, newState: VoiceAssistantFullState): StateChangeType {
-        val uiStateChanged = oldState.uiState != newState.uiState
-        val displayTextChanged = oldState.displayText != newState.displayText
-        val asrTextChanged = oldState.asrText != newState.asrText
-        val ttsTextChanged = oldState.ttsText != newState.ttsText
-        val resultChanged = oldState.result != newState.result
-        val historyChanged = oldState.conversationHistory != newState.conversationHistory
-        
-        return when {
-            uiStateChanged || displayTextChanged || resultChanged || historyChanged -> StateChangeType.UI_STATE_CHANGE
-            asrTextChanged && !ttsTextChanged -> StateChangeType.ASR_TEXT_ONLY
-            ttsTextChanged && !asrTextChanged -> StateChangeType.TTS_TEXT_ONLY
-            asrTextChanged && ttsTextChanged -> StateChangeType.MIXED_CHANGE
-            else -> StateChangeType.UI_STATE_CHANGE // 默认完整更新
-        }
-    }
-    
-    /**
-     * 轻量级通知：直接在主线程调用，避免协程开销
-     */
-    private fun notifyListenersLight() {
-        listeners.forEach { listener ->
-            try {
-                listener(_currentState)
-            } catch (e: Exception) {
-                DebugLogger.logUI(TAG, "❌ Error notifying listener (light): ${e.message}")
-            }
-        }
-    }
-    
-    /**
-     * 完整通知：使用协程处理复杂状态变化
-     */
     private fun notifyListeners() {
         scope.launch {
             listeners.forEach { listener ->
@@ -608,60 +509,14 @@ class VoiceAssistantStateProvider @Inject constructor(
      */
     fun getCurrentConfidence(): Float = _currentState.confidence
     
-    /**
-     * 设置TTS播放完成回调
-     * 🔥 关键修复：TTS播放完成不影响ASR监听，ASR继续监听直到10秒静音超时
-     */
     private fun setupTTSCompletionCallback() {
-        try {
-            speechOutputDeviceWrapper.runWhenFinishedSpeaking {
-                DebugLogger.logUI(TAG, "🎵 TTS playback completed")
-                
-                // 🔥 关键修复：TTS播放完成不影响ASR监听状态
-                // ASR会继续监听直到10秒静音超时（InputEvent.None）才会停止
-                scope.launch {
-                    delay(1000) // 延迟1秒后清空TTS文本
-                    
-                // 🆕 检查ASR是否仍在监听（使用 AsrHandler）
-                val isAsrStarted = AsrHandler.isStarted()
-                
-                if (isAsrStarted) {
-                    // ASR仍在监听，只清空TTS文本，保持LISTENING状态
-                    updateState(
-                        uiState = VoiceAssistantUIState.LISTENING,
-                        ttsText = "",
-                        displayText = "LISTENING"
-                    )
-                    DebugLogger.logUI(TAG, "🔄 TTS播放完成，ASR仍在监听，保持LISTENING状态")
-                } else {
-                    // ASR已停止（10秒静音超时），切换到IDLE
-                    updateState(
-                        uiState = VoiceAssistantUIState.IDLE,
-                        ttsText = "",
-                        displayText = ""
-                    )
-                    DebugLogger.logUI(TAG, "🧹 TTS播放完成，ASR已停止，切换回IDLE状态")
-                }
-                }
-            }
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "⚠️ 设置TTS完成回调失败: ${e.message}")
-            // 如果设置失败，使用延迟清理作为备用方案
+        speechOutputDeviceWrapper.runWhenFinishedSpeaking {
             scope.launch {
-                delay(2000)
-                val isAsrStarted = AsrHandler.isStarted()
-                if (isAsrStarted) {
-                    updateState(
-                        uiState = VoiceAssistantUIState.LISTENING,
-                        ttsText = "",
-                        displayText = "LISTENING"
-                    )
+                delay(1000)
+                if (AsrHandler.isStarted()) {
+                    updateState(uiState = VoiceAssistantUIState.LISTENING, ttsText = "", displayText = "LISTENING")
                 } else {
-                    updateState(
-                        uiState = VoiceAssistantUIState.IDLE,
-                        ttsText = "",
-                        displayText = ""
-                    )
+                    updateState(uiState = VoiceAssistantUIState.IDLE, ttsText = "", displayText = "")
                 }
             }
         }

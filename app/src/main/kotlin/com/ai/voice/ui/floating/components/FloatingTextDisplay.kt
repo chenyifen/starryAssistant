@@ -5,7 +5,6 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,17 +16,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalContext
 import android.content.Context
+import androidx.compose.material3.Text
 import com.ai.voice.util.DebugLogger
 
-/**
- * 悬浮球文本显示组件
- * 
- * 在悬浮球下方显示2行文本：
- * - 第一行：用户语音转录文本
- * - 第二行：AI回复文本
- */
 @Composable
 fun FloatingTextDisplay(
     userText: String,
@@ -35,9 +27,6 @@ fun FloatingTextDisplay(
     isVisible: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val TAG = "FloatingTextDisplay"
-    
-    // 动画状态
     val animatedVisibility by animateFloatAsState(
         targetValue = if (isVisible) 1f else 0f,
         animationSpec = tween(
@@ -47,20 +36,6 @@ fun FloatingTextDisplay(
         label = "textVisibility"
     )
     
-    // 记录文本变化
-    LaunchedEffect(userText) {
-        if (userText.isNotEmpty()) {
-            DebugLogger.logUI(TAG, "👤 User text updated: $userText")
-        }
-    }
-    
-    LaunchedEffect(aiText) {
-        if (aiText.isNotEmpty()) {
-            DebugLogger.logUI(TAG, "🤖 AI text updated: $aiText")
-        }
-    }
-    
-    // 只有当有文本内容时才显示
     val hasContent = userText.isNotEmpty() || aiText.isNotEmpty()
     
     if (hasContent) {
@@ -115,9 +90,6 @@ fun FloatingTextDisplay(
     }
 }
 
-/**
- * 文本气泡组件
- */
 @Composable
 private fun TextBubble(
     text: String,
@@ -153,12 +125,7 @@ private fun TextBubble(
     }
 }
 
-/**
- * 文本显示状态管理器
- */
 class FloatingTextStateManager(private val context: Context) {
-    private val TAG = "FloatingTextStateManager"
-    
     private val _userText = mutableStateOf("")
     val userText: State<String> = _userText
     
@@ -168,140 +135,65 @@ class FloatingTextStateManager(private val context: Context) {
     private val _isVisible = mutableStateOf(false)
     val isVisible: State<Boolean> = _isVisible
     
-    /**
-     * 设置用户文本（ASR转录结果）
-     */
     fun setUserText(text: String) {
-        // 过滤：空文本或与之前文本一致时，不触发更新
-        if (text.isEmpty()) {
-            DebugLogger.logUI(TAG, "⏭️ Skipping empty user text update")
-            return
-        }
-        
-        if (text == _userText.value) {
-            DebugLogger.logUI(TAG, "⏭️ Skipping duplicate user text update: $text")
-            return
-        }
-        
-        DebugLogger.logUI(TAG, "📝 Setting user text: $text")
+        if (text.isEmpty() || text == _userText.value) return
         _userText.value = text
         _isVisible.value = text.isNotEmpty() || _aiText.value.isNotEmpty()
     }
     
-    /**
-     * 设置AI文本（TTS回复）
-     */
     fun setAiText(text: String) {
-        // 过滤：空文本或与之前文本一致时，不触发更新
-        if (text.isEmpty()) {
-            DebugLogger.logUI(TAG, "⏭️ Skipping empty AI text update")
-            return
-        }
-        
-        if (text == _aiText.value) {
-            DebugLogger.logUI(TAG, "⏭️ Skipping duplicate AI text update: $text")
-            return
-        }
-        
-        DebugLogger.logUI(TAG, "🤖 Setting AI text: $text")
+        if (text.isEmpty() || text == _aiText.value) return
         _aiText.value = text
         _isVisible.value = _userText.value.isNotEmpty() || text.isNotEmpty()
     }
     
-    /**
-     * 清空所有文本
-     */
     fun clearAllText() {
-        DebugLogger.logUI(TAG, "🧹 Clearing all text")
         _userText.value = ""
         _aiText.value = ""
         _isVisible.value = false
     }
     
-    /**
-     * 开始新的对话（清空旧文本）
-     */
     fun startNewConversation() {
-        DebugLogger.logUI(TAG, "🆕 Starting new conversation")
         clearAllText()
     }
     
-    /**
-     * 设置正在听取状态
-     */
     fun setListening() {
-        DebugLogger.logUI(TAG, "👂 Setting listening state")
         _userText.value = context.getString(FloatingTextConstants.LISTENING)
         _aiText.value = ""
         _isVisible.value = true
     }
     
-    /**
-     * 设置正在思考状态
-     */
     fun setThinking() {
-        DebugLogger.logUI(TAG, "🤔 Setting thinking state")
         _aiText.value = context.getString(FloatingTextConstants.THINKING)
         _isVisible.value = true
     }
     
-    /**
-     * 设置正在处理状态
-     */
     fun setProcessing() {
-        DebugLogger.logUI(TAG, "⚙️ Setting processing state")
         _userText.value = context.getString(FloatingTextConstants.PROCESSING)
         _isVisible.value = true
     }
     
-    /**
-     * 设置唤醒检测状态
-     */
     fun setWakeDetected() {
-        DebugLogger.logUI(TAG, "🎯 Setting wake detected state")
         _userText.value = context.getString(FloatingTextConstants.WAKE_DETECTED)
         _aiText.value = ""
         _isVisible.value = true
     }
     
-    /**
-     * 设置错误状态
-     */
     fun setError() {
-        DebugLogger.logUI(TAG, "❌ Setting error state")
         _aiText.value = context.getString(FloatingTextConstants.ERROR)
         _isVisible.value = true
     }
     
-    /**
-     * 设置准备就绪状态
-     */
     fun setReady() {
-        DebugLogger.logUI(TAG, "✅ Setting ready state")
         _aiText.value = context.getString(FloatingTextConstants.READY)
         _isVisible.value = true
     }
     
-    /**
-     * 设置正在说话状态
-     */
     fun setSpeaking() {
-        DebugLogger.logUI(TAG, "🗣️ Setting speaking state")
-        // AI文本会通过setAiText设置实际内容
         _isVisible.value = true
-    }
-    
-    /**
-     * 获取调试信息
-     */
-    fun getDebugInfo(): String {
-        return "FloatingTextState(user='${_userText.value}', ai='${_aiText.value}', visible=${_isVisible.value})"
     }
 }
 
-/**
- * 预定义的状态文本资源ID
- */
 object FloatingTextConstants {
     val DEFAULT = com.ai.voice.R.string.floating_text_idle
     val LISTENING = com.ai.voice.R.string.floating_text_listening

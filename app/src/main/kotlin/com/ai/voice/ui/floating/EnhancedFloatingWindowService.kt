@@ -5,10 +5,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.pm.ServiceInfo
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.os.Build
 import android.util.Log
 import android.os.IBinder
@@ -44,16 +42,6 @@ import com.ai.voice.util.AsrHandler
 import com.ai.voice.util.ActivationChecker
 import javax.inject.Inject
 
-/**
- * 增强版悬浮窗服务
- * 
- * 特性：
- * - 管理可拖动的悬浮球
- * - 集成Lottie动画状态
- * - 支持语音唤醒触发
- * - 处理权限检查
- * - 生命周期管理
- */
 @AndroidEntryPoint
 class EnhancedFloatingWindowService : Service(), 
     LifecycleOwner, 
@@ -78,24 +66,13 @@ class EnhancedFloatingWindowService : Service(),
     // 悬浮球组件
     private var floatingOrb: DraggableFloatingOrb? = null
     
-    // 自动化测试相关
-    private var autoTestReceiver: BroadcastReceiver? = null
-    
     
     override fun onCreate() {
         super.onCreate()
         DebugLogger.logUI(TAG, "🚀 EnhancedFloatingWindowService created")
         
-        // 创建前台服务通知 (Android 8.0+ 要求在 startForegroundService() 后 5 秒内调用)
         createForegroundNotification()
-
-        // 🔧 修复：移除Android版本限制，所有版本都尝试启动WakeService
-        // 因为单用户设备可能不会发送USER_PRESENT广播，或者已经发送过了
-        // EnhancedFloatingWindowService作为前台服务，可以启动其他前台服务
-            startWakeService()
-        
-        // 注意：不在Service层监听状态变化，让DraggableFloatingOrb自己处理
-        // 避免重复监听导致的状态更新循环
+        startWakeService()
         
         // 初始化生命周期
         savedStateRegistryController.performRestore(null)
@@ -130,9 +107,6 @@ class EnhancedFloatingWindowService : Service(),
                 skillEvaluator.processInputEvent(finalEvent)
             }
         }
-        
-        // 注册自动化测试接收器
-        registerAutoTestReceiver()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -152,9 +126,6 @@ class EnhancedFloatingWindowService : Service(),
         // 清除所有回调
         AsrHandler.setSilenceTimeoutCallback(null)
         AsrHandler.setFinalResultCallback(null)
-        
-        // 取消注册自动化测试接收器
-        unregisterAutoTestReceiver()
         
         // 隐藏悬浮球
         hideFloatingOrb()
@@ -187,21 +158,13 @@ class EnhancedFloatingWindowService : Service(),
         return Settings.canDrawOverlays(this)
     }
     
-    /**
-     * 初始化组件
-     */
     private fun initializeComponents() {
-        DebugLogger.logUI(TAG, "🔧 Initializing components")
-        
-        // 创建悬浮球
         floatingOrb = DraggableFloatingOrb(
             context = this,
             lifecycleOwner = this,
             viewModelStoreOwner = this,
             savedStateRegistryOwner = this
-        ).apply {
-            // 悬浮球已设置为不可点击，无需设置回调
-        }
+        )
     }
     
     /**
@@ -245,144 +208,57 @@ class EnhancedFloatingWindowService : Service(),
         startVoiceRecognition()
     }
     
-    /**
-     * 启动语音识别（已禁用，改用 AsrHandler）
-     */
     private fun startVoiceRecognition() {
-        DebugLogger.logUI(TAG, "🎤 Starting voice recognition with AsrHandler...")
-        
-        // 检查麦克风权限
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            DebugLogger.logUI(TAG, "❌ Microphone permission not granted")
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
             return
         }
         
-        // 使用 AsrHandler 启动识别
-        try {
-            // 设置静音超时回调（仅用于更新 Orb 状态，不用于停止 AsrHandler）
-            AsrHandler.setSilenceTimeoutCallback {
-                DebugLogger.logUI(TAG, "⏰ AsrHandler 检测到连续静音10秒，重置 Orb 状态")
-                floatingOrb?.getAnimationStateManager()?.setIdle()
-            }
-            
-            val started = AsrHandler.start(this)
-            if (started) {
-                DebugLogger.logUI(TAG, "✅ AsrHandler started successfully")
-                floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.LISTENING)
-            } else {
-                DebugLogger.logUI(TAG, "❌ AsrHandler failed to start")
-                floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
-            }
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error starting AsrHandler: ${e.message}")
+        AsrHandler.setSilenceTimeoutCallback {
+            floatingOrb?.getAnimationStateManager()?.setIdle()
+        }
+        
+        if (AsrHandler.start(this)) {
+            floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.LISTENING)
+        } else {
             floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
         }
     }
     
-    /**
-     * 处理语音唤醒 - WakeWordCallback 实现
-     */
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
-        DebugLogger.logUI(TAG, "🎤 Wake word detected: $wakeWord (confidence: $confidence)")
-        
-        // 🔒 检查激活状态（15天试用期）
-        val isActivated = ActivationChecker.isActivated(this)
-        if (!isActivated) {
-            DebugLogger.logUI(TAG, "❌ 应用试用期已过期，无法使用")
-            // 播放"Not Activated"提示
-            try {
-                serviceScope.launch {
-                    speechOutputDevice.speak("Not Activated")
-                    DebugLogger.logUI(TAG, "🔊 已播放: Not Activated")
-                }
-            } catch (e: Exception) {
-                DebugLogger.logUI(TAG, "❌ 播放TTS失败: ${e.message}")
-            }
+        if (!ActivationChecker.isActivated(this)) {
+            serviceScope.launch { speechOutputDevice.speak("Not Activated") }
             return
         }
-        
-        // 显示悬浮球
         showFloatingOrb()
-        
-        // 触发唤醒词动画
         floatingOrb?.getAnimationStateManager()?.triggerWakeWord(LottieAnimationTexts.WAKE_WORD_DETECTED)
-        
-        // 启动 AsrHandler
         startVoiceRecognition()
     }
     
-    override fun onWakeWordListeningStarted() {
-        DebugLogger.logUI(TAG, "👂 Wake word listening started")
-    }
+    override fun onWakeWordListeningStarted() {}
+    override fun onWakeWordListeningStopped() {}
+    override fun onWakeWordError(error: Throwable) {}
     
-    override fun onWakeWordListeningStopped() {
-        DebugLogger.logUI(TAG, "👂 Wake word listening stopped")
-    }
-    
-    override fun onWakeWordError(error: Throwable) {
-        DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
-    }
-    
-    /**
-     * 启动WakeService
-     */
     private fun startWakeService() {
-        // 检查录音权限
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            DebugLogger.logUI(TAG, "❌ No RECORD_AUDIO permission, cannot start WakeService")
-            return
-        }
-        
-        try {
-            // 使用 WakeService.start() 方法，它会正确使用 startForegroundService
-            WakeService.start(this)
-            DebugLogger.logUI(TAG, "✅ WakeService started by EnhancedFloatingWindowService")
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Failed to start WakeService: ${e.message}")
-        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+        WakeService.start(this)
     }
     
-    /**
-     * 监听技能评估结果，匹配到技能后停止ASR并设置orb为idle
-     */
     private fun observeSkillEvaluation() {
         serviceScope.launch {
-            try {
-                skillEvaluator.state.collect { interactionLog ->
-                    val lastInteraction = interactionLog.interactions.lastOrNull()
-                    val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
-                    
-                    if (lastAnswer != null) {
-                        val skillInfo = lastInteraction?.skill
-                        val isFallbackSkill = skillInfo?.id == "text"
-                        
-                        // 如果匹配到具体技能（不是fallback），停止ASR并设置orb为idle
-                        if (!isFallbackSkill) {
-                            DebugLogger.logUI(TAG, "✅ 匹配到技能 (${skillInfo?.id})，停止ASR并设置orb为idle")
-                            
-                            // 停止 AsrHandler
-                            AsrHandler.stop(this@EnhancedFloatingWindowService)
-                            
-                            // 更新UI状态为IDLE并清空ASR和TTS文本
-                            voiceAssistantStateProvider.updateUIState(VoiceAssistantUIState.IDLE)
-                            voiceAssistantStateProvider.setASRText("")
-                            voiceAssistantStateProvider.setTTSText("")
-                        }
-                    }
+            skillEvaluator.state.collect { interactionLog ->
+                val lastInteraction = interactionLog.interactions.lastOrNull()
+                val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
+                if (lastAnswer != null && lastInteraction?.skill?.id != "text") {
+                    AsrHandler.stop(this@EnhancedFloatingWindowService)
+                    voiceAssistantStateProvider.updateUIState(VoiceAssistantUIState.IDLE)
+                    voiceAssistantStateProvider.setASRText("")
+                    voiceAssistantStateProvider.setTTSText("")
                 }
-            } catch (e: Exception) {
-                DebugLogger.logUI(TAG, "❌ Skill evaluation observation failed: ${e.message}")
             }
         }
     }
     
-    /**
-     * 创建前台服务通知
-     * Android 8.0+ 要求使用 startForegroundService() 启动的服务必须在 5 秒内调用 startForeground()
-     */
     private fun createForegroundNotification() {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         
@@ -410,81 +286,17 @@ class EnhancedFloatingWindowService : Service(),
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build()
         
-        // 启动前台服务
-        // Android 14+ (API 34+) 需要指定前台服务类型
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            )
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-        startForeground(NOTIFICATION_ID, notification)
+            startForeground(NOTIFICATION_ID, notification)
         }
-        DebugLogger.logUI(TAG, "✅ Foreground service notification created")
-    }
-    
-    /**
-     * 注册自动化测试广播接收器
-     */
-    private fun registerAutoTestReceiver() {
-        autoTestReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                if (intent?.action == ACTION_AUTO_TEST_START) {
-                    Log.i(AUTO_TEST_TAG, "收到自动化测试启动指令")
-                    handleAutoTestStart()
-                }
-            }
-        }
-        
-        val filter = IntentFilter(ACTION_AUTO_TEST_START)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(autoTestReceiver, filter, Context.RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(autoTestReceiver, filter)
-        }
-        Log.d(TAG, "✅ 自动化测试接收器已注册")
-    }
-    
-    /**
-     * 注销自动化测试广播接收器
-     */
-    private fun unregisterAutoTestReceiver() {
-        autoTestReceiver?.let {
-            try {
-                unregisterReceiver(it)
-                Log.d(TAG, "✅ 自动化测试接收器已注销")
-            } catch (e: Exception) {
-                Log.w(TAG, "注销接收器失败: ${e.message}")
-            }
-        }
-        autoTestReceiver = null
-    }
-    
-    /**
-     * 处理自动化测试启动
-     * 模拟点击悬浮球的效果
-     */
-    private fun handleAutoTestStart() {
-        Log.i(AUTO_TEST_TAG, "开始自动化测试 - 模拟点击悬浮球")
-        com.ai.voice.util.AutoTestLogger.logTestStarted()
-        com.ai.voice.util.AutoTestLogger.logOrbClicked()
-        
-        // 模拟点击悬浮球，触发语音识别
-        handleOrbClick()
     }
     
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "floating_assistant_channel"
         private const val NOTIFICATION_ID = 1001
         
-        // 自动化测试常量
-        const val ACTION_AUTO_TEST_START = "com.ai.voice.AUTO_TEST_START"
-        private const val AUTO_TEST_TAG = "AutoTest"
-        
-        /**
-         * 启动服务
-         */
         fun start(context: android.content.Context) {
             val intent = Intent(context, EnhancedFloatingWindowService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -494,9 +306,6 @@ class EnhancedFloatingWindowService : Service(),
             }
         }
         
-        /**
-         * 停止服务
-         */
         fun stop(context: android.content.Context) {
             val intent = Intent(context, EnhancedFloatingWindowService::class.java)
             context.stopService(intent)

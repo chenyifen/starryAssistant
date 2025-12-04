@@ -93,6 +93,16 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".util.AutoTestBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.ai.voice.AUTO_TEST_WAKE" />
+                <action android:name="com.ai.voice.AUTO_TEST_ASR_START" />
+                <action android:name="com.ai.voice.AUTO_TEST_ASR_STOP" />
+            </intent-filter>
+        </receiver>
+
         <service
             android:name=".io.wake.WakeService"
             android:enabled="true"

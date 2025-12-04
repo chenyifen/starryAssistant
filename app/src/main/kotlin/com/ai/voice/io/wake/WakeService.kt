@@ -26,7 +26,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
-import androidx.datastore.core.DataStore
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -55,8 +54,7 @@ class WakeService : Service() {
     private val scope = CoroutineScope(Dispatchers.Default + job)
 
     private val listening = AtomicBoolean(false)
-    private val audioRecordPaused = AtomicBoolean(false) // 🔧 已废弃：不再使用，改用 AsrHandler.isStarted() 检查
-    private var currentAudioRecord: AudioRecord? = null // 当前的AudioRecord实例
+    private var currentAudioRecord: AudioRecord? = null
     
     // 音频焦点管理（Android 15+ 必需）
     private var audioManager: AudioManager? = null
@@ -86,18 +84,10 @@ class WakeService : Service() {
         // 初始化 AudioManager（Android 15 音频焦点必需）
         audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
-        scope.launch {
-        }
-        
-        // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
-        
         // 启动时清理旧的音频调试文件
         if (DebugLogger.isAudioSaveEnabled()) {
             AudioDebugSaver.cleanupOldAudioFiles(this, 50)
         }
-        
-        // 🔧 临时调试：广播接收器已改为静态注册（WakeWordDebugBroadcastReceiver）
-        // 不再需要动态注册，因为静态注册可以接收外部广播（adb shell am broadcast）
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -202,19 +192,13 @@ class WakeService : Service() {
     override fun onDestroy() {
         listening.set(false)
         
-        // 🔧 临时调试：广播接收器已改为静态注册，无需注销
-        
         // 通知回调：停止监听
         WakeWordCallbackManager.notifyListeningStopped()
         
         // AutoTest日志：退出唤醒监听状态
         com.ai.voice.util.AutoTestLogger.logWakeListeningStopped()
         
-        // 释放音频焦点（Android 15+ 必需）
         releaseAudioFocus()
-        
-        // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
-        
         job.cancel()
         wakeDevice.destroy()
         super.onDestroy()
@@ -482,9 +466,6 @@ class WakeService : Service() {
         DebugLogger.logWakeWord(TAG, "🎤 Starting wake word listening...")
         DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
         
-        // 🔧 不再使用 AudioResourceManager，直接创建 AudioRecord
-        // WakeService 通过检查 AsrHandler.isStarted() 来决定是否继续监听
-        
         // 等待模型加载完成，最多等待30秒
         var waitCount = 0
         val maxWaitCount = 300 // 30秒，每100ms检查一次
@@ -646,11 +627,7 @@ class WakeService : Service() {
                 DebugLogger.logWakeWordError(TAG, "❌ Error releasing AudioRecord", e)
             }
             currentAudioRecord = null
-            
-            // 释放音频焦点（Android 15+ 必需）
             releaseAudioFocus()
-            
-            // 🔧 不再使用 AudioResourceManager，WakeService 直接管理自己的 AudioRecord
         }
     }
 
@@ -688,92 +665,6 @@ class WakeService : Service() {
             }
         }
         return false
-    }
-    
-    /**
-     * 暂停WakeService的AudioRecord以让ASR使用音频资源
-     */
-    private fun pauseAudioRecordForASR() {
-        // 在ASR时暂停唤醒服务
-        val shouldPause = true
-        
-        if (!shouldPause) {
-            DebugLogger.logWakeWord(TAG, "⏭️ 跳过暂停WakeService（用户设置：持续运行）")
-            return
-        }
-        
-        // 🔧 添加状态检查，避免重复暂停
-        if (audioRecordPaused.get()) {
-            DebugLogger.logWakeWord(TAG, "⚠️ WakeService已经处于暂停状态，跳过重复暂停")
-            return
-        }
-        
-        DebugLogger.logWakeWord(TAG, "⏸️ Pausing WakeService AudioRecord for ASR")
-        DebugLogger.logWakeWord(TAG, "📊 当前状态: listening=${listening.get()}, audioRecordPaused=${audioRecordPaused.get()}")
-        audioRecordPaused.set(true)
-        
-        // 给AudioRecord一些时间停止
-        scope.launch {
-            delay(100) // 等待100ms让AudioRecord循环检查暂停状态
-            currentAudioRecord?.let { ar ->
-                try {
-                    if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                        ar.stop()
-                        DebugLogger.logWakeWord(TAG, "🛑 WakeService AudioRecord stopped for ASR")
-                    } else {
-                        DebugLogger.logWakeWord(TAG, "📊 AudioRecord已经停止，状态: ${ar.recordingState}")
-                    }
-                } catch (e: Exception) {
-                    DebugLogger.logWakeWordError(TAG, "❌ Error stopping AudioRecord for ASR", e)
-                }
-            } ?: run {
-                DebugLogger.logWakeWord(TAG, "⚠️ currentAudioRecord为null，无法停止")
-            }
-        }
-    }
-    
-    /**
-     * 恢复WakeService的AudioRecord在ASR完成后
-     */
-    private fun resumeAudioRecordAfterASR() {
-        // 在ASR时暂停唤醒服务
-        val shouldPause = true
-        
-        if (!shouldPause) {
-            DebugLogger.logWakeWord(TAG, "⏭️ 跳过恢复WakeService（用户设置：持续运行）")
-            return
-        }
-        
-        // 🔧 添加状态检查，避免不必要的恢复
-        if (!audioRecordPaused.get()) {
-            DebugLogger.logWakeWord(TAG, "⚠️ WakeService未处于暂停状态，跳过恢复")
-            return
-        }
-        
-        DebugLogger.logWakeWord(TAG, "▶️ Resuming WakeService AudioRecord after ASR")
-        DebugLogger.logWakeWord(TAG, "📊 当前状态: listening=${listening.get()}, audioRecordPaused=${audioRecordPaused.get()}")
-        audioRecordPaused.set(false)
-        
-        // 尝试重新启动AudioRecord（如果它被停止了）
-        scope.launch {
-            delay(200) // 给ASR一些时间完全释放音频资源
-            currentAudioRecord?.let { ar ->
-                try {
-                    if (ar.recordingState != AudioRecord.RECORDSTATE_RECORDING && listening.get()) {
-                        ar.startRecording()
-                        DebugLogger.logWakeWord(TAG, "🔄 AudioRecord restarted after ASR completion")
-                    } else {
-                        DebugLogger.logWakeWord(TAG, "📊 AudioRecord状态: ${ar.recordingState}, listening: ${listening.get()}")
-                    }
-                } catch (e: Exception) {
-                    DebugLogger.logWakeWordError(TAG, "❌ Error restarting AudioRecord after ASR", e)
-                }
-            } ?: run {
-                DebugLogger.logWakeWord(TAG, "⚠️ currentAudioRecord为null，无法重新启动")
-            }
-        }
-        
-        DebugLogger.logWakeWord(TAG, "✅ WakeService AudioRecord resume scheduled")
     }
 
     companion object {
@@ -863,13 +754,7 @@ class WakeService : Service() {
         private const val START_NOTIFICATION_ID = 48019274
         private const val TRIGGERED_NOTIFICATION_ID = 601398647
         private const val WAKE_WORD_BACKOFF_MILLIS = 4000L
-        private const val ACTION_STOP_WAKE_SERVICE =
-            "com.ai.voice.WakeService.ACTION_STOP"
-        private const val RELEASE_STT_RESOURCES_MILLIS = 1000L * 10 // 10 seconds - 缩短时间以快速恢复WakeService
-        
-        // 🔧 临时调试：广播 action，用于模拟唤醒词检测
-        const val ACTION_DEBUG_WAKE_WORD =
-            "com.ai.voice.WakeService.ACTION_DEBUG_WAKE_WORD"
+        private const val ACTION_STOP_WAKE_SERVICE = "com.ai.voice.WakeService.ACTION_STOP"
     }
     
 }

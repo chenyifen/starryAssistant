@@ -27,15 +27,6 @@ import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
 
-/**
- * 悬浮球组件（简化版 - 不可拖动、不可点击）
- * 
- * 特性：
- * - 使用WindowManager创建系统级悬浮窗
- * - 仅显示动画和文本，不支持任何交互
- * - 集成Lottie动画
- * - FLAG_NOT_TOUCHABLE确保不可点击和拖动
- */
 class DraggableFloatingOrb(
     private val context: Context,
     private val lifecycleOwner: androidx.lifecycle.LifecycleOwner,
@@ -43,37 +34,18 @@ class DraggableFloatingOrb(
     private val savedStateRegistryOwner: SavedStateRegistryOwner
 ) {
     private val TAG = "DraggableFloatingOrb"
-    
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
     private var floatingView: View? = null
     private var isShowing = false
-    
-    // 动画状态管理器
     private val animationStateManager = LottieAnimationStateManager()
-    
-    // 当前文本状态 - 使用MutableState以便Compose能检测变化
     private val currentAsrText = mutableStateOf("")
     private val currentTtsText = mutableStateOf("")
-    
-    // 监听 AsrHandler 结果列表变化
-    private var lastResultListSize = 0
-    
-    // 性能优化：状态缓存
     private var lastUiState: VoiceAssistantUIState? = null
     private var lastDisplayText = ""
-    
-    // VoiceAssistantStateProvider监听
     private var stateProvider: VoiceAssistantStateProvider? = null
     private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
-    
-    // 配置项：是否启用ASR文本过滤（只保留英语和韩语，去除标点符号）
     var filterAsrTextEnabled: Boolean = true
     
-    /**
-     * 过滤ASR文本：只保留英语和韩语字符，去除所有标点符号
-     * @param text 原始文本
-     * @return 过滤后的文本
-     */
     private fun filterAsrText(text: String): String {
         return text.filter { char ->
             // 英语字符：a-z, A-Z, 0-9
@@ -86,9 +58,6 @@ class DraggableFloatingOrb(
         }
     }
     
-    /**
-     * 显示悬浮球
-     */
     fun show() {
         if (isShowing) return
         
@@ -184,13 +153,10 @@ class DraggableFloatingOrb(
             setupStateProviderListener()
             
         } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error showing floating orb: ${e.message}")
+            DebugLogger.logUI(TAG, "Error showing floating orb: ${e.message}")
         }
     }
     
-    /**
-     * 隐藏悬浮球
-     */
     fun hide() {
         if (!isShowing) return
         
@@ -204,28 +170,12 @@ class DraggableFloatingOrb(
                 isShowing = false
             }
         } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Error hiding floating orb: ${e.message}")
+            DebugLogger.logUI(TAG, "Error hiding floating orb: ${e.message}")
         }
     }
     
-    /**
-     * 获取动画状态管理器
-     */
     fun getAnimationStateManager(): LottieAnimationStateManager = animationStateManager
     
-    /**
-     * 获取当前ASR文本
-     */
-    fun getCurrentAsrText(): String = currentAsrText.value
-    
-    /**
-     * 获取当前TTS文本
-     */
-    fun getCurrentTtsText(): String = currentTtsText.value
-    
-    /**
-     * 创建WindowManager布局参数
-     */
     private fun createWindowLayoutParams(): WindowManager.LayoutParams {
         return WindowManager.LayoutParams().apply {
             // 窗口类型
@@ -250,11 +200,6 @@ class DraggableFloatingOrb(
         }
     }
     
-    
-    
-    /**
-     * 设置VoiceAssistantStateProvider监听
-     */
     private fun setupStateProviderListener() {
         try {
             stateProvider = VoiceAssistantStateProvider.getInstance()
@@ -264,14 +209,9 @@ class DraggableFloatingOrb(
             stateListener?.let { listener ->
                 stateProvider?.addListener(listener)
             }
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Failed to setup VoiceAssistantStateProvider listener: ${e.message}")
-        }
+        } catch (e: Exception) { }
     }
 
-    /**
-     * 清理VoiceAssistantStateProvider监听
-     */
     private fun cleanupStateProviderListener() {
         try {
             stateListener?.let { listener ->
@@ -279,71 +219,31 @@ class DraggableFloatingOrb(
             }
             stateProvider = null
             stateListener = null
-        } catch (e: Exception) {
-            DebugLogger.logUI(TAG, "❌ Failed to cleanup VoiceAssistantStateProvider listener: ${e.message}")
-        }
+        } catch (e: Exception) { }
     }
 
-    /**
-     * 处理语音助手状态变化
-     */
     private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
-        // 性能优化：检测变化类型
         val asrTextChanged = currentAsrText.value != state.asrText
         val ttsTextChanged = currentTtsText.value != state.ttsText
         val uiStateChanged = lastUiState != state.uiState
-        val displayTextChanged = lastDisplayText != state.displayText
         
-        // 更新文本状态（过滤空文本变化）
-        // 注意：如果新文本为空且旧文本也为空，则不触发更新
         val shouldUpdateAsr = asrTextChanged && !(state.asrText.isEmpty() && currentAsrText.value.isEmpty())
         val shouldUpdateTts = ttsTextChanged && !(state.ttsText.isEmpty() && currentTtsText.value.isEmpty())
         
         if (shouldUpdateAsr) {
-            // 如果启用过滤，则过滤文本
-            val textToSet = if (filterAsrTextEnabled) {
-                filterAsrText(state.asrText)
-            } else {
-                state.asrText
-            }
-            currentAsrText.value = textToSet
+            currentAsrText.value = if (filterAsrTextEnabled) filterAsrText(state.asrText) else state.asrText
         }
         
         if (shouldUpdateTts) {
             currentTtsText.value = state.ttsText
         }
         
-        // 性能优化：智能更新策略
-        when {
-            // 情况1：仅文本变化 - 使用文本就地更新，避免refreshUI()
-            (shouldUpdateAsr || shouldUpdateTts) && !uiStateChanged && !displayTextChanged -> {
-                updateTextOnly()
-            }
-            
-            // 情况2：UI状态或显示文本变化 - 需要完整UI更新
-            uiStateChanged || displayTextChanged -> {
-                updateUIState(state)
-                if (shouldUpdateAsr || shouldUpdateTts) {
-                    updateTextOnly()
-                }
-            }
+        if (uiStateChanged) {
+            updateUIState(state)
         }
     }
     
-    /**
-     * 性能优化：文本就地更新 - 避免refreshUI()
-     */
-    private fun updateTextOnly() {
-        // Compose会自动检测状态变化并重组相关组件
-        // 无需调用refreshUI()，大幅提升性能
-        // 窗口大小使用WRAP_CONTENT，会自动适配内容变化
-    }
-    
-    /**
-     * 性能优化：UI状态更新 - 带缓存的状态切换
-     */
     private fun updateUIState(state: VoiceAssistantFullState) {
-        // 更新缓存
         lastUiState = state.uiState
         lastDisplayText = state.displayText
         
@@ -371,14 +271,8 @@ class DraggableFloatingOrb(
             }
         }
     }
-    
-    
 }
 
-/**
- * 悬浮球内容组件 (包含Lottie动画和右侧的ASR/TTS文本显示)
- * 简化版 - 不支持交互，文本显示在球体右侧
- */
 @Composable
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
@@ -387,17 +281,10 @@ private fun FloatingOrbContent(
 ) {
     val animationState by animationStateManager.currentState
     val displayText by animationStateManager.displayText
-    
-    // 性能优化：使用 remember 缓存计算结果
-    val shouldShowText = remember(currentAsrText, currentTtsText) {
-        currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
-    }
-    
-    // 性能优化：使用固定的动画尺寸
+    val shouldShowText = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
     val animationSize = FloatingOrbConfig.animationSizeDp
     val animationSizeInt = FloatingOrbConfig.animationSizeInt
 
-    // 横向布局 - 球体在左，文本在右
     Row(
         modifier = Modifier
             .wrapContentSize()
@@ -405,12 +292,10 @@ private fun FloatingOrbContent(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 悬浮球 - 不可点击，仅显示
         Box(
             modifier = Modifier.size(animationSize),
             contentAlignment = Alignment.Center
         ) {
-            // Lottie动画
             LottieAnimationController(
                 animationState = animationState,
                 displayText = displayText,
@@ -418,7 +303,6 @@ private fun FloatingOrbContent(
             )
         }
         
-        // ASR/TTS文本显示区域 - 在悬浮球右侧
         if (shouldShowText) {
             FloatingTextDisplay(
                 userText = currentAsrText,
@@ -429,5 +313,3 @@ private fun FloatingOrbContent(
         }
     }
 }
-
-

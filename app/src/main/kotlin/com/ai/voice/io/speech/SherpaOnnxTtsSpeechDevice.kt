@@ -22,7 +22,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import com.ai.voice.io.AudioResourceManager
 
 /**
  * SherpaOnnx TTS语音输出设备
@@ -223,14 +222,6 @@ class SherpaOnnxTtsSpeechDevice(
     }
 
     private fun playAudio(audio: GeneratedAudio) {
-        scope.launch {
-            try {
-                AudioResourceManager.notifyTtsStart()
-            } catch (e: Exception) {
-                Log.e(TAG, "通知TTS开始失败", e)
-            }
-        }
-        
         try {
             val sampleRate = audio.sampleRate
             val samples = audio.samples
@@ -294,14 +285,6 @@ class SherpaOnnxTtsSpeechDevice(
         audioTrack?.release()
         audioTrack = null
         
-        scope.launch {
-            try {
-                AudioResourceManager.notifyTtsEnd()
-            } catch (e: Exception) {
-                Log.e(TAG, "通知TTS结束失败", e)
-            }
-        }
-        
         for (runnable in runnablesWhenFinished) {
             runnable.run()
         }
@@ -318,15 +301,6 @@ class SherpaOnnxTtsSpeechDevice(
         audioTrack?.release()
         audioTrack = null
         
-        if (wasSpeaking) {
-            scope.launch {
-                try {
-                    AudioResourceManager.notifyTtsEnd()
-                } catch (e: Exception) {
-                    Log.e(TAG, "通知TTS停止失败", e)
-                }
-            }
-        }
     }
 
     override val isSpeaking: Boolean
