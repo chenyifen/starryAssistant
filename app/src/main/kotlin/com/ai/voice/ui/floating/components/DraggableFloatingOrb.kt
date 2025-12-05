@@ -259,15 +259,16 @@ class DraggableFloatingOrb(
             VoiceAssistantUIState.LISTENING -> {
                 animationStateManager.setActive("LISTENING")
             }
-            VoiceAssistantUIState.THINKING -> {
-                animationStateManager.setLoading()
-            }
-            VoiceAssistantUIState.SPEAKING -> {
-                animationStateManager.setActive("SPEAKING")
-            }
+            // 🔥 已移除的状态（简化为只有 IDLE 和 LISTENING）
+            // VoiceAssistantUIState.THINKING -> { animationStateManager.setLoading() }
+            // VoiceAssistantUIState.SPEAKING -> { animationStateManager.setActive("SPEAKING") }
             VoiceAssistantUIState.ERROR -> {
                 val displayText = state.displayText.ifBlank { "ERROR" }
                 animationStateManager.setActive(displayText)
+            }
+            else -> {
+                // 其他未知状态，默认显示 LISTENING
+                animationStateManager.setActive("LISTENING")
             }
         }
     }

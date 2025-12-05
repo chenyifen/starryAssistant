@@ -4,17 +4,25 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.dicio.skill.skill.SkillOutput
 import com.ai.voice.di.SpeechOutputDeviceWrapper
 import com.ai.voice.di.SkillContextInternal
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.eval.InteractionLog
-import com.ai.voice.io.input.InputEvent
+
 import com.ai.voice.io.wake.WakeWordCallback
 import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
+import com.ai.voice.util.AutoTestLogger
+import kotlinx.coroutines.launch
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -36,6 +44,7 @@ class VoiceAssistantStateProvider @Inject constructor(
     
     companion object {
         private const val TAG = "VoiceAssistantStateProvider"
+        private const val NOTIFY_SERVER_URL = "http://192.168.2.8:8080/api/notify_state"
         
         @Volatile
         private var INSTANCE: VoiceAssistantStateProvider? = null
@@ -56,8 +65,55 @@ class VoiceAssistantStateProvider @Inject constructor(
         }
     }
     
+    private fun notifyStateChange(event: String, data: Map<String, Any> = emptyMap()) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                val json = JSONObject().apply {
+                    put("event", event)
+                    put("timestamp", System.currentTimeMillis())
+                    data.forEach { (key, value) ->
+                        when (value) {
+                            is String -> put(key, value)
+                            is Int -> put(key, value)
+                            is Long -> put(key, value)
+                            is Boolean -> put(key, value)
+                            is Float -> put(key, value.toDouble())
+                            is Double -> put(key, value)
+                            else -> put(key, value.toString())
+                        }
+                    }
+                }
+                
+                val url = URL(NOTIFY_SERVER_URL)
+                val connection = url.openConnection() as HttpURLConnection
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                connection.doOutput = true
+                connection.connectTimeout = 2000
+                connection.readTimeout = 2000
+                
+                connection.outputStream.use { output ->
+                    output.write(json.toString().toByteArray(Charsets.UTF_8))
+                }
+                
+                val responseCode = connection.responseCode
+                if (responseCode == 200) {
+                    DebugLogger.logUI(TAG, "[NOTIFY] State change notified: $event")
+                } else {
+                    DebugLogger.logUI(TAG, "[NOTIFY] Failed to notify state change: $event, response code: $responseCode")
+                }
+                connection.disconnect()
+            } catch (e: Exception) {
+                DebugLogger.logUI(TAG, "[NOTIFY] Error notifying state change: ${e.message}")
+            }
+        }
+    }
+    
     // 当前状态
     private var _currentState = VoiceAssistantFullState.IDLE
+    
+    // 🔒 状态转换互斥锁 - 保证线程安全
+    private val stateTransitionMutex = Mutex()
     
     // 状态监听器
     private val listeners = mutableSetOf<(VoiceAssistantFullState) -> Unit>()
@@ -69,7 +125,9 @@ class VoiceAssistantStateProvider @Inject constructor(
     private val conversationHistory = mutableListOf<ConversationMessage>()
     private val maxHistorySize = 50 // 最多保留50条对话记录
     
-    private var lastAsrText = ""
+    private var listeningStartTime: Long = 0
+    private var lastAsrFinalTime: Long = 0
+    private var stateMonitorJob: kotlinx.coroutines.Job? = null
     
     init {
         // 初始化全局实例
@@ -80,120 +138,59 @@ class VoiceAssistantStateProvider @Inject constructor(
         
         // 直接监听底层服务
         observeServices()
+        
+        // 启动状态监控
+        startStateMonitoring()
+    }
+    
+    private fun startStateMonitoring() {
+        stateMonitorJob = scope.launch {
+            while (true) {
+                delay(1000)
+                
+                val currentState = _currentState.uiState
+                val currentTime = System.currentTimeMillis()
+                val asrRunning = AsrHandler.isStarted()
+                
+                when (currentState) {
+                    VoiceAssistantUIState.LISTENING -> {
+                        if (listeningStartTime == 0L) {
+                            listeningStartTime = currentTime
+                        }
+                        
+                        val listeningDuration = currentTime - listeningStartTime
+                        
+                        if (listeningDuration > 10000) {
+                            AutoTestLogger.logStateStuck("LISTENING", listeningDuration, asrRunning)
+                        }
+                        
+                        if (lastAsrFinalTime > 0) {
+                            val timeSinceAsr = currentTime - lastAsrFinalTime
+                            if (timeSinceAsr < 4000 && !asrRunning) {
+                                AutoTestLogger.logSilenceTimeoutAbnormal(lastAsrFinalTime, currentTime, timeSinceAsr)
+                            }
+                        }
+                    }
+                    else -> {
+                        if (listeningStartTime > 0) {
+                            listeningStartTime = 0
+                        }
+                    }
+                }
+            }
+        }
     }
     
     private fun observeServices() {
-        scope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(200) // 每200ms检查一次
-                val isAsrStarted = AsrHandler.isStarted()
-                if (isAsrStarted) {
-                    // AsrHandler 正在运行，设置为 LISTENING 状态
-                    if (_currentState.uiState != VoiceAssistantUIState.LISTENING) {
-                        updateState(uiState = VoiceAssistantUIState.LISTENING, displayText = "LISTENING")
-                    }
-                } else {
-                    // AsrHandler 已停止，如果没有其他活动，设置为 IDLE
-                    if (_currentState.uiState == VoiceAssistantUIState.LISTENING) {
-                        updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
-                    }
-                }
-            }
-        }
+        // 🔥 修复ASR卡住问题：移除ASR状态轮询逻辑
+        // 原因：每200ms的轮询会强制状态在IDLE和LISTENING之间切换，
+        // 导致VAD超时机制失效（lastSpeechDetectedTime被频繁重置）
+        // 解决方案：状态应由事件驱动（唤醒、停止命令），而非轮询驱动
         
-        // 2. 监听SkillEvaluator的InputEvent来获取ASR实时文本
-        scope.launch {
-            skillEvaluator.inputEvents.collect { inputEvent ->
-                handleInputEvent(inputEvent)
-            }
-        }
-        
-        // 3. 监听SkillEvaluator的状态变化来获取技能结果
+        // 监听SkillEvaluator的状态变化来获取技能结果
         scope.launch {
             skillEvaluator.state.collect { interactionLog ->
                 handleSkillEvaluatorState(interactionLog)
-            }
-        }
-    }
-    
-    /**
-     * 处理InputEvent - 主要用于ASR实时文本更新
-     */
-    private fun handleInputEvent(inputEvent: InputEvent) {
-        when (inputEvent) {
-            is InputEvent.Partial -> {
-                val receiveTime = System.currentTimeMillis()
-                
-                // 性能优化：ASR文本去重，相同文本不触发更新
-                if (inputEvent.utterance != lastAsrText) {
-                    lastAsrText = inputEvent.utterance
-                    val textLength = inputEvent.utterance.length
-                    
-                    DebugLogger.logRecognition(TAG, "📨 收到Partial事件 - 时间戳: $receiveTime, 文本长度: $textLength")
-                    DebugLogger.logRecognition(TAG, "   内容: '${inputEvent.utterance}'")
-                    
-                    val updateStartTime = System.currentTimeMillis()
-                    updateState(asrText = inputEvent.utterance)
-                    val updateDuration = System.currentTimeMillis() - updateStartTime
-                    
-                    DebugLogger.logRecognition(TAG, "✅ State更新完成 - 耗时: ${updateDuration}ms")
-                } else {
-                    DebugLogger.logRecognition(TAG, "⏭️ ASR文本未变化，跳过更新: ${inputEvent.utterance}")
-                }
-            }
-            
-            is InputEvent.Final -> {
-                val bestResult = inputEvent.utterances.firstOrNull()?.first ?: ""
-                val confidence = inputEvent.utterances.firstOrNull()?.second ?: 0f
-                DebugLogger.logUI(TAG, "✅ ASR final result: $bestResult (confidence: $confidence)")
-                
-                // 🔒 关键日志：ASR识别结果（Release版本也输出）
-                DebugLogger.logAsrResult(TAG, bestResult, confidence)
-                
-                // 🆕 立即更新UI显示Final识别结果，不延迟
-                updateState(asrText = bestResult, confidence = confidence)
-                
-                // 🆕 检测ASR识别的语言并设置TTS语言
-                if (bestResult.isNotBlank()) {
-                    val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(bestResult, java.util.Locale.KOREAN)
-                    DebugLogger.logUI(TAG, "🎤 ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
-                    speechOutputDeviceWrapper.setAsrLocale(asrLocale)
-                    // 🆕 设置到SkillContext，让技能可以获取ASR语言
-                    skillContext.asrLocale = asrLocale
-                } else {
-                    // 清空ASR语言设置
-                    speechOutputDeviceWrapper.setAsrLocale(null)
-                    skillContext.asrLocale = null
-                }
-                
-                // 添加用户消息到会话历史
-                if (bestResult.isNotBlank()) {
-                    addUserMessage(bestResult, confidence)
-                }
-                
-                // 🆕 不清空ASR文本，保留显示，直到用户继续说话时新的Partial结果覆盖它
-                // 或者等待10秒静音超时再清空
-                // 这样用户可以连续说话时看到所有识别结果
-            }
-            
-            is InputEvent.Error -> {
-                DebugLogger.logUI(TAG, "❌ ASR error: ${inputEvent.throwable.message}")
-                updateState(asrText = "")
-            }
-            
-            InputEvent.None -> {
-                DebugLogger.logUI(TAG, "🔇 No speech detected (10秒静音超时，停止监听)")
-                // 🆕 只有10秒静音超时时才会收到None事件，此时停止STT并回到待唤醒
-                updateState(asrText = "")
-                // 🆕 清空ASR语言设置
-                speechOutputDeviceWrapper.setAsrLocale(null)
-                skillContext.asrLocale = null
-                
-                updateState(
-                    uiState = VoiceAssistantUIState.IDLE,
-                    displayText = "",
-                    ttsText = ""
-                )
             }
         }
     }
@@ -228,11 +225,16 @@ class VoiceAssistantStateProvider @Inject constructor(
                 DebugLogger.logUI(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
                 
                 if (speechOutput.isNotBlank()) {
-                    // 🆕 设置SPEAKING状态，但不影响ASR监听（ASR继续在后台监听）
+                    notifyStateChange("skill_executed", mapOf(
+                        "skillId" to (skillInfo?.id ?: "unknown"),
+                        "ttsText" to speechOutput,
+                        "asrText" to _currentState.asrText
+                    ))
+                    // 🔥 简化：TTS播放期间保持 LISTENING 状态（已移除 SPEAKING 状态）
                     updateState(
-                        uiState = VoiceAssistantUIState.SPEAKING,
+                        uiState = VoiceAssistantUIState.LISTENING,
                         ttsText = speechOutput,
-                        displayText = "SPEAKING"
+                        displayText = "LISTENING"
                     )
                     addAIMessage(speechOutput)
                     
@@ -283,9 +285,138 @@ class VoiceAssistantStateProvider @Inject constructor(
         DebugLogger.logUI(TAG, "📡 Removed listener, total: ${listeners.size}")
     }
     
+    
     /**
-     * 更新UI状态
+     * 🔥 统一的状态转换方法 - 确保UI状态和功能状态完全同步
+     * 
+     * 🎯 简化状态机：只有两种状态
+     * - IDLE: Wake运行 + ASR停止 + 待唤醒
+     * - LISTENING: Wake暂停 + ASR运行 + 语音识别中
+     * 
+     * 🔒 线程安全：使用 Mutex 保证状态转换的原子性，避免竞态条件
+     * 
+     * @param targetState 目标UI状态（只接受 IDLE 或 LISTENING）
+     * @param reason 状态转换原因（用于日志）
      */
+    suspend fun transitionToState(targetState: VoiceAssistantUIState, reason: String = "") {
+        // 🔒 使用 Mutex 确保同一时间只有一个状态转换在执行
+        stateTransitionMutex.withLock {
+            val currentUIState = _currentState.uiState
+            
+            // 🔥 ERROR 和 SPEAKING 状态自动转换为 IDLE
+            val normalizedTargetState = when (targetState) {
+                VoiceAssistantUIState.ERROR,
+                VoiceAssistantUIState.SPEAKING -> {
+                    DebugLogger.logUI(TAG, "⚠️ 状态 $targetState 已废弃，自动转换为 IDLE")
+                    VoiceAssistantUIState.IDLE
+                }
+                else -> targetState
+            }
+            
+            if (currentUIState == normalizedTargetState) {
+                DebugLogger.logUI(TAG, "⏭️ 状态已经是 $normalizedTargetState，跳过转换")
+                return
+            }
+            
+            val reasonLog = if (reason.isNotBlank()) " (原因: $reason)" else ""
+            DebugLogger.logUI(TAG, "🔄 [STATE_TRANSITION] $currentUIState → $normalizedTargetState$reasonLog [线程: ${Thread.currentThread().name}]")
+            AutoTestLogger.logStateChange(currentUIState.name, normalizedTargetState.name, AsrHandler.isStarted())
+            
+            // 🔥 在 Main dispatcher 中执行状态转换，确保线程一致性
+            withContext(Dispatchers.Main) {
+                val context = skillContext.android
+                
+                // 🔥 根据目标状态设置对应的功能
+                when (normalizedTargetState) {
+                    VoiceAssistantUIState.IDLE -> {
+                        DebugLogger.logUI(TAG, "  ├─ 目标状态: IDLE (待唤醒)")
+                        
+                        // 1. 停止ASR（如果正在运行）
+                        try {
+                            if (AsrHandler.isStarted()) {
+                                DebugLogger.logUI(TAG, "  ├─ [功能] 停止 ASR")
+                                AsrHandler.stop(context)
+                            } else {
+                                DebugLogger.logUI(TAG, "  ├─ [功能] ASR 已停止")
+                            }
+                        } catch (e: Exception) {
+                            DebugLogger.logUI(TAG, "  ├─ ❌ 停止ASR失败: ${e.message}")
+                        }
+                        
+                        // 2. 启动WakeService（如果未运行）
+                        try {
+                            if (!com.ai.voice.io.wake.WakeService.isRunning()) {
+                                DebugLogger.logUI(TAG, "  ├─ [功能] 启动 WakeService")
+                                com.ai.voice.io.wake.WakeService.start(context)
+                            } else {
+                                DebugLogger.logUI(TAG, "  ├─ [功能] WakeService 已运行")
+                            }
+                        } catch (e: Exception) {
+                            DebugLogger.logUI(TAG, "  ├─ ❌ 启动WakeService失败: ${e.message}")
+                        }
+                        
+                        // 3. 更新UI状态
+                        DebugLogger.logUI(TAG, "  ├─ [UI] 设置为 IDLE")
+                        updateState(
+                            uiState = VoiceAssistantUIState.IDLE,
+                            displayText = "",
+                            ttsText = ""
+                        )
+                        
+                        DebugLogger.logUI(TAG, "  └─ ✅ IDLE 状态转换完成 [ASR:停止, Wake:运行, UI:IDLE]")
+                    }
+                    
+                    VoiceAssistantUIState.LISTENING -> {
+                        DebugLogger.logUI(TAG, "  ├─ 目标状态: LISTENING (语音识别中)")
+                        
+                        // 1. WakeService 会自动暂停（在其内部检测到 AsrHandler.isStarted()）
+                        DebugLogger.logUI(TAG, "  ├─ [功能] WakeService 将自动暂停")
+                        
+                        // 2. 启动ASR（如果未运行）
+                        try {
+                            if (!AsrHandler.isStarted()) {
+                                DebugLogger.logUI(TAG, "  ├─ [功能] 启动 ASR")
+                                AsrHandler.start(context)
+                            } else {
+                                DebugLogger.logUI(TAG, "  ├─ [功能] ASR 已运行")
+                            }
+                        } catch (e: Exception) {
+                            DebugLogger.logUI(TAG, "  ├─ ❌ 启动ASR失败: ${e.message}")
+                        }
+                        
+                        // 3. 更新UI状态
+                        DebugLogger.logUI(TAG, "  ├─ [UI] 设置为 LISTENING")
+                        updateState(
+                            uiState = VoiceAssistantUIState.LISTENING,
+                            displayText = "LISTENING"
+                        )
+                        
+                        DebugLogger.logUI(TAG, "  └─ ✅ LISTENING 状态转换完成 [ASR:运行, Wake:暂停, UI:LISTENING]")
+                    }
+                    
+                    else -> {
+                        DebugLogger.logUI(TAG, "  └─ ⚠️ 未知状态: $normalizedTargetState，默认转换为 IDLE")
+                        // 未知状态默认转换为 IDLE
+                        transitionToState(VoiceAssistantUIState.IDLE, reason = "未知状态: $normalizedTargetState")
+                    }
+                }
+                
+                // 通知状态变化
+                notifyStateChange("state_transition", mapOf(
+                    "fromState" to currentUIState.name,
+                    "toState" to normalizedTargetState.name,
+                    "reason" to reason,
+                    "asrRunning" to AsrHandler.isStarted(),
+                    "wakeRunning" to com.ai.voice.io.wake.WakeService.isRunning()
+                ))
+            }
+        }
+    }
+    
+    /**
+     * @deprecated 使用 transitionToState 替代，确保状态一致性
+     */
+    @Deprecated("Use transitionToState instead", ReplaceWith("transitionToState(uiState)"))
     fun updateUIState(uiState: VoiceAssistantUIState) {
         updateState(uiState = uiState)
     }
@@ -450,6 +581,23 @@ class VoiceAssistantStateProvider @Inject constructor(
         
         if (hasSignificantChange(previousState, _currentState)) {
             DebugLogger.logUI(TAG, "🔄 State updated: ${_currentState.uiState}, text: '${_currentState.displayText}'")
+            
+            // AutoTest: 记录关键状态变化
+            if (previousState.uiState != _currentState.uiState) {
+                AutoTestLogger.logStateChange(
+                    previousState.uiState.name,
+                    _currentState.uiState.name,
+                    AsrHandler.isStarted()
+                )
+                
+                notifyStateChange("state_changed", mapOf(
+                    "fromState" to previousState.uiState.name,
+                    "toState" to _currentState.uiState.name,
+                    "asrRunning" to AsrHandler.isStarted(),
+                    "displayText" to _currentState.displayText
+                ))
+            }
+            
             notifyListeners()
         }
     }
@@ -514,9 +662,12 @@ class VoiceAssistantStateProvider @Inject constructor(
             scope.launch {
                 delay(1000)
                 if (AsrHandler.isStarted()) {
+                    // ASR 仍在运行，保持 LISTENING 状态
                     updateState(uiState = VoiceAssistantUIState.LISTENING, ttsText = "", displayText = "LISTENING")
                 } else {
-                    updateState(uiState = VoiceAssistantUIState.IDLE, ttsText = "", displayText = "")
+                    // 🔥 TTS 播放完成且ASR未运行，使用统一方法转换到 IDLE
+                    DebugLogger.logUI(TAG, "🏠 TTS播放完成，转换到IDLE状态")
+                    transitionToState(VoiceAssistantUIState.IDLE, reason = "TTS播放完成")
                 }
             }
         }
@@ -529,36 +680,37 @@ class VoiceAssistantStateProvider @Inject constructor(
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
         DebugLogger.logUI(TAG, "🎯 Wake word detected: '$wakeWord' (confidence: $confidence)")
         
-        // 修复：直接设置为LISTENING，不需要延迟
-        // WAKE_DETECTED状态太短暂，容易导致状态不一致
-        updateState(
-            uiState = VoiceAssistantUIState.LISTENING,
-            displayText = "LISTENING",
-            confidence = confidence
-        )
+        // 🔥 使用统一的状态转换方法，自动启动ASR
+        scope.launch {
+            transitionToState(VoiceAssistantUIState.LISTENING, reason = "唤醒词检测: $wakeWord")
+        }
+        
+        // 更新置信度
+        updateState(confidence = confidence)
     }
     
     override fun onWakeWordListeningStarted() {
         DebugLogger.logUI(TAG, "👂 Wake word listening started")
-        updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+        scope.launch {
+            transitionToState(VoiceAssistantUIState.IDLE, reason = "唤醒服务启动")
+        }
     }
     
     override fun onWakeWordListeningStopped() {
         DebugLogger.logUI(TAG, "🔇 Wake word listening stopped")
-        updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+        scope.launch {
+            transitionToState(VoiceAssistantUIState.IDLE, reason = "唤醒服务停止")
+        }
     }
     
     override fun onWakeWordError(error: Throwable) {
         DebugLogger.logUI(TAG, "❌ Wake word error: ${error.message}")
-        updateState(
-            uiState = VoiceAssistantUIState.ERROR,
-            displayText = "ERROR"
-        )
-        
-        // 3秒后自动恢复到空闲状态
         scope.launch {
+            transitionToState(VoiceAssistantUIState.ERROR, reason = "唤醒词错误: ${error.message}")
+            
+            // 3秒后自动恢复到空闲状态
             kotlinx.coroutines.delay(3000)
-            updateState(uiState = VoiceAssistantUIState.IDLE, displayText = "")
+            transitionToState(VoiceAssistantUIState.IDLE, reason = "错误恢复")
         }
     }
     
@@ -567,6 +719,9 @@ class VoiceAssistantStateProvider @Inject constructor(
      */
     fun cleanup() {
         DebugLogger.logUI(TAG, "🧹 Cleaning up VoiceAssistantStateProvider")
+        
+        stateMonitorJob?.cancel()
+        stateMonitorJob = null
         
         // 取消注册唤醒词回调
         WakeWordCallbackManager.unregisterCallback(this)

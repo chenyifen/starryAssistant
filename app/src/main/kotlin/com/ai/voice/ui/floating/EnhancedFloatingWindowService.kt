@@ -102,11 +102,39 @@ class EnhancedFloatingWindowService : Service(),
         AsrHandler.setFinalResultCallback { finalText ->
             if (finalText.isNotBlank()) {
                 DebugLogger.logUI(TAG, "🔍 Final识别完成，触发技能识别: $finalText")
-                // 创建 Final 事件进行技能匹配
                 val finalEvent = InputEvent.Final(listOf(Pair(finalText, 1.0f)))
                 skillEvaluator.processInputEvent(finalEvent)
             }
         }
+        
+        // 启动自动化测试HTTP服务器（仅home渠道）
+        startAutoTestServer()
+    }
+    
+    private var autoTestServer: Any? = null
+    
+    private fun startAutoTestServer() {
+        try {
+            Log.i(TAG, "Trying to start AutoTest HTTP Server...")
+            val serverClass = Class.forName("com.ai.voice.test.AutoTestHttpServer")
+            val constructor = serverClass.getConstructor(Context::class.java, Int::class.java)
+            autoTestServer = constructor.newInstance(this, 8765)
+            serverClass.getMethod("start").invoke(autoTestServer)
+            Log.i(TAG, "AutoTest HTTP Server started on port 8765")
+        } catch (e: ClassNotFoundException) {
+            Log.d(TAG, "AutoTestHttpServer not available (non-home build)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start AutoTest server: ${e.message}", e)
+        }
+    }
+    
+    private fun stopAutoTestServer() {
+        try {
+            autoTestServer?.let {
+                it.javaClass.getMethod("stop").invoke(it)
+            }
+            autoTestServer = null
+        } catch (e: Exception) { }
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -117,10 +145,11 @@ class EnhancedFloatingWindowService : Service(),
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
         
-        // 取消注册 WakeWordCallback
+        stopAutoTestServer()
         WakeWordCallbackManager.unregisterCallback(this)
         
         // 停止 AsrHandler
+        Log.d(TAG, "🛑 [DESTROY] onDestroy() 调用 AsrHandler.stop()")
         AsrHandler.stop(this)
         
         // 清除所有回调
@@ -214,8 +243,26 @@ class EnhancedFloatingWindowService : Service(),
             return
         }
         
+        // ✅ 设置静音超时回调：使用统一的状态转换方法
         AsrHandler.setSilenceTimeoutCallback {
+            Log.d(TAG, "🔔 [SILENCE_TIMEOUT] AsrHandler静音超时回调触发")
+            
+            // 更新悬浮球动画
             floatingOrb?.getAnimationStateManager()?.setIdle()
+            
+            // 🔥 使用统一的状态转换方法，确保功能状态同步
+            serviceScope.launch {
+                voiceAssistantStateProvider.transitionToState(
+                    VoiceAssistantUIState.IDLE,
+                    reason = "静音超时（10秒无语音）"
+                )
+            }
+            
+            // 清空ASR文本
+            voiceAssistantStateProvider.setASRText("")
+            voiceAssistantStateProvider.setTTSText("")
+            
+            Log.d(TAG, "✅ [SILENCE_TIMEOUT] 完整状态恢复完成")
         }
         
         if (AsrHandler.start(this)) {
@@ -226,12 +273,20 @@ class EnhancedFloatingWindowService : Service(),
     }
     
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
-        if (!ActivationChecker.isActivated(this)) {
-            serviceScope.launch { speechOutputDevice.speak("Not Activated") }
-            return
-        }
         showFloatingOrb()
-        floatingOrb?.getAnimationStateManager()?.triggerWakeWord(LottieAnimationTexts.WAKE_WORD_DETECTED)
+        
+        when (ActivationChecker.getActivationStatus(this)) {
+            ActivationChecker.ActivationStatus.NOT_ACTIVATED -> {
+                floatingOrb?.getAnimationStateManager()?.setActive(getString(R.string.activation_status_not_activated))
+                return
+            }
+            ActivationChecker.ActivationStatus.TRIAL -> {
+                val remainingDays = ActivationChecker.getRemainingDays(this)
+                val statusText = getString(R.string.activation_status_trial_with_days, remainingDays)
+                floatingOrb?.getAnimationStateManager()?.triggerWakeWord(statusText)
+            }
+            ActivationChecker.ActivationStatus.ACTIVATED -> { }
+        }
         startVoiceRecognition()
     }
     
@@ -249,11 +304,25 @@ class EnhancedFloatingWindowService : Service(),
             skillEvaluator.state.collect { interactionLog ->
                 val lastInteraction = interactionLog.interactions.lastOrNull()
                 val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
-                if (lastAnswer != null && lastInteraction?.skill?.id != "text") {
-                    AsrHandler.stop(this@EnhancedFloatingWindowService)
-                    voiceAssistantStateProvider.updateUIState(VoiceAssistantUIState.IDLE)
+                val skillId = lastInteraction?.skill?.id
+                Log.d(TAG, "🔍 [SKILL] observeSkillEvaluation: lastAnswer=${lastAnswer != null}, skillId=$skillId")
+                
+                // 🔥 简化：所有技能执行完成后都转换到 IDLE（包括 Fallback）
+                if (lastAnswer != null) {
+                    Log.d(TAG, "🔍 [SKILL] 技能执行完成 (skillId=$skillId)")
+                    
+                    // 使用统一的状态转换方法
+                    serviceScope.launch {
+                        voiceAssistantStateProvider.transitionToState(
+                            VoiceAssistantUIState.IDLE,
+                            reason = "技能执行完成: $skillId"
+                        )
+                    }
+                    
                     voiceAssistantStateProvider.setASRText("")
                     voiceAssistantStateProvider.setTTSText("")
+                } else {
+                    Log.d(TAG, "🔍 [SKILL] 无技能结果")
                 }
             }
         }

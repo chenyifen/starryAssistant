@@ -9,6 +9,7 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import com.ai.voice.util.ActivationChecker
+import com.ai.voice.util.AutoTestLogger
 import androidx.core.app.ActivityCompat
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
@@ -19,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 /**
  * ASR 处理工具类（单例）
@@ -33,6 +35,8 @@ object AsrHandler {
     private var samplesChannel = Channel<FloatArray>(capacity = 100)
     
     private var audioRecord: AudioRecord? = null
+    // 🔒 线程安全：使用 @Volatile 确保多线程可见性
+    @Volatile
     private var isStarted = false
     
     // ASR 结果列表，参考原有 Home.kt 的实现方式
@@ -42,9 +46,12 @@ object AsrHandler {
     private const val SILENCE_TIMEOUT_MS = 4000L // 静音超时
     private var lastSpeechDetectedTime = System.currentTimeMillis()
     private var contextForStop: Context? = null
+    // 🔒 线程安全：回调变量使用 @Volatile
+    @Volatile
     private var silenceTimeoutCallback: (() -> Unit)? = null
     
     // Final识别结果回调（用于触发技能识别）
+    @Volatile
     private var finalResultCallback: ((String) -> Unit)? = null
     
     /**
@@ -63,12 +70,52 @@ object AsrHandler {
         finalResultCallback = callback
     }
     
+    private var lastAudioReceivedTime: Long = 0
+    private var audioDataCount: Long = 0
+    
     /**
      * 重置VAD静音超时时间（在每次唤醒后调用）
      */
     fun resetSilenceTimeout() {
-        lastSpeechDetectedTime = System.currentTimeMillis()
-        Log.d(TAG, "🔄 重置VAD静音超时时间")
+        val currentTime = System.currentTimeMillis()
+        val previousTime = lastSpeechDetectedTime
+        lastSpeechDetectedTime = currentTime
+        lastAudioReceivedTime = currentTime
+        audioDataCount = 0
+        Log.d(TAG, "🔄 重置VAD静音超时时间 - timestamp=$currentTime, elapsed_since_last=${currentTime - previousTime}ms")
+        AutoTestLogger.logSilenceTimeoutReset()
+    }
+    
+    /**
+     * 模拟ASR Final结果（用于自动化测试）
+     * 
+     * 模拟真实场景：
+     * 1. 用户说话 → VAD检测到语音
+     * 2. ASR识别出文本 → 用户刚说完话（此方法被调用）
+     * 3. 重置静音计时 → 模拟"刚说完话"的时刻
+     * 4. 4秒后如果无语音 → 触发静音超时
+     * 
+     * @param text ASR识别的文本
+     */
+    fun simulateFinalResult(text: String) {
+        Log.i(TAG, "🧪 [TEST] 模拟ASR Final结果: $text")
+        
+        // ✅ 重置静音超时时间，模拟"用户刚说完话"的时刻
+        // 这样可以正常触发4秒静音超时机制，就像真实场景一样
+        val currentTime = System.currentTimeMillis()
+        lastSpeechDetectedTime = currentTime
+        Log.d(TAG, "🧪 [TEST] 重置VAD静音计时 - 模拟用户刚说完话的时刻，timestamp=$currentTime")
+        
+        // 添加到结果列表
+        if (text.isNotBlank()) {
+            resultList.clear()
+            resultList.add(text)
+        }
+        
+        // 触发finalResultCallback，这会触发技能识别
+        finalResultCallback?.invoke(text)
+        
+        Log.i(TAG, "🧪 [TEST] ASR Final结果已触发技能识别，4秒后如无语音将触发静音超时")
     }
     
     /**
@@ -234,9 +281,13 @@ object AsrHandler {
      * @param context 上下文，用于权限检查
      * @return 是否成功启动
      */
+    // 🔒 线程安全：使用 synchronized 防止竞态条件
+    @Synchronized
     fun start(context: Context): Boolean {
-        Log.i(TAG, "🚀 开始启动 AsrHandler...")
-        
+        if (isStarted) {
+            Log.d(TAG, "⏭️ AsrHandler 已经在运行中")
+            return true
+        }
         // 🔒 检查激活状态（15天试用期）
         val isActivated = ActivationChecker.isActivated(context)
         if (!isActivated) {
@@ -276,7 +327,10 @@ object AsrHandler {
         resetSilenceTimeout()
         
         isStarted = true
+        lastAudioReceivedTime = System.currentTimeMillis()
+        audioDataCount = 0
         Log.i(TAG, "✅ 启动 doAsr...")
+        AutoTestLogger.logAsrListeningStarted()
         doAsr(context)
         Log.i(TAG, "✅ AsrHandler 启动成功")
         return true
@@ -286,9 +340,18 @@ object AsrHandler {
      * 停止 ASR 识别
      * @param context 上下文，用于执行停止逻辑
      */
+    // 🔒 线程安全：使用 synchronized 防止竞态条件
+    @Synchronized
     fun stop(context: Context) {
+        if (!isStarted) {
+            Log.d(TAG, "⏭️ AsrHandler 已经停止")
+            return
+        }
         isStarted = false
         contextForStop = null
+        lastAudioReceivedTime = 0
+        audioDataCount = 0
+        AutoTestLogger.logAsrListeningStopped()
         doAsr(context)
     }
     
@@ -348,6 +411,13 @@ object AsrHandler {
                         while (isStarted) {
                             val ret = audioRecord?.read(buffer, 0, buffer.size)
                             ret?.let { n ->
+                                if (n > 0) {
+                                    lastAudioReceivedTime = System.currentTimeMillis()
+                                    audioDataCount++
+                                    if (audioDataCount % 50 == 0L) {
+                                        AutoTestLogger.logAudioDataReceived(n, isStarted)
+                                    }
+                                }
                                 val samples = FloatArray(n) { buffer[it] / 32768.0f }
                                 samplesChannel.send(samples)
                             }
@@ -359,8 +429,22 @@ object AsrHandler {
 
                 // 重置静音检测时间
                 lastSpeechDetectedTime = System.currentTimeMillis()
+                lastAudioReceivedTime = System.currentTimeMillis()
                 
-                CoroutineScope(Dispatchers.Default).launch {
+                val asrScope = CoroutineScope(Dispatchers.Default)
+                asrScope.launch {
+                    val noAudioCheckJob = launch {
+                        while (isStarted) {
+                            delay(2000)
+                            val currentTime = System.currentTimeMillis()
+                            if (isStarted && lastAudioReceivedTime > 0) {
+                                val timeSinceLastAudio = currentTime - lastAudioReceivedTime
+                                if (timeSinceLastAudio > 3000) {
+                                    AutoTestLogger.logAsrStartedButNoAudio(timeSinceLastAudio)
+                                }
+                            }
+                        }
+                    }
                     var buffer = arrayListOf<Float>()
                     var offset = 0
                     val windowSize = 512
@@ -375,11 +459,21 @@ object AsrHandler {
                     // 超时时间：如果超过 5 秒没有检测到语音结束，强制清空 buffer
                     val timeoutMs = 5000L
                     var lastVadActivityTime = System.currentTimeMillis()
+                    // 音频接收监控
+                    var lastAudioReceivedTime = System.currentTimeMillis()
+                    var audioSampleCount = 0
 
                     while (isStarted) {
                         for (s in samplesChannel) {
                             if (s.isEmpty()) {
                                 break
+                            }
+
+                            // 记录音频数据接收
+                            audioSampleCount++
+                            lastAudioReceivedTime = System.currentTimeMillis()
+                            if (audioSampleCount % 20 == 0) {
+                                AutoTestLogger.logAudioDataReceived(s.size, isStarted)
                             }
 
                             buffer.addAll(s.toList())
@@ -414,14 +508,17 @@ object AsrHandler {
                                 offset += windowSize
                                 
                                 // VAD 检测逻辑
-                                if (!isSpeechStarted && vad.isSpeechDetected()) {
+                                val vadDetected = vad.isSpeechDetected()
+                                AutoTestLogger.logVadDetected(vadDetected)
+                                
+                                if (!isSpeechStarted && vadDetected) {
                                     isSpeechStarted = true
                                     startTime = System.currentTimeMillis()
                                     lastVadActivityTime = System.currentTimeMillis()
                                     // VAD 检测到语音，更新最后语音检测时间
                                     lastSpeechDetectedTime = System.currentTimeMillis()
-                                    Log.d(TAG, "🗣️ VAD 检测到语音，重置静音计时")
-                                } else if (isSpeechStarted && vad.isSpeechDetected()) {
+                                    Log.d(TAG, "🗣️ VAD 检测到语音开始，重置静音计时 - timestamp=$lastSpeechDetectedTime")
+                                } else if (isSpeechStarted && vadDetected) {
                                     // 持续检测到语音，更新最后语音检测时间
                                     lastSpeechDetectedTime = System.currentTimeMillis()
                                 }
@@ -430,7 +527,8 @@ object AsrHandler {
                                 val currentTime = System.currentTimeMillis()
                                 val silenceDuration = currentTime - lastSpeechDetectedTime
                                 if (silenceDuration > SILENCE_TIMEOUT_MS && isStarted) {
-                                    Log.i(TAG, "⏰ 检测到连续静音超过10秒（基于VAD），停止 AsrHandler")
+                                    Log.i(TAG, "⏰ 检测到连续静音超过${SILENCE_TIMEOUT_MS}ms（基于VAD） - duration=${silenceDuration}ms, 停止 AsrHandler")
+                                    AutoTestLogger.logSilenceTimeoutTriggered(silenceDuration)
                                     // 先调用回调更新 UI 状态
                                     silenceTimeoutCallback?.invoke()
                                     // 然后停止 AsrHandler
@@ -438,6 +536,13 @@ object AsrHandler {
                                         stop(it)
                                     }
                                     break
+                                }
+                                
+                                // 检查是否有音频数据但ASR未在处理
+                                val timeSinceLastAudio = currentTime - lastAudioReceivedTime
+                                if (isStarted && timeSinceLastAudio > 5000) {
+                                    Log.w(TAG, "⚠️ ASR isStarted=true但${timeSinceLastAudio}ms未接收到音频数据")
+                                    AutoTestLogger.logAsrStartedButNoAudio(timeSinceLastAudio)
                                 }
                             }
                             
@@ -452,7 +557,7 @@ object AsrHandler {
                             // 超时保护：如果长时间没有检测到语音结束，清空 buffer
                             val timeSinceLastActivity = System.currentTimeMillis() - lastVadActivityTime
                             if (isSpeechStarted && timeSinceLastActivity > timeoutMs) {
-                                Log.w(TAG, "VAD timeout, resetting buffer")
+                                Log.w(TAG, "⏱️ VAD超时 - ${timeSinceLastActivity}ms未检测到语音结束，重置buffer (buffer_size=${buffer.size}, offset=$offset)")
                                 buffer = arrayListOf()
                                 offset = 0
                                 isSpeechStarted = false
