@@ -43,7 +43,9 @@ object AsrHandler {
     private val resultList: MutableList<String> = mutableListOf()
     
     // 静音超时配置
-    private const val SILENCE_TIMEOUT_MS = 4000L // 静音超时
+    private const val SILENCE_TIMEOUT_MS = 8000L // 静音超时
+    // Final识别触发条件：需要持续静音至少500ms（平衡响应速度和误触发）
+    private const val FINAL_SILENCE_THRESHOLD_MS = 800L
     private var lastSpeechDetectedTime = System.currentTimeMillis()
     private var contextForStop: Context? = null
     // 🔒 线程安全：回调变量使用 @Volatile
@@ -85,38 +87,7 @@ object AsrHandler {
         Log.d(TAG, "🔄 重置VAD静音超时时间 - timestamp=$currentTime, elapsed_since_last=${currentTime - previousTime}ms")
         AutoTestLogger.logSilenceTimeoutReset()
     }
-    
-    /**
-     * 模拟ASR Final结果（用于自动化测试）
-     * 
-     * 模拟真实场景：
-     * 1. 用户说话 → VAD检测到语音
-     * 2. ASR识别出文本 → 用户刚说完话（此方法被调用）
-     * 3. 重置静音计时 → 模拟"刚说完话"的时刻
-     * 4. 4秒后如果无语音 → 触发静音超时
-     * 
-     * @param text ASR识别的文本
-     */
-    fun simulateFinalResult(text: String) {
-        Log.i(TAG, "🧪 [TEST] 模拟ASR Final结果: $text")
-        
-        // ✅ 重置静音超时时间，模拟"用户刚说完话"的时刻
-        // 这样可以正常触发4秒静音超时机制，就像真实场景一样
-        val currentTime = System.currentTimeMillis()
-        lastSpeechDetectedTime = currentTime
-        Log.d(TAG, "🧪 [TEST] 重置VAD静音计时 - 模拟用户刚说完话的时刻，timestamp=$currentTime")
-        
-        // 添加到结果列表
-        if (text.isNotBlank()) {
-            resultList.clear()
-            resultList.add(text)
-        }
-        
-        // 触发finalResultCallback，这会触发技能识别
-        finalResultCallback?.invoke(text)
-        
-        Log.i(TAG, "🧪 [TEST] ASR Final结果已触发技能识别，4秒后如无语音将触发静音超时")
-    }
+
     
     /**
      * 内部单例对象，完全按照 home.kt 中的 SimulateStreamingAsr 实现
@@ -244,13 +215,13 @@ object AsrHandler {
     fun initialize(context: Context): Boolean {
         Log.i(TAG, "🚀 开始初始化 AsrHandler (应用启动时)...")
         
-        // 🔒 检查激活状态（15天试用期）
-        val isActivated = ActivationChecker.isActivated(context)
-        if (!isActivated) {
-            Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法初始化")
-            Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
-            return false
-        }
+        // 🔒 检查激活状态（15天试用期）TODO
+//        val isActivated = ActivationChecker.isActivated(context)
+//        if (!isActivated) {
+//            Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法初始化")
+//            Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
+//            return false
+//        }
         
         return try {
             val application = context.applicationContext as? Application

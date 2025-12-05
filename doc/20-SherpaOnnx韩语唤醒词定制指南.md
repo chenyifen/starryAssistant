@@ -308,7 +308,7 @@ class SherpaOnnxWakeDevice(
     }
     
     override fun isHeyDicio(): Boolean {
-        // SherpaOnnx使用自定义韩语唤醒词，不是"Hey Dicio"
+        // SherpaOnnx使用自定义韩语唤醒词，不是"Hey Nudget"
         return false
     }
 }

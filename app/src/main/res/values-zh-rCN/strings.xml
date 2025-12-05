@@ -179,7 +179,7 @@
     <string name="pref_stt_play_sound_alarm">闹铃通道</string>
     <string name="pref_stt_play_sound_media">默认/媒体通道</string>
     <string name="pref_stt_play_sound_none">不播放声音</string>
-    <string name="wake_service_foreground_notification">正在聆听 \"Hey Dicio\" 唤醒词</string>
+    <string name="wake_service_foreground_notification">正在聆听 \"Hey Nudget\" 唤醒词</string>
     <string name="wake_service_start_notification">轻按启动 Dicio 唤醒词服务</string>
     <string name="wake_service_start_notification_summary">在 Android 11+ 系统上，没有来自用户的人工互动 Dicio 无法启动该服务。</string>
     <string name="wake_service_triggered_notification_summary">在 Android 10+ 系统上，Dicio 检测到唤醒词时无法不显示通知就启动。</string>
@@ -189,10 +189,10 @@
     <string name="retry">重试</string>
     <string name="stop">停止</string>
     <string name="grant_permissions">授予权限</string>
-    <string name="wake_word_setup_description">每当你说 \"Hey Dicio\"，Dicio 都会自动唤醒。这是通过启动一个始终在后台侦听的服务实现的。所有的语音处理都发生在本地设备上，这是你需要事先下载 AI 模型的原因。</string>
+    <string name="wake_word_setup_description">每当你说 \"Hey Nudget\"，Dicio 都会自动唤醒。这是通过启动一个始终在后台侦听的服务实现的。所有的语音处理都发生在本地设备上，这是你需要事先下载 AI 模型的原因。</string>
     <string name="wake_word_error_loading">加载时发生未预料到的错误</string>
     <string name="pref_wake_method">弱单词识别方法</string>
-    <string name="pref_wake_method_summary">选择用来在后台侦听 \"Hey Dicio\" 唤醒词的服务</string>
+    <string name="pref_wake_method_summary">选择用来在后台侦听 \"Hey Nudget\" 唤醒词的服务</string>
     <string name="pref_wake_method_disabled">已停用</string>
     <string name="pref_wake_method_openwakeword">OpenWakeWord 离线音频处理</string>
     <string name="wake_service_label">Dicio 唤醒词服务</string>
@@ -222,8 +222,8 @@
     <string name="skill_weather_miles_per_hour">英里/小时</string>
     <string name="pref_weather_temperature_unit">温度单位</string>
     <string name="pref_wake_custom_delete">删除自定义唤醒词</string>
-    <string name="pref_wake_custom_delete_summary">回到默认唤醒词“Hey Dicio”</string>
-    <string name="pref_wake_custom_import_summary_oww">用自定义 TFLite 模型替换默认唤醒词“Hey Dicio\"；你可以从 github.com/dscripka/openWakeWord/releases 下载一些自定义模型</string>
+    <string name="pref_wake_custom_delete_summary">回到默认唤醒词"Hey Nudget"</string>
+    <string name="pref_wake_custom_import_summary_oww">用自定义 TFLite 模型替换默认唤醒词“Hey Nudget\"；你可以从 github.com/dscripka/openWakeWord/releases 下载一些自定义模型</string>
     <string name="pref_weather_temperature_unit_celsius">摄氏度 (°C)</string>
     <string name="pref_weather_unit_system_instructions">使用”系统设置 &gt; 系统 &gt; 语言 &amp; 输入 &gt; 区域选项”中配置的单位</string>
     <string name="pref_weather_length_unit">长度单位</string>
@@ -265,5 +265,11 @@
     <string name="floating_text_timeout">超时</string>
     <string name="floating_text_initializing">正在初始化…</string>
     <string name="floating_text_loading">正在加载…</string>
+    
+    <!-- 激活状态 -->
+    <string name="activation_status_not_activated">未激活</string>
+    <string name="activation_status_trial">试用模式</string>
+    <string name="activation_status_trial_with_days">试用：剩余%1$d天</string>
+    <string name="activation_status_activated">已激活</string>
     
 </resources>

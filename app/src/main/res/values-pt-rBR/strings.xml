@@ -179,19 +179,19 @@
     <string name="pref_stt_play_sound_none">Não reproduzir som</string>
     <string name="wake_service_label">Serviço de palavra Dicio</string>
     <string name="pref_wake_method">Método de reconhecimento de palavras</string>
-    <string name="pref_wake_method_summary">Escolha o serviço a ser usado para ouvir a palavra de alerta \"Hey Dicio\" em segundo plano</string>
+    <string name="pref_wake_method_summary">Escolha o serviço a ser usado para ouvir a palavra de alerta \"Hey Nudget\" em segundo plano</string>
     <string name="pref_wake_method_disabled">Desabilitado</string>
     <string name="pref_wake_method_openwakeword">Processamento de áudio offline OpenWakeWord</string>
     <string name="wake_service_foreground_notification_summary">Esta notificação permite que o Dicio ouça o microfone em segundo plano</string>
     <string name="disable">Desabilitar</string>
-    <string name="wake_service_foreground_notification">Escutando a palavra de ativação \"Hey Dicio\"</string>
+    <string name="wake_service_foreground_notification">Escutando a palavra de ativação \"Hey Nudget\"</string>
     <string name="wake_service_triggered_notification">Palavra de ativação do Dicio acionada, toque para abrir</string>
     <string name="wake_service_start_notification">Toque para iniciar o serviço de palavra de ativação do Dicio</string>
     <string name="wake_service_start_notification_summary">No Android 11+, o Dicio não pode iniciar o serviço sem uma interação manual do usuário.</string>
     <string name="wake_service_triggered_notification_summary">No Android 10+, o Dicio não pode iniciar quando a palavra de ativação é detectada sem ter que mostrar uma notificação.</string>
     <string name="wake_word_setup_title">Configurar palavra de ativação</string>
     <string name="wake_word_error_downloading">Um erro inesperado ocorreu durante o download</string>
-    <string name="wake_word_setup_description">Dicio ativará automaticamente quando você disser \"Hey Dicio\". Para isso é iniciado um serviço que sempre escuta em segundo plano. Todo o processamento da fala é feito de forma local, por isso é necessário baixar o modelo de IA com antecedência.</string>
+    <string name="wake_word_setup_description">Dicio ativará automaticamente quando você disser \"Hey Nudget\". Para isso é iniciado um serviço que sempre escuta em segundo plano. Todo o processamento da fala é feito de forma local, por isso é necessário baixar o modelo de IA com antecedência.</string>
     <string name="grant_permissions">Conceder permissões</string>
     <string name="skill_search_no_results_stop">A pesquisa não retornou resultados</string>
     <string name="perm_read_contacts">ler seus contatos</string>
@@ -202,7 +202,7 @@
     <string name="pref_input_method_external_popup">Pop-up externo de entrada por voz</string>
     <string name="pref_input_method_external_popup_summary">Abre a interface de outro APP pelo ACTION_RECOGNIZE_SPEECH, por exemplo whisperIME, Kõnele, Entrada por Voz do FUTO</string>
     <string name="pref_wake_custom_delete">Apagar palavra ativadora customizada</string>
-    <string name="pref_wake_custom_delete_summary">Retorna à palavra ativadora \"Hey Dicio\" padrão</string>
+    <string name="pref_wake_custom_delete_summary">Retorna à palavra ativadora \"Hey Nudget\" padrão</string>
     <string name="pref_wake_custom_import">Importar palavra ativadora customizada</string>
     <string name="waiting">Aguardando…</string>
 </resources>

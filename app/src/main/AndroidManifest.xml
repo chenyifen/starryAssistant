@@ -57,7 +57,7 @@
         <activity
             android:name=".ui.floating.FloatingLauncherActivity"
             android:exported="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:theme="@style/Theme.AppCompat.Light.Dialog"
             android:excludeFromRecents="true"
             android:noHistory="true">
 
@@ -90,16 +90,6 @@
                 <action android:name="android.intent.action.USER_PRESENT" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
-            </intent-filter>
-        </receiver>
-
-        <receiver
-            android:name=".util.AutoTestBroadcastReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.ai.voice.AUTO_TEST_WAKE" />
-                <action android:name="com.ai.voice.AUTO_TEST_ASR_START" />
-                <action android:name="com.ai.voice.AUTO_TEST_ASR_STOP" />
             </intent-filter>
         </receiver>
 

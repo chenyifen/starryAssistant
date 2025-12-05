@@ -19,7 +19,7 @@ class App : Application() {
         
         // 初始化激活检查
         ActivationChecker.isActivated(this, null)
-        Log.i(TAG, "✅ 激活检查初始化完成")
+            Log.i(TAG, "✅ 激活检查初始化完成")
         
         // 初始化 AsrHandler
         Log.i(TAG, "🚀 开始初始化 AsrHandler...")

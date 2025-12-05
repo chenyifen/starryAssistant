@@ -459,7 +459,7 @@ voice-engine-sdk.aar
 │   │   └── WebSocketTtsEngine.kt   # WebSocket TTS引擎
 │   ├── wake/
 │   │   ├── OpenWakeWordEngine.kt   # OpenWakeWord引擎
-│   │   ├── HeyDicioWakeEngine.kt   # Hey Dicio引擎
+│   │   ├── HeyDicioWakeEngine.kt   # Hey Nudget引擎
 │   │   └── CustomWakeEngine.kt     # 自定义唤醒引擎
 │   ├── audio/
 │   │   ├── AudioResourceManager.kt # 音频资源管理

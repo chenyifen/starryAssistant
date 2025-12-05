@@ -36,24 +36,24 @@ class ErrorActivity : ComponentActivity() {
 
         setContent {
             AppTheme {
-                ErrorScreen(
-                    errorInfo = errorInfo,
-                    locale = locale,
-                    timestamp = currentTimeStamp,
-                    osInfo = osInfo,
-                    onCopy = {
-                        ShareUtils.copyToClipboard(this, buildMarkdown())
-                    },
-                    onShare = {
-                        ShareUtils.shareText(this, getString(R.string.error_title), buildMarkdown())
-                    },
-                    onReport = {
-                        ShareUtils.openUrlInBrowser(this, ERROR_GITHUB_ISSUE_URL, false)
-                    },
-                    onBack = {
-                        finish()
-                    },
-                )
+            ErrorScreen(
+                errorInfo = errorInfo,
+                locale = locale,
+                timestamp = currentTimeStamp,
+                osInfo = osInfo,
+                onCopy = {
+                    ShareUtils.copyToClipboard(this, buildMarkdown())
+                },
+                onShare = {
+                    ShareUtils.shareText(this, getString(R.string.error_title), buildMarkdown())
+                },
+                onReport = {
+                    ShareUtils.openUrlInBrowser(this, ERROR_GITHUB_ISSUE_URL, false)
+                },
+                onBack = {
+                    finish()
+                },
+            )
             }
         }
     }

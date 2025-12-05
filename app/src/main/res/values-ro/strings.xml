@@ -152,11 +152,11 @@
     <string name="skill_name_navigation">Navigare</string>
     <string name="stt_service_label">Recunoaștere vocală offline Dicio</string>
     <string name="wake_service_label">Serviciul Dicio wake word</string>
-    <string name="wake_service_foreground_notification">Ascult pentru fraza de inițializare \"Hey Dicio\"</string>
+    <string name="wake_service_foreground_notification">Ascult pentru fraza de inițializare \"Hey Nudget\"</string>
     <string name="wake_service_start_notification">Atingeți pentru a porni serviciul Dicio wake word</string>
     <string name="wake_service_start_notification_summary">În Android 11+, Dicio nu poate porni serviciul fără o interacțiune manuală a utilizatorului.</string>
     <string name="wake_word_setup_title">Setează fraza de inițializare</string>
-    <string name="wake_word_setup_description">Dicio se va trezi automat ori de câte ori spui „Hey Dicio”. Acest lucru funcționează prin pornirea unui serviciu care ascultă întotdeauna în fundal. Toată procesarea vorbirii are loc local, de aceea trebuie să descărcați mai întâi modelul AI .</string>
+    <string name="wake_word_setup_description">Dicio se va trezi automat ori de câte ori spui „Hey Nudget”. Acest lucru funcționează prin pornirea unui serviciu care ascultă întotdeauna în fundal. Toată procesarea vorbirii are loc local, de aceea trebuie să descărcați mai întâi modelul AI .</string>
     <string name="wake_word_error_downloading">O eroare neașteptată a apărut la descărcare</string>
     <string name="wake_word_error_downloading_network">Dicio nu s-a putut conecta la internet. Verificați conexiunea și reîncercați.</string>
     <string name="wake_word_error_loading">A apărut o eroare neașteptată în timpul încărcării</string>
@@ -175,7 +175,7 @@
     <string name="pref_stt_play_sound_alarm">Canal alarmă</string>
     <string name="pref_wake_method_openwakeword">Procesare audio offline OpenWakeWord</string>
     <string name="stt_popup">Popup voce - text</string>
-    <string name="pref_wake_method_summary">Alege serviciul care să proceseze fraza de inițializare \"Hey Dicio\"</string>
+    <string name="pref_wake_method_summary">Alege serviciul care să proceseze fraza de inițializare \"Hey Nudget\"</string>
     <string name="pref_stt_auto_finish_title">Trimite rezultatul procesării text - voce către un popup text</string>
     <string name="pref_skills_summary">Activează/Dezactivează aptitudini și modifică comportamentul</string>
     <string name="expand">Desfășoară</string>

@@ -184,13 +184,13 @@
     <string name="stop">Zastavit</string>
     <string name="grant_permissions">Udělit oprávnění</string>
     <string name="pref_wake_method">Způsob rozpoznání probouzecího slova</string>
-    <string name="pref_wake_method_summary">Zvolte službu, kterou chcete použít k poslechu probouzecího slova „Hey Dicio“ na pozadí</string>
+    <string name="pref_wake_method_summary">Zvolte službu, kterou chcete použít k poslechu probouzecího slova „Hey Nudget“ na pozadí</string>
     <string name="pref_wake_method_disabled">Vypnuto</string>
     <string name="pref_wake_method_openwakeword">Offline zpracování zvuku OpenWakeWord</string>
     <string name="wake_service_start_notification">Klepněte pro spuštění služby probouzecího slova Dicio</string>
-    <string name="wake_service_foreground_notification">Poslouchání probouzecího slova „Hey Dicio“</string>
+    <string name="wake_service_foreground_notification">Poslouchání probouzecího slova „Hey Nudget“</string>
     <string name="wake_service_triggered_notification_summary">V systému Android 10+ se Dicio po detekci probouzecího slova nemůže sputit bez zobrazení oznámení.</string>
-    <string name="wake_word_setup_description">Dicio se automaticky probudí, kdykoli řeknete „Hey Dicio“. Funguje to tak, že se spustí služba, která vždy naslouchá na pozadí. Veškeré zpracování řeči probíhá lokálně, proto je třeba předem stáhnout model umělé inteligence.</string>
+    <string name="wake_word_setup_description">Dicio se automaticky probudí, kdykoli řeknete „Hey Nudget“. Funguje to tak, že se spustí služba, která vždy naslouchá na pozadí. Veškeré zpracování řeči probíhá lokálně, proto je třeba předem stáhnout model umělé inteligence.</string>
     <string name="wake_word_setup_title">Nastavit probouzecí slovo</string>
     <string name="retry">Zkusit znovu</string>
     <string name="skill_media_pausing">Pozastavování médií…</string>
@@ -204,8 +204,8 @@
     <string name="skill_media_next">Další média…</string>
     <string name="skill_search_no_results_stop">Nebyl nalezen žádný výsledek</string>
     <string name="pref_input_method_external_popup">Externí vyskakovací okno převodu řeči na text</string>
-    <string name="pref_wake_custom_delete_summary">Vrátit se na výchozí probouzecí slovo „Hey Dicio“</string>
-    <string name="pref_wake_custom_import_summary_oww">Nahradit výchozí probouzecí slovo „Hey Dicio“ vlastním modelem TFLite; některé vlastní modely si můžete stáhnout na stránce github.com/dscripka/openWakeWord/releases</string>
+    <string name="pref_wake_custom_delete_summary">Vrátit se na výchozí probouzecí slovo „Hey Nudget"</string>
+    <string name="pref_wake_custom_import_summary_oww">Nahradit výchozí probouzecí slovo „Hey Nudget“ vlastním modelem TFLite; některé vlastní modely si můžete stáhnout na stránce github.com/dscripka/openWakeWord/releases</string>
     <string name="pref_input_method_external_popup_summary">Otevře rozhraní jiné aplikace skrze ACTION​_​RECOGNIZE​_​SPEECH, například whisperIME, Kõnele, Futo Voice Input</string>
     <string name="pref_wake_custom_delete">Odstranit vlastní probouzecí slovo</string>
     <string name="waiting">Čekám…</string>

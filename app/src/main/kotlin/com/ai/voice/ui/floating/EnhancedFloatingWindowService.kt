@@ -250,6 +250,10 @@ class EnhancedFloatingWindowService : Service(),
             // 更新悬浮球动画
             floatingOrb?.getAnimationStateManager()?.setIdle()
             
+            // 🔥 先清空ASR和TTS文本
+            voiceAssistantStateProvider.setASRText("")
+            voiceAssistantStateProvider.setTTSText("")
+            
             // 🔥 使用统一的状态转换方法，确保功能状态同步
             serviceScope.launch {
                 voiceAssistantStateProvider.transitionToState(
@@ -257,10 +261,6 @@ class EnhancedFloatingWindowService : Service(),
                     reason = "静音超时（10秒无语音）"
                 )
             }
-            
-            // 清空ASR文本
-            voiceAssistantStateProvider.setASRText("")
-            voiceAssistantStateProvider.setTTSText("")
             
             Log.d(TAG, "✅ [SILENCE_TIMEOUT] 完整状态恢复完成")
         }
@@ -307,20 +307,14 @@ class EnhancedFloatingWindowService : Service(),
                 val skillId = lastInteraction?.skill?.id
                 Log.d(TAG, "🔍 [SKILL] observeSkillEvaluation: lastAnswer=${lastAnswer != null}, skillId=$skillId")
                 
-                // 🔥 简化：所有技能执行完成后都转换到 IDLE（包括 Fallback）
                 if (lastAnswer != null) {
                     Log.d(TAG, "🔍 [SKILL] 技能执行完成 (skillId=$skillId)")
                     
-                    // 使用统一的状态转换方法
-                    serviceScope.launch {
-                        voiceAssistantStateProvider.transitionToState(
-                            VoiceAssistantUIState.IDLE,
-                            reason = "技能执行完成: $skillId"
-                        )
-                    }
-                    
                     voiceAssistantStateProvider.setASRText("")
                     voiceAssistantStateProvider.setTTSText("")
+                    
+                    // 🔥 不立即转换到IDLE，等待静音超时回调处理状态转换
+                    // 静音超时回调会在8秒无语音后自动触发，由AsrHandler的silenceTimeoutCallback处理
                 } else {
                     Log.d(TAG, "🔍 [SKILL] 无技能结果")
                 }

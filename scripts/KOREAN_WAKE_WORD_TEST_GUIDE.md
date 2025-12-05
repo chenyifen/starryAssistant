@@ -18,7 +18,7 @@
 3. **语言自动切换功能**
    - 创建了`LanguageWakeWordManager`来管理语言相关的唤醒词
    - 修改了`LocaleManager`，当语言切换到韩语时自动使用韩语唤醒词
-   - 其他语言使用默认的"Hey Dicio"唤醒词
+   - 其他语言使用默认的"Hey Nudget"唤醒词
 
 4. **UI设置界面**
    - 更新了唤醒词设置界面，支持显示当前语言对应的唤醒词
@@ -182,7 +182,7 @@ adb shell "rm -f /data/data/org.stypox.dicio/files/openWakeWord/userwake.tflite"
 1. ✅ 语言切换到韩语时，日志显示"Wake word setup successful for language: LANGUAGE_KO"
 2. ✅ 唤醒词设置界面显示"하이넛지 (Hi Nutji Korean)"
 3. ✅ 说"하이넛지"时应用响应并启动语音识别
-4. ✅ 切换回其他语言时自动恢复"Hey Dicio"
+4. ✅ 切换回其他语言时自动恢复"Hey Nudget"
 
 ## 🚀 下一步优化
 

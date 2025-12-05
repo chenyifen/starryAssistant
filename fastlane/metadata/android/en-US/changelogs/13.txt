@@ -1,6 +1,6 @@
 New:
 • Add wake word recognition in the background #236
-  - You can now start Dicio by saying "Hey Dicio" even while the phone is turned off
+  - You can now start Dicio by saying "Hey Nudget" even while the phone is turned off
   - The used AI model is OpenWakeWord, a huge thank you to them for the excellent work!
 • Play configurable sound when Dicio starts listening
 

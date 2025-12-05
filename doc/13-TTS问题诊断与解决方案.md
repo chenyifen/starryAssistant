@@ -295,7 +295,7 @@ fun openTtsSettings(context: Context) {
 
 ### 唤醒词设置
 根据源码分析：
-- **默认唤醒词**: "Hey Dicio"
+- **默认唤醒词**: "Hey Nudget"
 - **模型文件**: `wake.tflite` (来自 `hey_dicio_v6.0.tflite`)
 - **支持自定义**: 用户可以上传自定义唤醒词模型 (`userwake.tflite`)
 

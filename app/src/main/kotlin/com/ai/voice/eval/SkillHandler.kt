@@ -53,21 +53,21 @@ class SkillHandler @Inject constructor(
         scope.launch {
             localeManager.locale.collectLatest { _ ->
                 // 默认启用所有可用技能
-                val newEnabledSkillsInfo = allSkillInfoList
-                    .filter { skillInfo ->
-                        val available = skillInfo.isAvailable(skillContext)
-                        Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
-                        available
-                    }
+                    val newEnabledSkillsInfo = allSkillInfoList
+                        .filter { skillInfo ->
+                            val available = skillInfo.isAvailable(skillContext)
+                            Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
+                            available
+                        }
 
-                _enabledSkillsInfo.value = newEnabledSkillsInfo
-                _skillRanker.value = SkillRanker(
-                    newEnabledSkillsInfo.map(::buildSkillFromInfo),
-                    buildSkillFromInfo(fallbackSkillInfoList[0]),
-                )
-                
+                    _enabledSkillsInfo.value = newEnabledSkillsInfo
+                    _skillRanker.value = SkillRanker(
+                        newEnabledSkillsInfo.map(::buildSkillFromInfo),
+                        buildSkillFromInfo(fallbackSkillInfoList[0]),
+                    )
+                    
                 Log.d(TAG, "✅ 技能列表初始化完成，共 ${newEnabledSkillsInfo.size} 个技能")
-            }
+                }
         }
     }
 

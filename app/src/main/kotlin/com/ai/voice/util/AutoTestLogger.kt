@@ -12,10 +12,26 @@ object AutoTestLogger {
     private const val TAG = "AutoTest"
     
     /**
+     * 记录UI状态变化 - 关键日志，用于检测状态卡住
+     */
+    fun logStateChange(fromState: String, toState: String, asrRunning: Boolean) {
+        Log.i(TAG, "[STATE] $fromState -> $toState (asr=$asrRunning)")
+        when (toState) {
+            "IDLE" -> Log.i(TAG, "[STATE_IDLE]")
+            "LISTENING" -> Log.i(TAG, "[STATE_LISTENING]")
+            "SPEAKING" -> Log.i(TAG, "[STATE_SPEAKING]")
+            "THINKING" -> Log.i(TAG, "[STATE_THINKING]")
+            "ERROR" -> Log.i(TAG, "[STATE_ERROR]")
+        }
+    }
+    
+
+
+    /**
      * 记录唤醒词检测成功
      */
     fun logWakeupDetected() {
-        Log.i(TAG, "唤醒词检测成功")
+        Log.i(TAG, "[WAKE] detected")
     }
     
     /**
@@ -166,6 +182,55 @@ object AutoTestLogger {
             actual?.let { append(", 实际: $it") }
         }
         Log.e(TAG, msg)
+    }
+    
+    /**
+     * 记录状态卡住 - 测试模式11：发现到问题后立即停止
+     */
+    fun logStateStuck(state: String, durationMs: Long, asrRunning: Boolean) {
+        Log.e(TAG, "[STUCK] state=$state duration=${durationMs}ms asr=$asrRunning")
+    }
+    
+    /**
+     * 记录静音超时异常 - ASR后至少要4s才能结束listening状态
+     */
+    fun logSilenceTimeoutAbnormal(asrTime: Long, listeningEndTime: Long, durationMs: Long) {
+        Log.e(TAG, "[SILENCE_TIMEOUT_ABNORMAL] asrTime=$asrTime listeningEndTime=$listeningEndTime duration=${durationMs}ms (<4s)")
+    }
+    
+    /**
+     * 记录VAD检测
+     */
+    fun logVadDetected(isSpeech: Boolean) {
+        Log.d(TAG, "[VAD] detected=${if (isSpeech) "SPEECH" else "SILENCE"}")
+    }
+    
+    /**
+     * 记录静音超时重置
+     */
+    fun logSilenceTimeoutReset() {
+        Log.d(TAG, "[SILENCE_TIMEOUT] reset")
+    }
+    
+    /**
+     * 记录静音超时触发
+     */
+    fun logSilenceTimeoutTriggered(durationMs: Long) {
+        Log.i(TAG, "[SILENCE_TIMEOUT] triggered after ${durationMs}ms")
+    }
+    
+    /**
+     * 记录音频数据接收
+     */
+    fun logAudioDataReceived(samples: Int, isStarted: Boolean) {
+        Log.d(TAG, "[AUDIO] received=$samples samples isStarted=$isStarted")
+    }
+    
+    /**
+     * 记录ASR启动但未接收音频数据
+     */
+    fun logAsrStartedButNoAudio(durationMs: Long) {
+        Log.w(TAG, "[ASR_NO_AUDIO] isStarted=true but no audio received for ${durationMs}ms")
     }
 }
 

@@ -177,9 +177,9 @@
     <string name="wake_service_label">Serviço de alerta Dicio</string>
     <string name="wake_service_foreground_notification_summary">Esta notificação permite que o serviço wake word Dicio ouça o microfone em segundo plano</string>
     <string name="pref_wake_method">Método de reconhecimento de palavra de ativação</string>
-    <string name="pref_wake_method_summary">Escolha o serviço a ser usado para ouvir a palavra de ativação \"Hey Dicio\" em segundo plano</string>
+    <string name="pref_wake_method_summary">Escolha o serviço a ser usado para ouvir a palavra de ativação \"Hey Nudget\" em segundo plano</string>
     <string name="pref_wake_method_openwakeword">Processamento de áudio offline OpenWakeWord</string>
-    <string name="wake_service_foreground_notification">Ouvindo a palavra de despertar \"Hey Dicio\"</string>
+    <string name="wake_service_foreground_notification">Ouvindo a palavra de despertar \"Hey Nudget\"</string>
     <string name="wake_service_start_notification">Toque para iniciar o serviço Dicio wake word</string>
     <string name="wake_service_triggered_notification">Dicio wake word acionado, toque para abrir</string>
     <string name="wake_service_start_notification_summary">No Android 11+ Dicio não consegue iniciar o serviço sem uma interação manual do usuário.</string>

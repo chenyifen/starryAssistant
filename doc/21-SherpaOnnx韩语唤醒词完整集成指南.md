@@ -77,7 +77,7 @@ app/src/main/kotlin/org/stypox/dicio/
 - `你好军哥` - 中文唤醒词
 - `小米小米` - 中文唤醒词
 - `你好问问` - 中文唤醒词
-- `hey dicio` - 英文唤醒词
+- `Hey Nudget` - 英文唤醒词
 - `hello dicio` - 英文唤醒词
 
 ### 3.2 词汇表配置

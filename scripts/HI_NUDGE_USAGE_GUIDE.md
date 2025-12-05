@@ -18,7 +18,7 @@ HiNudge是一个独立的韩语唤醒词设备，基于OpenWakeWord技术，专�
 
 ### 3. 设备选择
 通过应用设置界面选择唤醒方法:
-- Hey Dicio (OpenWakeWord)
+- Hey Nudget (OpenWakeWord)
 - SherpaOnnx KWS  
 - **하이넛지 (Hi Nudge Korean)** ← 新增的韩语设备
 - 禁用

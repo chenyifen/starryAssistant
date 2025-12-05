@@ -29,10 +29,10 @@ class SpeechOutputDeviceWrapper @Inject constructor(
     init {
         scope.launch {
             localeManager.locale.collect { locale ->
-                val prevDevice = wrappedSpeechDevice
+                    val prevDevice = wrappedSpeechDevice
                 wrappedSpeechDevice = tryCreateTtsDevice(locale)
-                prevDevice.cleanup()
-            }
+                    prevDevice.cleanup()
+                }
         }
     }
 
@@ -41,32 +41,32 @@ class SpeechOutputDeviceWrapper @Inject constructor(
         try {
             Log.i(TAG, "🌐 创建多语言TTS设备")
             return LanguageDetectingSpeechDevice(
-                context = context,
-                defaultLocale = locale,
+                    context = context,
+                    defaultLocale = locale,
                 deviceFactory = { ctx, loc -> createPrimaryTtsDevice(loc) }
-            )
-        } catch (e: Exception) {
+                )
+            } catch (e: Exception) {
             Log.e(TAG, "❌ 多语言TTS设备创建失败: ${e.message}")
         }
-
+        
         // 降级链：SherpaOnnx -> AndroidTTS -> Toast
         return createPrimaryTtsDevice(locale)
             ?: try { AndroidTtsSpeechDevice(context, locale) } catch (e: Exception) { null }
             ?: ToastSpeechDevice(context)
     }
-
+    
     private fun createPrimaryTtsDevice(locale: java.util.Locale): SpeechOutputDevice? {
         return try {
-            SherpaOnnxTtsSpeechDevice(context, locale)
-        } catch (e: Exception) {
-            Log.w(TAG, "⚠️ SherpaOnnxTtsSpeechDevice创建失败: ${e.message}")
-            null
+                    SherpaOnnxTtsSpeechDevice(context, locale)
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ SherpaOnnxTtsSpeechDevice创建失败: ${e.message}")
+                    null
         }
     }
 
     override fun speak(speechOutput: String) {
         Log.d(TAG, "🗣️ speak(): '$speechOutput'")
-        wrappedSpeechDevice.speak(speechOutput)
+            wrappedSpeechDevice.speak(speechOutput)
     }
 
     override fun stopSpeaking() {

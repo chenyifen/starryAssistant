@@ -1,6 +1,6 @@
 Novità:
 • Ora Dicio riconosce la parola di attivazione in background
-  - Puoi far partire Dicio dicendo "Hey Dicio" anche quando il telefono è spento
+  - Puoi far partire Dicio dicendo "Hey Nudget" anche quando il telefono è spento
   - Il modello AI utilizzato è OpenWakeWord; grazie a loro per l'eccellente lavoro!
 • Effetto sonoro configurabile quando Dicio comincia ad ascoltare
 

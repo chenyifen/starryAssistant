@@ -429,7 +429,7 @@ adb install -r app/build/outputs/apk/withModelsDebug/app-withModels-debug.apk
 
 1. **多语言支持**
    - 中文唤醒词 "嗨小迪"
-   - 英文唤醒词 "Hey Dicio"
+   - 英文唤醒词 "Hey Nudget"
    - 多唤醒词同时检测
 
 2. **自定义唤醒词**

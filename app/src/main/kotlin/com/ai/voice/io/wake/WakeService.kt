@@ -78,7 +78,9 @@ class WakeService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        DebugLogger.logWakeWord(TAG, "🚀 WakeService onCreate")
+        val pid = android.os.Process.myPid()
+        Log.d(TAG, "🚀 [PID:$pid] WakeService onCreate")
+        DebugLogger.logWakeWord(TAG, "🚀 WakeService onCreate [PID:$pid]")
         notificationManager = getSystemService(this, NotificationManager::class.java)!!
         
         // 初始化 AudioManager（Android 15 音频焦点必需）
@@ -571,21 +573,53 @@ class WakeService : Service() {
 
                 // 只有在AudioRecord正在录制时才读取数据
                 // 且 AsrHandler 未运行时才继续监听
-                if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING && !com.ai.voice.util.AsrHandler.isStarted()) {
+                val isRecording = ar.recordingState == AudioRecord.RECORDSTATE_RECORDING
+                val asrStarted = com.ai.voice.util.AsrHandler.isStarted()
+                
+                if (isRecording && !asrStarted) {
                     val bytesRead = ar.read(audio, 0, audio.size)
                     frameCount++
                     
-                    // 注释掉常规帧日志，减少输出
-                    // if (frameCount % 100 == 0 && bytesRead > 0) {
-                    //     DebugLogger.logAudioProcessing(TAG, "🔄 Frame #$frameCount, bytesRead=$bytesRead")
-                    // }
+                    // 🔍 检查bytesRead和数组大小的关系
+                    if (frameCount == 1 || frameCount % 500 == 0) {
+                        val expectedBytes = audio.size * 2 // Short是2字节
+                        Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] 读取检查: bytesRead=$bytesRead, 数组大小=${audio.size}, 期望字节=$expectedBytes")
+                    }
+                    
+                    // 🔍 临时打印：每100帧打印一次
+                    if (frameCount % 100 == 0) {
+                        Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] Frame #$frameCount, bytesRead=$bytesRead, recording=$isRecording, asrStarted=$asrStarted")
+                    }
                     
                     if (bytesRead > 0) {
+                        // 🔍 临时打印：音频数据统计（原始short值）
+                        if (frameCount % 200 == 0 && audio.isNotEmpty()) {
+                            val maxShort = audio.maxOrNull() ?: 0
+                            val minShort = audio.minOrNull() ?: 0
+                            val avgShort = audio.map { it.toInt() }.average().toInt()
+                            val nonZeroCount = audio.count { it != 0.toShort() }
+                            val maxFloat = maxShort / 32768.0f
+                            val minFloat = minShort / 32768.0f
+                            val rms = kotlin.math.sqrt(audio.map { (it / 32768.0f) * (it / 32768.0f) }.average()).toFloat()
+                            Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] Audio[帧$frameCount]: bytesRead=$bytesRead, 数组大小=${audio.size}, 非零样本=$nonZeroCount/${audio.size}")
+                            Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] Audio原始值: Short范围=[$minShort,$maxShort], 平均=$avgShort")
+                            Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] Audio归一化: Float范围=[$minFloat,$maxFloat], RMS=$rms")
+                            // 打印前10个样本
+                            val sampleStr = audio.take(10).joinToString(",") { it.toString() }
+                            Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] Audio前10样本: [$sampleStr]")
+                        }
+                        
                         val wakeWordDetected = wakeDevice.processFrame(audio)
                         val now = Instant.now()
                         
+                        // 🔍 临时打印：每次processFrame结果
+                        if (frameCount % 50 == 0) {
+                            Log.d(TAG, "🔍 [PID:${android.os.Process.myPid()}] processFrame结果: detected=$wakeWordDetected, frame=$frameCount")
+                        }
+                        
                         if (wakeWordDetected) {
                             if (now > nextWakeWordAllowed) {
+                                Log.d(TAG, "🎯 [PID:${android.os.Process.myPid()}] WAKE WORD DETECTED! Frame #$frameCount")
                                 DebugLogger.logWakeWord(TAG, "🎯 WAKE WORD DETECTED! Frame #$frameCount")
                                 // 🔒 关键日志：唤醒词检测成功（Release版本也输出）
                                 DebugLogger.logWakeWordSuccess(TAG)
@@ -594,23 +628,26 @@ class WakeService : Service() {
                                 onWakeWordDetected()
                             } else {
                                 val remainingMs = nextWakeWordAllowed.toEpochMilli() - now.toEpochMilli()
+                                Log.d(TAG, "⏳ [PID:${android.os.Process.myPid()}] Wake word detected but in backoff period (${remainingMs}ms remaining)")
                                 DebugLogger.logWakeWord(TAG, "⏳ Wake word detected but in backoff period (${remainingMs}ms remaining)")
                             }
                         }
 
                         lastHeard.set(now)
-                        
-                        // 注释掉状态日志，只在重要事件时输出
-                        // if (frameCount % 1000 == 0) {
-                        //     DebugLogger.logAudioProcessing(TAG, "📊 Processed $frameCount frames, still listening...")
-                        // }
                     } else if (bytesRead == 0) {
-                        // 0字节可能是正常的，特别是在暂停/恢复期间
-                        // 不再记录日志，避免刷屏
+                        // 🔍 临时打印：0字节情况
+                        if (frameCount % 1000 == 0) {
+                            Log.w(TAG, "⚠️ [PID:${android.os.Process.myPid()}] bytesRead=0 at frame #$frameCount")
+                        }
                     } else {
+                        Log.e(TAG, "❌ [PID:${android.os.Process.myPid()}] AudioRecord read failed: $bytesRead bytes")
                         DebugLogger.logWakeWordError(TAG, "❌ AudioRecord read failed: $bytesRead bytes")
                     }
                 } else {
+                    // 🔍 临时打印：未录制状态
+                    if (frameCount % 1000 == 0) {
+                        Log.d(TAG, "⏸️ [PID:${android.os.Process.myPid()}] Not recording: isRecording=$isRecording, asrStarted=$asrStarted")
+                    }
                     // AudioRecord不在录制状态或被暂停，短暂等待
                     Thread.sleep(10)
                 }
@@ -633,20 +670,6 @@ class WakeService : Service() {
 
     private fun onWakeWordDetected() {
         DebugLogger.logWakeWord(TAG, "🎉 Wake word detected - processing...")
-        
-        // 🔒 检查激活状态（15天试用期）
-        val isActivated = ActivationChecker.isActivated(this)
-        if (!isActivated) {
-            DebugLogger.logWakeWord(TAG, "❌ 应用试用期已过期，无法使用")
-            // 播放"Not Activated"提示
-            try {
-                speechOutputDevice.speak("Not Activated")
-                DebugLogger.logWakeWord(TAG, "🔊 已播放: Not Activated")
-            } catch (e: Exception) {
-                DebugLogger.logWakeWordError(TAG, "❌ 播放TTS失败", e)
-            }
-            return
-        }
         
         // 通知所有注册的回调（EnhancedFloatingWindowService会处理ASR启动）
         WakeWordCallbackManager.notifyWakeWordDetected()

@@ -82,6 +82,8 @@ class SkillRanker(
                 }
                 
                 Log.d(TAG, "  🔍 评估 ${skills.size} 个技能:")
+                Log.d(TAG, "  📝 输入文本: '$input'")
+                Log.d(TAG, "  🌐 SkillContext语言: locale=${ctx.locale}, sentencesLanguage=${ctx.sentencesLanguage}, asrLocale=${(ctx as? com.ai.voice.di.SkillContextInternal)?.asrLocale}")
                 // this ensures that if `skills` is empty and null skill is returned,
                 // nothing bad happens since its score cannot be higher than any other float value.
                 var bestSkillSoFar: SkillWithResult<*>? = null

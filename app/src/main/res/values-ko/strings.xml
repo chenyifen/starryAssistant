@@ -110,4 +110,10 @@
     <string name="floating_text_initializing">초기화 중…</string>
     <string name="floating_text_loading">로딩 중…</string>
     
+    <!-- 활성화 상태 -->
+    <string name="activation_status_not_activated">활성화되지 않음</string>
+    <string name="activation_status_trial">체험 모드</string>
+    <string name="activation_status_trial_with_days">체험: %1$d일 남음</string>
+    <string name="activation_status_activated">활성화됨</string>
+    
 </resources>

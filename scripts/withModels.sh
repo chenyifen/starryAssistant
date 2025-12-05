@@ -169,7 +169,7 @@ echo "现在可以测试以下功能："
 echo "- 进入Settings检查Wake word recognition method设置"
 echo "- 测试韩语唤醒词: 하이넛지"
 echo "- 测试中文唤醒词: 小艺小艺"
-echo "- 测试英文唤醒词: hey dicio"
+echo "- 测试英文唤醒词: Hey Nudget"
 
 echo ""
 echo "✨ withModels变体特点:"

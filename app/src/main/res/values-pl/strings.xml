@@ -173,11 +173,11 @@
     <string name="pref_stt_play_sound_media">Domyślny/kanał mediów</string>
     <string name="pref_stt_play_sound_none">Nie odtwarzaj dźwięku</string>
     <string name="wake_service_start_notification">Naciśnij aby uruchomić usługę frazy budzącej Dicio</string>
-    <string name="wake_service_foreground_notification">Nasłuchuję frazy budzącej \"Hey Dicio\"</string>
+    <string name="wake_service_foreground_notification">Nasłuchuję frazy budzącej \"Hey Nudget\"</string>
     <string name="wake_service_triggered_notification">Wyzwolono frazę budzącą Dicio, naciśnij aby otworzyć</string>
     <string name="wake_word_setup_title">Ustaw frazę budzącą</string>
     <string name="pref_wake_method">Metoda rozpoznawania frazy budzącej</string>
-    <string name="pref_wake_method_summary">Wybierz usługę do nasłuchiwania w tle frazy budzącej \"Hey Dicio\"</string>
+    <string name="pref_wake_method_summary">Wybierz usługę do nasłuchiwania w tle frazy budzącej \"Hey Nudget\"</string>
     <string name="pref_wake_method_disabled">Wyłączone</string>
     <string name="pref_wake_method_openwakeword">Lokalne przetwarzanie dźwięku OpenWakeWord</string>
     <string name="wake_service_foreground_notification_summary">Powiadomienie pozwala usłudze rozpoznawania frazy budzącej Dicio na korzystanie z mikrofonu w tle</string>
@@ -185,7 +185,7 @@
     <string name="stt_service_label">Lokalne rozpoznawanie mowy Dicio</string>
     <string name="wake_service_start_notification_summary">W Androidzie 11+ Dicio nie może uruchomić usługi bez interakcji z użytkownikiem.</string>
     <string name="wake_service_triggered_notification_summary">W Androidzie 10+ Dicio nie może uruchomić się po rozpoznaniu frazy budzącej, jeżeli nie wyświetla się powiadomienie.</string>
-    <string name="wake_word_setup_description">Dicio uruchomi się automatycznie kiedy powiesz \"Hey Dicio\". Działa to dzięki uruchomionej w tle usłudze, która zawsze nasłuchuje. Przetwarzanie dźwięku odbywa się całkowicie lokalnie, dlatego konieczne jest uprzednie pobranie modelu AI.</string>
+    <string name="wake_word_setup_description">Dicio uruchomi się automatycznie kiedy powiesz \"Hey Nudget\". Działa to dzięki uruchomionej w tle usłudze, która zawsze nasłuchuje. Przetwarzanie dźwięku odbywa się całkowicie lokalnie, dlatego konieczne jest uprzednie pobranie modelu AI.</string>
     <string name="wake_word_error_downloading">Wystąpił nieoczekiwany błąd podczas pobierania</string>
     <string name="wake_word_error_downloading_network">Dicio nie mógł połączyć się z Internetem. Proszę sprawdzić połączenie i spróbować ponownie.</string>
     <string name="retry">Ponów</string>

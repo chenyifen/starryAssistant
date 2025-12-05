@@ -94,13 +94,13 @@ app/src/main/proto/wake_device.proto  # 添加了SHERPA_ONNX选项
 ## 🎯 支持的功能特性
 
 ### 1. 多唤醒技术支持
-- **OpenWakeWord**：原有的唤醒技术，支持"Hey Dicio"
+- **OpenWakeWord**：原有的唤醒技术，支持"Hey Nudget"
 - **SherpaOnnx KWS**：新集成的技术，支持多语言关键词检测
 
 ### 2. 多语言唤醒词
 - **韩语**：하이넛지（主要目标）
 - **中文**：小艺小艺、小爱同学、你好军哥、小米小米、你好问问
-- **英语**：hey dicio、hello dicio
+- **英语**：Hey Nudget、hello dicio
 
 ### 3. 灵活的模型管理
 - **withModels变体**：模型预打包在APK中，无需用户下载

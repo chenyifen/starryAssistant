@@ -21,9 +21,11 @@ import org.dicio.skill.skill.InteractionPlan
 import org.dicio.skill.skill.Permission
 import org.dicio.skill.skill.SkillOutput
 import com.ai.voice.di.SkillContextInternal
+import com.ai.voice.di.LocaleManager
 import com.ai.voice.io.graphical.ErrorSkillOutput
 import com.ai.voice.io.graphical.MissingPermissionsSkillOutput
 import com.ai.voice.io.input.InputEvent
+import javax.inject.Inject
 import javax.inject.Singleton
 
 interface SkillEvaluator {
@@ -35,9 +37,10 @@ interface SkillEvaluator {
     fun processInputEvent(event: InputEvent)
 }
 
-class SkillEvaluatorImpl(
+class SkillEvaluatorImpl @Inject constructor(
     private val skillContext: SkillContextInternal,
     private val skillHandler: SkillHandler,
+    private val localeManager: LocaleManager,
 ) : SkillEvaluator {
 
     private val scope = CoroutineScope(Dispatchers.Default)
@@ -241,55 +244,25 @@ class SkillEvaluatorImpl(
                 val cleanedUtterance = cleanTextForSkillMatching(firstUtterance)
                 Log.d(TAG, "🧹 文本清理: '$firstUtterance' -> '$cleanedUtterance'")
                 
+                // 🆕 如果清理后文本为空，跳过技能识别
+                if (cleanedUtterance.isBlank()) {
+                    Log.d(TAG, "⏭️ 清理后文本为空，跳过技能识别")
+                    _state.value = _state.value.copy(pendingQuestion = null)
+                    return
+                }
+                
                 // 🆕 检测ASR语言并设置到SkillContext（必须在技能执行前设置）
                 if (cleanedUtterance.isNotBlank()) {
                     val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(cleanedUtterance, java.util.Locale.KOREAN)
                     Log.d(TAG, "🎤 [Final] ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
                     skillContext.asrLocale = asrLocale
+                    localeManager.updateSentencesLanguageForLocale(asrLocale)
                 } else {
                     skillContext.asrLocale = null
                 }
                 
                 // 自动化测试：打印识别结果
                 Log.i("AutoTest", "ASR结果: $cleanedUtterance")
-                
-                // 🆕 检查Partial是否已执行，以及Final文本是否与Partial不同
-                val (shouldSkip, partialText, partialSkillId) = partialExecutionMutex.withLock {
-                    val skip = partialSkillExecuted
-                    val text = partialExecutedText
-                    val skillId = partialExecutedSkillId
-                    if (skip) {
-                        partialSkillExecuted = false  // 重置标记
-                    }
-                    Triple(skip, text, skillId)
-                }
-                
-                // 🆕 如果Partial已执行，检查Final文本是否与Partial不同
-                if (shouldSkip && partialText.isNotBlank()) {
-                    // partialText已经是清理后的文本，直接比较
-                    val textsSimilar = cleanedUtterance.lowercase().contains(partialText.lowercase()) ||
-                                      partialText.lowercase().contains(cleanedUtterance.lowercase()) ||
-                                      cleanedUtterance.lowercase() == partialText.lowercase()
-                    
-                    if (textsSimilar) {
-                        Log.i(TAG, "⏭️ [Final] Partial已执行技能，Final文本与Partial相似，跳过重复执行 (Partial: '$partialText', Final: '$cleanedUtterance')")
-                        _state.value = _state.value.copy(pendingQuestion = null)
-                        // 重置记录
-                        partialExecutionMutex.withLock {
-                            partialExecutedText = ""
-                            partialExecutedSkillId = null
-                        }
-                        return
-                    } else {
-                        // 🆕 Final文本与Partial不同，需要重新匹配和执行
-                        Log.i(TAG, "🔄 [Final] Partial已执行，但Final文本与Partial不同，重新匹配技能 (Partial: '$partialText' -> $partialSkillId, Final: '$cleanedUtterance')")
-                        // 继续执行，重新匹配Final阶段的技能
-                    }
-                } else if (shouldSkip) {
-                    Log.i(TAG, "⏭️ [Final] Partial已执行技能，跳过重复执行")
-                    _state.value = _state.value.copy(pendingQuestion = null)
-                    return
-                }
                 
                 val updateStateStart = System.currentTimeMillis()
                 _state.value = _state.value.copy(
@@ -363,6 +336,7 @@ class SkillEvaluatorImpl(
                                     val asrLocale = com.ai.voice.util.LanguageDetector.detectLocale(cleanedUtterance, java.util.Locale.KOREAN)
                                     Log.d(TAG, "🎤 [Partial] ASR识别语言: ${com.ai.voice.util.LanguageDetector.getLocaleName(asrLocale)}")
                                     skillContext.asrLocale = asrLocale
+                                    localeManager.updateSentencesLanguageForLocale(asrLocale)
                                     
                                     // 🔥 修复：使用预匹配的技能，禁止fallback
                                     evaluateMatchingSkill(
@@ -572,7 +546,8 @@ class SkillEvaluatorModule {
     fun provideSkillEvaluator(
         skillContext: SkillContextInternal,
         skillHandler: SkillHandler,
+        localeManager: LocaleManager,
     ): SkillEvaluator {
-        return SkillEvaluatorImpl(skillContext, skillHandler)
+        return SkillEvaluatorImpl(skillContext, skillHandler, localeManager)
     }
 }

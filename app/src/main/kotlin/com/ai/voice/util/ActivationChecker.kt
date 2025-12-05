@@ -14,6 +14,12 @@ import javax.inject.Singleton
 class ActivationChecker @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
+    enum class ActivationStatus {
+        NOT_ACTIVATED,
+        TRIAL,
+        ACTIVATED
+    }
+    
     companion object {
         private const val TAG = "ActivationChecker"
         private const val TRIAL_PERIOD_DAYS = 15L
@@ -22,6 +28,10 @@ class ActivationChecker @Inject constructor(
         private const val KEY_FIRST_INSTALL = "first_install_timestamp"
         
         fun isActivated(context: Context, unused: Any? = null): Boolean {
+            return getActivationStatus(context) != ActivationStatus.NOT_ACTIVATED
+        }
+        
+        fun getActivationStatus(context: Context): ActivationStatus {
             return try {
                 val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 var firstInstallTime = prefs.getLong(KEY_FIRST_INSTALL, 0L)
@@ -29,39 +39,32 @@ class ActivationChecker @Inject constructor(
                 if (firstInstallTime == 0L) {
                     firstInstallTime = System.currentTimeMillis()
                     prefs.edit().putLong(KEY_FIRST_INSTALL, firstInstallTime).apply()
-                    Log.i(TAG, "✅ 首次启动，已保存安装时间")
-                    return true
+                    return ActivationStatus.TRIAL
                 }
                 
                 val elapsedDays = (System.currentTimeMillis() - firstInstallTime) / MILLIS_PER_DAY
-                val isActivated = elapsedDays < TRIAL_PERIOD_DAYS
-                
-                if (isActivated) {
-                    Log.i(TAG, "✅ 应用已激活，剩余试用期: ${TRIAL_PERIOD_DAYS - elapsedDays}天")
-                } else {
-                    Log.w(TAG, "❌ 应用试用期已过期")
+                when {
+                    elapsedDays >= TRIAL_PERIOD_DAYS -> ActivationStatus.NOT_ACTIVATED
+                    else -> ActivationStatus.TRIAL
                 }
-                
-                isActivated
             } catch (e: Exception) {
-                Log.e(TAG, "❌ 检查激活状态失败: ${e.message}", e)
-                true
+                ActivationStatus.TRIAL
+            }
+        }
+        
+        fun getRemainingDays(context: Context): Long {
+            return try {
+                val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                val firstInstallTime = prefs.getLong(KEY_FIRST_INSTALL, 0L)
+                if (firstInstallTime == 0L) return TRIAL_PERIOD_DAYS
+                val elapsedDays = (System.currentTimeMillis() - firstInstallTime) / MILLIS_PER_DAY
+                maxOf(0, TRIAL_PERIOD_DAYS - elapsedDays)
+            } catch (e: Exception) {
+                0L
             }
         }
     }
     
     fun isActivated(): Boolean = isActivated(context)
-    
-    fun getRemainingDays(): Long {
-        return try {
-            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            val firstInstallTime = prefs.getLong(KEY_FIRST_INSTALL, 0L)
-            if (firstInstallTime == 0L) return TRIAL_PERIOD_DAYS
-            
-            val elapsedDays = (System.currentTimeMillis() - firstInstallTime) / MILLIS_PER_DAY
-            maxOf(0, TRIAL_PERIOD_DAYS - elapsedDays)
-        } catch (e: Exception) {
-            0L
-        }
+    fun getActivationStatus(): ActivationStatus = getActivationStatus(context)
     }
-}
