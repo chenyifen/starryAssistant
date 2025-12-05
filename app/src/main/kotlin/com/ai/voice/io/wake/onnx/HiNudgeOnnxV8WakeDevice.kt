@@ -102,8 +102,8 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         DebugLogger.logWakeWord(TAG, "⚙️ Detection Threshold: $DETECTION_THRESHOLD")
         DebugLogger.logWakeWord(TAG, "🎯 Using V24 Model: Korean wake word model from OpenWakeWord project")
 
-        val modelsAvailable = hasModelsAvailable()
-        DebugLogger.logWakeWord(TAG, "✅ Models available: $modelsAvailable")
+        val modelsAvailable = hasModelsInAssets()
+        DebugLogger.logWakeWord(TAG, "✅ Models available in assets: $modelsAvailable")
 
         _state = if (modelsAvailable) {
             MutableStateFlow(WakeState.NotLoaded)
@@ -112,35 +112,19 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
         }
         state = _state
 
-        // 自动复制和加载模型
+        // 直接从assets加载模型
         scope.launch {
             try {
-                val hasLocal = hasLocalModels()
                 val hasAssets = hasModelsInAssets()
 
-                DebugLogger.logModelManagement(TAG, "Local models: $hasLocal, Assets models: $hasAssets")
+                DebugLogger.logModelManagement(TAG, "Assets models: $hasAssets")
 
-                if (!hasLocal && hasAssets) {
-                    DebugLogger.logModelManagement(TAG, "🔄 Auto-copying HiNudge V8 models from assets")
-                    val copySuccess = copyModelsFromAssets()
-
-                    if (copySuccess) {
-                        DebugLogger.logModelManagement(TAG, "✅ Successfully copied V8 models")
-                        _state.value = WakeState.NotLoaded
-                    } else {
-                        DebugLogger.logWakeWordError(TAG, "❌ Failed to copy V8 models")
-                        _state.value = WakeState.ErrorLoading(IOException("Failed to copy models"))
-                        return@launch
-                    }
-                }
-
-                // 自动加载模型
-                if (hasLocalModels()) {
-                    DebugLogger.logWakeWord(TAG, "🚀 Auto-loading V8 models...")
+                if (hasAssets) {
+                    DebugLogger.logWakeWord(TAG, "🚀 Auto-loading V8 models from assets...")
                     loadModel()
                 } else {
-                    DebugLogger.logWakeWordError(TAG, "❌ No V8 models available to load")
-                    _state.value = WakeState.ErrorLoading(IOException("No models available"))
+                    DebugLogger.logWakeWordError(TAG, "❌ No V8 models available in assets")
+                    _state.value = WakeState.ErrorLoading(IOException("No models available in assets"))
                 }
             } catch (e: Exception) {
                 DebugLogger.logWakeWordError(TAG, "❌ Failed to initialize V8 models", e)
@@ -260,26 +244,36 @@ class HiNudgeOnnxV8WakeDevice @Inject constructor(
     private fun loadModel() {
         try {
             DebugLogger.logWakeWord(TAG, "=".repeat(60))
-            DebugLogger.logWakeWord(TAG, "🔄 Loading HiNudge ONNX V8 models...")
+            DebugLogger.logWakeWord(TAG, "🔄 Loading HiNudge ONNX V8 models from assets...")
             DebugLogger.logWakeWord(TAG, "=".repeat(60))
             _state.value = WakeState.Loading
 
-            if (!hasLocalModels()) {
-                val error = Exception("V8 Model files do not exist")
-                DebugLogger.logWakeWordError(TAG, "❌ Cannot load V8 models", error)
+            if (!hasModelsInAssets()) {
+                val error = Exception("V8 Model files not found in assets")
+                DebugLogger.logWakeWordError(TAG, "❌ Cannot load V8 models from assets", error)
                 _state.value = WakeState.ErrorLoading(error)
                 return
             }
 
             val loadStartTime = System.currentTimeMillis()
             
-            // 🔧 验证模型文件存在性 - 严格按照OpenwakewordforAndroid-main实现（不预加载session）
-            DebugLogger.logWakeWord(TAG, "✅ Mel spectrogram model file verified")
-            DebugLogger.logWakeWord(TAG, "✅ Embedding model file verified")
+            val rootFiles = appContext.assets.list("")
+            val useHyundaiitModels = rootFiles?.contains(HYUNDAIIT_WAKE_FILE) == true
             
-            // 只加载wake word session，因为它需要重用
-            wakeSession = ortEnv.createSession(wakeFile.absolutePath)
-            DebugLogger.logWakeWord(TAG, "✅ Wake word model loaded")
+            val wakeModelPath = if (useHyundaiitModels) {
+                HYUNDAIIT_WAKE_FILE
+            } else {
+                "$ASSET_MODEL_DIR/$WAKE_FILE_NAME"
+            }
+            
+            DebugLogger.logWakeWord(TAG, "📥 Loading wake word model from assets: $wakeModelPath")
+            val wakeModelInputStream = appContext.assets.open(wakeModelPath)
+            val wakeModelBytes = ByteArray(wakeModelInputStream.available())
+            wakeModelInputStream.read(wakeModelBytes)
+            wakeModelInputStream.close()
+            
+            wakeSession = ortEnv.createSession(wakeModelBytes)
+            DebugLogger.logWakeWord(TAG, "✅ Wake word model loaded from assets (${wakeModelBytes.size} bytes)")
             
             // 初始化feature buffer (使用随机数据)
             featureBuffer = getEmbeddings(generateRandomFloatArray(SAMPLE_RATE * 4), 76, 8)

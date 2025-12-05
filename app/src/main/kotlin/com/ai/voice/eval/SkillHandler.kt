@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.dicio.skill.skill.Skill
 import org.dicio.skill.skill.SkillInfo
@@ -51,23 +52,28 @@ class SkillHandler @Inject constructor(
 
     init {
         scope.launch {
-            localeManager.locale.collectLatest { _ ->
-                // 默认启用所有可用技能
-                    val newEnabledSkillsInfo = allSkillInfoList
-                        .filter { skillInfo ->
-                            val available = skillInfo.isAvailable(skillContext)
-                            Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
-                            available
-                        }
+            kotlinx.coroutines.flow.combine(
+                localeManager.locale,
+                localeManager.sentencesLanguage
+            ) { locale, sentencesLang ->
+                Pair(locale, sentencesLang)
+            }.collectLatest { (_, sentencesLang) ->
+                Log.d(TAG, "🔄 语言变化，重新构建技能列表: sentencesLanguage=$sentencesLang")
+                val newEnabledSkillsInfo = allSkillInfoList
+                    .filter { skillInfo ->
+                        val available = skillInfo.isAvailable(skillContext)
+                        Log.d(TAG, "🔍 技能可用性检查: ${skillInfo.id} -> available=$available")
+                        available
+                    }
 
-                    _enabledSkillsInfo.value = newEnabledSkillsInfo
-                    _skillRanker.value = SkillRanker(
-                        newEnabledSkillsInfo.map(::buildSkillFromInfo),
-                        buildSkillFromInfo(fallbackSkillInfoList[0]),
-                    )
+                _enabledSkillsInfo.value = newEnabledSkillsInfo
+                _skillRanker.value = SkillRanker(
+                    newEnabledSkillsInfo.map(::buildSkillFromInfo),
+                    buildSkillFromInfo(fallbackSkillInfoList[0]),
+                )
                     
                 Log.d(TAG, "✅ 技能列表初始化完成，共 ${newEnabledSkillsInfo.size} 个技能")
-                }
+            }
         }
     }
 

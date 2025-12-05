@@ -88,10 +88,15 @@ class SkillRanker(
                 // nothing bad happens since its score cannot be higher than any other float value.
                 var bestSkillSoFar: SkillWithResult<*>? = null
                 for (skill in skills) {
-                    val res = skill.scoreAndWrapResult(ctx, input)
-                    Log.d(TAG, "    📝 ${skill.correspondingSkillInfo.id}: ${res.score.scoreIn01Range()}")
-                    if (bestSkillSoFar == null || res.score.isBetterThan(bestSkillSoFar.score)) {
-                        bestSkillSoFar = res
+                    try {
+                        val res = skill.scoreAndWrapResult(ctx, input)
+                        val scoreValue = res.score.scoreIn01Range()
+                        Log.d(TAG, "    📝 ${skill.correspondingSkillInfo.id}: $scoreValue (raw=${res.score})")
+                        if (bestSkillSoFar == null || res.score.isBetterThan(bestSkillSoFar.score)) {
+                            bestSkillSoFar = res
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "    ❌ ${skill.correspondingSkillInfo.id} 评分异常", e)
                     }
                 }
                 Log.d(TAG, "  🏆 最佳技能: ${bestSkillSoFar?.skill?.correspondingSkillInfo?.id} (${bestSkillSoFar?.score?.scoreIn01Range()})")

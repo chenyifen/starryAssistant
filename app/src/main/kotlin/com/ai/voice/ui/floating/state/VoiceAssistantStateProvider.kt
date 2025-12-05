@@ -250,11 +250,11 @@ class VoiceAssistantStateProvider @Inject constructor(
             val currentUIState = _currentState.uiState
             
             val normalizedTargetState = targetState
-            
-            if (currentUIState == normalizedTargetState) {
-                DebugLogger.logUI(TAG, "⏭️ 状态已经是 $normalizedTargetState，跳过转换")
-                return
-            }
+
+//            if (currentUIState == normalizedTargetState) {
+//                DebugLogger.logUI(TAG, "⏭️ 状态已经是 $normalizedTargetState，跳过转换")
+//                return
+//            }
             
             val reasonLog = if (reason.isNotBlank()) " (原因: $reason)" else ""
             DebugLogger.logUI(TAG, "🔄 [STATE_TRANSITION] $currentUIState → $normalizedTargetState$reasonLog [线程: ${Thread.currentThread().name}]")

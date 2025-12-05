@@ -60,13 +60,16 @@ class LocaleManager @Inject constructor(
     fun updateSentencesLanguageForLocale(locale: Locale) {
         try {
             val supportedLocaleString = LocaleUtils.resolveLocaleString(locale, Sentences.languages)
-            if (_sentencesLanguage.value != supportedLocaleString) {
+            val oldValue = _sentencesLanguage.value
+            if (oldValue != supportedLocaleString) {
                 _sentencesLanguage.value = supportedLocaleString
                 _locale.value = locale
-                Log.d(TAG, "🌐 更新sentencesLanguage: $supportedLocaleString (locale: ${locale.language})")
+                Log.d(TAG, "🌐 更新sentencesLanguage: $oldValue -> $supportedLocaleString (locale: ${locale.language}, availableLanguages=${Sentences.languages})")
+            } else {
+                Log.d(TAG, "🌐 sentencesLanguage无需更新: $supportedLocaleString (locale: ${locale.language})")
             }
         } catch (e: LocaleUtils.UnsupportedLocaleException) {
-            Log.w(TAG, "⚠️ 无法解析locale: ${locale.language}, 保持当前sentencesLanguage: ${_sentencesLanguage.value}")
+            Log.w(TAG, "⚠️ 无法解析locale: ${locale.language}, 保持当前sentencesLanguage: ${_sentencesLanguage.value}, availableLanguages=${Sentences.languages}")
         }
     }
 

@@ -44,24 +44,25 @@ abstract class MultiLanguageStandardRecognizerSkill<T>(
                 val result = data.score(input)
                 val score = result.first.scoreIn01Range().toDouble()
                 
-                if (score > 0.01) { // 只记录有意义的分数
-                    Log.d(TAG, "  [$skillId] 语言${index + 1} 匹配分数: $score")
-                }
+                Log.d(TAG, "  [$skillId] 语言${index + 1} 匹配分数: $score (raw=${result.first})")
                 
                 if (bestResult == null || score > bestScore) {
                     bestResult = result
                     bestScore = score
                 }
             } catch (e: Exception) {
-                Log.w(TAG, "  [$skillId] 语言${index + 1} 匹配失败: ${e.message}")
+                Log.w(TAG, "  [$skillId] 语言${index + 1} 匹配失败: ${e.message}", e)
             }
         }
         
-        if (bestScore > 0.01) { // 只记录有意义的结果
-            Log.d(TAG, "✅ [$skillId] 最佳匹配分数: $bestScore")
+        Log.d(TAG, "✅ [$skillId] 最佳匹配分数: $bestScore")
+        
+        if (bestResult == null) {
+            Log.e(TAG, "❌ [$skillId] 所有语言匹配失败，输入: '$input', 语言数据数量: ${allLanguageData.size}")
+            throw IllegalStateException("No match found for input: $input")
         }
         
-        return bestResult ?: throw IllegalStateException("No match found for input: $input")
+        return bestResult
     }
 }
 

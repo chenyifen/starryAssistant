@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.app.KeyguardManager
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import com.ai.voice.di.WakeDeviceWrapper
@@ -21,6 +22,7 @@ class BootBroadcastReceiver : BroadcastReceiver() {
     @Inject lateinit var wakeDevice: WakeDeviceWrapper
 
     override fun onReceive(context: Context, intent: Intent) {
+        Log.d(TAG, "📥 Received broadcast: ${intent.action}")
         if (BuildConfig.DEBUG) {
             DebugLogger.logIfDebug(TAG, "Got intent ${intent.action}")
         }
@@ -60,40 +62,47 @@ class BootBroadcastReceiver : BroadcastReceiver() {
      * @param source 启动来源（用于日志）
      */
     private fun tryStartWakeService(context: Context, source: String) {
+        DebugLogger.logWakeWord(TAG, "🔍 [$source] Checking conditions to start WakeService...")
+        
         // 检查录音权限
-        if (ContextCompat.checkSelfPermission(context, RECORD_AUDIO) !=
-            PackageManager.PERMISSION_GRANTED) {
-            if (BuildConfig.DEBUG) {
-                DebugLogger.logIfDebug(TAG, "$source: RECORD_AUDIO permission not granted")
-            }
+        val hasPermission = ContextCompat.checkSelfPermission(context, RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        DebugLogger.logWakeWord(TAG, "🔐 [$source] RECORD_AUDIO permission: $hasPermission")
+        
+        if (!hasPermission) {
+            DebugLogger.logWakeWord(TAG, "❌ [$source] RECORD_AUDIO permission not granted, skipping")
             return
         }
         
         // 检查设备是否已解锁（对于BOOT_COMPLETED）
         if (source == "BOOT_COMPLETED") {
             val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as? KeyguardManager
-            if (keyguardManager?.isKeyguardLocked == true) {
-                if (BuildConfig.DEBUG) {
-                    DebugLogger.logIfDebug(TAG, "$source: Device is locked, waiting for USER_PRESENT")
-                }
+            val isLocked = keyguardManager?.isKeyguardLocked == true
+            DebugLogger.logWakeWord(TAG, "🔒 [$source] Device locked: $isLocked")
+            
+            if (isLocked) {
+                DebugLogger.logWakeWord(TAG, "⏳ [$source] Device is locked, waiting for USER_PRESENT")
                 return
             }
         }
         
         // 检查唤醒设备状态
-        when (wakeDevice.state.value) {
+        val wakeState = wakeDevice.state.value
+        DebugLogger.logWakeWord(TAG, "📊 [$source] Wake device state: $wakeState")
+        
+        when (wakeState) {
             WakeState.NotLoaded,
             WakeState.Loading,
             WakeState.Loaded -> {
-                if (BuildConfig.DEBUG) {
-                    DebugLogger.logIfDebug(TAG, "$source: Starting WakeService")
+                DebugLogger.logWakeWord(TAG, "✅ [$source] Starting WakeService")
+                try {
+                    WakeService.start(context)
+                    DebugLogger.logWakeWord(TAG, "✅ [$source] WakeService.start() called successfully")
+                } catch (e: Exception) {
+                    DebugLogger.logWakeWordError(TAG, "❌ [$source] Failed to start WakeService", e)
                 }
-                WakeService.start(context)
             }
             else -> {
-                if (BuildConfig.DEBUG) {
-                    DebugLogger.logIfDebug(TAG, "$source: Wake device state ${wakeDevice.state.value}, skipping WakeService start")
-                }
+                DebugLogger.logWakeWord(TAG, "⏭️ [$source] Wake device state $wakeState, skipping WakeService start")
             }
         }
     }

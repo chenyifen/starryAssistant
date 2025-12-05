@@ -79,7 +79,7 @@ class WakeService : Service() {
     override fun onCreate() {
         super.onCreate()
         val pid = android.os.Process.myPid()
-        Log.d(TAG, "🚀 [PID:$pid] WakeService onCreate")
+        Log.i(TAG, "🚀 [PID:$pid] WakeService onCreate")
         DebugLogger.logWakeWord(TAG, "🚀 WakeService onCreate [PID:$pid]")
         notificationManager = getSystemService(this, NotificationManager::class.java)!!
         
@@ -93,8 +93,13 @@ class WakeService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val pid = android.os.Process.myPid()
+        Log.i(TAG, "📥 [PID:$pid] onStartCommand: action=${intent?.action}, flags=$flags, startId=$startId")
+        DebugLogger.logWakeWord(TAG, "📥 [PID:$pid] onStartCommand: action=${intent?.action}, flags=$flags, startId=$startId")
+        
         // 只有明确的停止指令才停止服务
         if (intent?.action == ACTION_STOP_WAKE_SERVICE) {
+            Log.d(TAG, "🛑 Received explicit stop command")
             DebugLogger.logWakeWord(TAG, "🛑 Received explicit stop command")
             listening.set(false)
             // AutoTest日志：退出唤醒监听状态
@@ -104,23 +109,35 @@ class WakeService : Service() {
 
         try {
             createForegroundNotification()
+        Log.i(TAG, "✅ Foreground notification created")
+        DebugLogger.logWakeWord(TAG, "✅ Foreground notification created")
         } catch (t: Throwable) {
+            Log.e(TAG, "❌ Failed to create foreground notification", t)
+            DebugLogger.logWakeWordError(TAG, "❌ Failed to create foreground notification", t)
             stopWithMessage("could not create WakeService foreground notification", t)
             return START_NOT_STICKY
         }
 
         // 如果已经在监听，直接返回，保持持续监听
         if (listening.get()) {
+            Log.d(TAG, "🔄 Service already listening, maintaining persistent mode")
             DebugLogger.logWakeWord(TAG, "🔄 Service already listening, maintaining persistent mode")
             return START_STICKY
         }
 
-        if (ContextCompat.checkSelfPermission(this, RECORD_AUDIO) != PERMISSION_GRANTED) {
+        val hasPermission = ContextCompat.checkSelfPermission(this, RECORD_AUDIO) == PERMISSION_GRANTED
+        Log.i(TAG, "🔐 RECORD_AUDIO permission: $hasPermission")
+        DebugLogger.logWakeWord(TAG, "🔐 RECORD_AUDIO permission: $hasPermission")
+        
+        if (!hasPermission) {
+            Log.e(TAG, "❌ Microphone permission not granted")
             DebugLogger.logWakeWordError(TAG, "❌ Microphone permission not granted")
             // 不停止服务，等待权限恢复
             return START_STICKY
         }
 
+        Log.i(TAG, "🚀 Starting persistent listening...")
+        DebugLogger.logWakeWord(TAG, "🚀 Starting persistent listening...")
         // 启动持续监听
         startPersistentListening()
         return START_STICKY
@@ -130,6 +147,7 @@ class WakeService : Service() {
      * 启动持续监听模式
      */
     private fun startPersistentListening() {
+        Log.i(TAG, "🚀 Starting persistent wake word listening")
         DebugLogger.logWakeWord(TAG, "🚀 Starting persistent wake word listening")
         listening.set(true)
         
@@ -140,7 +158,10 @@ class WakeService : Service() {
         com.ai.voice.util.AutoTestLogger.logWakeListeningStarted()
         
         // 主动触发模型加载
-        if (wakeDevice.state.value == WakeState.NotLoaded) {
+        val currentState = wakeDevice.state.value
+        Log.d(TAG, "📊 Current wake device state: $currentState")
+        if (currentState == WakeState.NotLoaded) {
+            Log.d(TAG, "🔄 主动触发模型加载...")
             DebugLogger.logWakeWord(TAG, "🔄 主动触发模型加载...")
             wakeDevice.download()
         }
@@ -465,8 +486,11 @@ class WakeService : Service() {
     }
 
     private fun listenForWakeWord() {
+        Log.i(TAG, "🎤 Starting wake word listening...")
+        val initialState = wakeDevice.state.value
+        Log.i(TAG, "📊 Wake device state: $initialState")
         DebugLogger.logWakeWord(TAG, "🎤 Starting wake word listening...")
-        DebugLogger.logWakeWord(TAG, "📊 Wake device state: ${wakeDevice.state.value}")
+        DebugLogger.logWakeWord(TAG, "📊 Wake device state: $initialState")
         
         // 等待模型加载完成，最多等待30秒
         var waitCount = 0
@@ -475,18 +499,22 @@ class WakeService : Service() {
             when (val currentState = wakeDevice.state.value) {
                 WakeState.Loading -> {
                     if (waitCount % 50 == 0) { // 每5秒打印一次状态
+                        Log.d(TAG, "⏳ 等待模型加载完成... (${waitCount * 100}ms)")
                         DebugLogger.logWakeWord(TAG, "⏳ 等待模型加载完成... (${waitCount * 100}ms)")
                     }
                 }
                 WakeState.NotDownloaded -> {
+                    Log.e(TAG, "❌ 模型未下载，尝试下载...")
                     DebugLogger.logWakeWordError(TAG, "❌ 模型未下载，尝试下载...")
                     wakeDevice.download()
                 }
                 is WakeState.ErrorLoading -> {
+                    Log.e(TAG, "❌ 模型加载失败: ${currentState.throwable.message}", currentState.throwable)
                     DebugLogger.logWakeWordError(TAG, "❌ 模型加载失败: ${currentState.throwable.message}")
                     return
                 }
                 WakeState.NotLoaded -> {
+                    Log.d(TAG, "🔄 模型未加载，尝试加载...")
                     DebugLogger.logWakeWord(TAG, "🔄 模型未加载，尝试加载...")
                     wakeDevice.download()
                 }
@@ -497,27 +525,35 @@ class WakeService : Service() {
             waitCount++
             
             if (!listening.get()) {
+                Log.d(TAG, "🛑 在等待模型加载时停止了监听")
                 DebugLogger.logWakeWord(TAG, "🛑 在等待模型加载时停止了监听")
                 return
             }
         }
         
-        if (wakeDevice.state.value != WakeState.Loaded) {
+        val finalState = wakeDevice.state.value
+        if (finalState != WakeState.Loaded) {
+            Log.e(TAG, "❌ 模型加载超时，无法开始监听。最终状态: $finalState")
             DebugLogger.logWakeWordError(TAG, "❌ 模型加载超时，无法开始监听")
             return
         }
         
+        Log.i(TAG, "✅ 模型已加载，开始音频录制...")
+        Log.i(TAG, "📏 Frame size: ${wakeDevice.frameSize()}")
         DebugLogger.logWakeWord(TAG, "✅ 模型已就绪，开始监听")
         DebugLogger.logWakeWord(TAG, "📏 Frame size: ${wakeDevice.frameSize()}")
 
         // 尝试多种AudioRecord配置以提高兼容性
+        Log.i(TAG, "🎤 创建 AudioRecord...")
         val ar = createOptimalAudioRecord() ?: run {
+            Log.e(TAG, "❌ Failed to create any AudioRecord configuration")
             DebugLogger.logWakeWordError(TAG, "❌ Failed to create any AudioRecord configuration")
             return
         }
         
         // 保存当前AudioRecord引用
         currentAudioRecord = ar
+        Log.i(TAG, "🎵 AudioRecord created successfully")
         DebugLogger.logAudioProcessing(TAG, "🎵 AudioRecord created successfully")
 
         var audio = ShortArray(0)
@@ -526,6 +562,8 @@ class WakeService : Service() {
 
         try {
             ar.startRecording()
+            Log.i(TAG, "✅ AudioRecord started successfully")
+            Log.i(TAG, "🔄 Starting audio processing loop...")
             DebugLogger.logWakeWord(TAG, "✅ AudioRecord started successfully")
             DebugLogger.logWakeWord(TAG, "🔄 Starting audio processing loop...")
             
