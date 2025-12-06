@@ -115,5 +115,6 @@
     <string name="activation_status_trial">체험 모드</string>
     <string name="activation_status_trial_with_days">체험: %1$d일 남음</string>
     <string name="activation_status_activated">활성화됨</string>
+    <string name="status_no_permission">권한 없음</string>
     
 </resources>

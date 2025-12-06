@@ -102,3 +102,4 @@ else
 fi
 
 adb logcat | grep $app_pid
+

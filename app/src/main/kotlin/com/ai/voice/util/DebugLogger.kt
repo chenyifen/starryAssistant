@@ -1,43 +1,77 @@
 package com.ai.voice.util
 
 import android.util.Log
-import com.ai.voice.BuildConfig
+import java.lang.reflect.Method
 
-/**
- * 调试日志管理器 - 根据构建类型自动控制日志输出
- * 
- * Debug版本: 输出所有调试日志
- * Release版本: 仅输出错误日志，移除所有调试日志
- */
 object DebugLogger {
     
-    // 🔒 Release版本禁用所有调试日志，仅保留错误日志
-    // Debug版本启用所有日志
-    private val DEBUG_ENABLED = BuildConfig.DEBUG
+    private const val SYSTEM_PROP_DEBUG_LOG = "persist.debug.voice.log"
+    private const val SYSTEM_PROP_WAKE_WORD = "persist.debug.voice.wake_word"
+    private const val SYSTEM_PROP_VOICE_RECOGNITION = "persist.debug.voice.recognition"
+    private const val SYSTEM_PROP_AUDIO_PROCESSING = "persist.debug.voice.audio"
+    private const val SYSTEM_PROP_MODEL_MANAGEMENT = "persist.debug.voice.model"
+    private const val SYSTEM_PROP_STATE_MACHINE = "persist.debug.voice.state"
+    private const val SYSTEM_PROP_UI = "persist.debug.voice.ui"
+    private const val SYSTEM_PROP_ASR_TEXT_FLOW = "persist.debug.voice.asr_text"
+    private const val SYSTEM_PROP_SAVE_AUDIO = "persist.debug.voice.save_audio"
     
-    // 各模块的调试开关（仅在Debug版本启用）
-    private val DEBUG_WAKE_WORD = DEBUG_ENABLED
-    private val DEBUG_VOICE_RECOGNITION = DEBUG_ENABLED
-    private val DEBUG_AUDIO_PROCESSING = DEBUG_ENABLED
-    private val DEBUG_MODEL_MANAGEMENT = DEBUG_ENABLED
-    private val DEBUG_STATE_MACHINE = DEBUG_ENABLED
-    private val DEBUG_UI = DEBUG_ENABLED
+    private var systemPropertiesGet: Method? = null
     
-    // 音频保存调试功能 - Debug版本可启用
-    private val DEBUG_SAVE_AUDIO = DEBUG_ENABLED && false
+    init {
+        try {
+            val clazz = Class.forName("android.os.SystemProperties")
+            systemPropertiesGet = clazz.getMethod("get", String::class.java, String::class.java)
+        } catch (e: Exception) {
+        }
+    }
     
-    // ASR文本显示专用调试开关 - Debug版本可启用
-    private val DEBUG_ASR_TEXT_FLOW = DEBUG_ENABLED
+    private fun getSystemProperty(key: String, defaultValue: String = "false"): String {
+        return try {
+            val result = systemPropertiesGet?.invoke(null, key, defaultValue) as? String ?: defaultValue
+            if (key == SYSTEM_PROP_DEBUG_LOG) {
+                Log.i("DebugLogger", "系统属性 $key = $result (默认值: $defaultValue)")
+            }
+            result
+        } catch (e: Exception) {
+            if (key == SYSTEM_PROP_DEBUG_LOG) {
+                Log.e("DebugLogger", "读取系统属性失败: $key", e)
+            }
+            defaultValue
+        }
+    }
     
-    // 唤醒词相关日志
+    private fun getSystemPropertyBoolean(key: String, defaultValue: Boolean = false): Boolean {
+        val value = getSystemProperty(key, if (defaultValue) "true" else "false")
+        val result = value == "true" || value == "1"
+        if (key == SYSTEM_PROP_DEBUG_LOG) {
+            Log.i("DebugLogger", "系统属性 $key 布尔值 = $result (原始值: $value)")
+        }
+        return result
+    }
+    
+    private fun isDebugEnabled(): Boolean {
+        val enabled = getSystemPropertyBoolean(SYSTEM_PROP_DEBUG_LOG)
+        Log.i("DebugLogger", "Debug日志总开关: $enabled")
+        return enabled
+    }
+    
+    private fun isWakeWordEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_WAKE_WORD) || isDebugEnabled()
+    private fun isVoiceRecognitionEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_VOICE_RECOGNITION) || isDebugEnabled()
+    private fun isAudioProcessingEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_AUDIO_PROCESSING) || isDebugEnabled()
+    private fun isModelManagementEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_MODEL_MANAGEMENT) || isDebugEnabled()
+    private fun isStateMachineEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_STATE_MACHINE) || isDebugEnabled()
+    private fun isUIEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_UI) || isDebugEnabled()
+    private fun isAsrTextFlowEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_ASR_TEXT_FLOW) || isDebugEnabled()
+    private fun isSaveAudioEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_SAVE_AUDIO)
+    
     fun logWakeWord(tag: String?, message: String) {
-        if (DEBUG_WAKE_WORD && tag != null) {
-            Log.d("🔊[$tag]", message)
+        if (isWakeWordEnabled() && tag != null) {
+            Log.i("🔊[$tag]", message)
         }
     }
     
     fun logWakeWordError(tag: String?, message: String, throwable: Throwable? = null) {
-        if (DEBUG_WAKE_WORD && tag != null) {
+        if (isWakeWordEnabled() && tag != null) {
             if (throwable != null) {
                 Log.e("🔊[$tag]", message, throwable)
             } else {
@@ -46,15 +80,14 @@ object DebugLogger {
         }
     }
     
-    // 语音识别相关日志
     fun logVoiceRecognition(tag: String?, message: String) {
-        if (DEBUG_VOICE_RECOGNITION && tag != null) {
-            Log.d("🎤[$tag]", message)
+        if (isVoiceRecognitionEnabled() && tag != null) {
+            Log.i("🎤[$tag]", message)
         }
     }
     
     fun logVoiceRecognitionError(tag: String?, message: String, throwable: Throwable? = null) {
-        if (DEBUG_VOICE_RECOGNITION && tag != null) {
+        if (isVoiceRecognitionEnabled() && tag != null) {
             if (throwable != null) {
                 Log.e("🎤[$tag]", message, throwable)
             } else {
@@ -63,80 +96,68 @@ object DebugLogger {
         }
     }
     
-    // 音频处理相关日志
     fun logAudioProcessing(tag: String?, message: String) {
-        if (DEBUG_AUDIO_PROCESSING && tag != null) {
+        if (isAudioProcessingEnabled() && tag != null) {
             Log.d("🎵[$tag]", message)
         }
     }
     
-    // 音频数据日志
     fun logAudio(tag: String?, message: String) {
-        if (DEBUG_AUDIO_PROCESSING && tag != null) {
+        if (isAudioProcessingEnabled() && tag != null) {
             Log.d("🎵[$tag]", message)
         }
     }
     
-    // 识别结果日志
     fun logRecognition(tag: String?, message: String) {
-        if (DEBUG_VOICE_RECOGNITION && tag != null) {
+        if (isVoiceRecognitionEnabled() && tag != null) {
             Log.d("🎤[$tag]", message)
         }
     }
     
-    // ASR文本流调试 - 专门用于调试ASR文本显示问题
     fun logAsrTextFlow(tag: String?, message: String) {
-        if (DEBUG_ASR_TEXT_FLOW && tag != null) {
+        if (isAsrTextFlowEnabled() && tag != null) {
             Log.i("🔍ASR_FLOW[$tag]", message)
         }
     }
     
-    // 模型管理相关日志
     fun logModelManagement(tag: String?, message: String) {
-        if (DEBUG_MODEL_MANAGEMENT && tag != null) {
+        if (isModelManagementEnabled() && tag != null) {
             Log.d("📦[$tag]", message)
         }
     }
     
-    // 状态机相关日志
     fun logStateMachine(tag: String?, message: String) {
-        if (DEBUG_STATE_MACHINE && tag != null) {
+        if (isStateMachineEnabled() && tag != null) {
             Log.d("⚙️[$tag]", message)
         }
     }
     
-    // 通用调试日志
     fun logDebug(tag: String?, message: String) {
-        if (DEBUG_ENABLED && tag != null) {
-            Log.d("🐛[$tag]", message)
+        if (isDebugEnabled() && tag != null) {
+            Log.i("🐛[$tag]", message)
         }
     }
     
-    // UI相关日志
     fun logUI(tag: String?, message: String) {
-        if (DEBUG_UI && tag != null) {
-            Log.d("🎨[$tag]", message)
+        if (isUIEnabled() && tag != null) {
+            Log.i("🎨[$tag]", message)
         }
     }
     
-    // 性能监控
     fun logPerformance(tag: String?, operation: String, timeMs: Long) {
-        if (DEBUG_ENABLED && tag != null) {
+        if (isDebugEnabled() && tag != null) {
             Log.d("⏱️[$tag]", "$operation took ${timeMs}ms")
         }
     }
     
-    // 音频数据统计
     fun logAudioStats(tag: String?, frameSize: Int, amplitude: Float, threshold: Float) {
-        if (DEBUG_AUDIO_PROCESSING && tag != null) {
+        if (isAudioProcessingEnabled() && tag != null) {
             Log.d("📊[$tag]", "Frame: $frameSize, Amplitude: %.3f, Threshold: %.3f".format(amplitude, threshold))
         }
     }
     
-    // 唤醒词检测结果
     fun logWakeWordDetection(tag: String?, confidence: Float, threshold: Float, detected: Boolean) {
-        if (DEBUG_WAKE_WORD && tag != null) {
-            // 过滤掉置信度为0的日志，减少输出噪音
+        if (isWakeWordEnabled() && tag != null) {
             if (confidence > 0.0f || detected) {
                 val status = if (detected) "✅ DETECTED" else "❌ NOT_DETECTED"
                 Log.d("🎯[$tag]", "$status - Confidence: %.3f, Threshold: %.3f".format(confidence, threshold))
@@ -144,29 +165,16 @@ object DebugLogger {
         }
     }
     
-    /**
-     * 检查音频保存功能是否启用
-     */
-    fun isAudioSaveEnabled(): Boolean = DEBUG_SAVE_AUDIO
+    fun isAudioSaveEnabled(): Boolean = isSaveAudioEnabled()
     
-    /**
-     * Release版本安全的日志输出
-     * Debug版本: 正常输出
-     * Release版本: 不输出（会被ProGuard移除）
-     */
     fun logIfDebug(tag: String, message: String) {
-        if (DEBUG_ENABLED) {
-            Log.d(tag, message)
+        if (isDebugEnabled()) {
+            Log.i(tag, message)
         }
     }
     
-    /**
-     * Release版本安全的警告日志
-     * Debug版本: 正常输出
-     * Release版本: 不输出（会被ProGuard移除）
-     */
     fun logWarnIfDebug(tag: String, message: String) {
-        if (DEBUG_ENABLED) {
+        if (isDebugEnabled()) {
             Log.w(tag, message)
         }
     }

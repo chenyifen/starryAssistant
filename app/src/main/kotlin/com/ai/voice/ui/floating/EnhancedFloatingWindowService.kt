@@ -25,14 +25,20 @@ import kotlinx.coroutines.launch
 import com.ai.voice.io.input.InputEvent
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.eval.InteractionLog
+import com.ai.voice.eval.SkillHandler
+import com.ai.voice.di.SkillContextInternal
 import com.ai.voice.io.wake.WakeService
 import com.ai.voice.io.wake.WakeWordCallback
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.ai.voice.io.wake.WakeWordCallbackManager
+import com.ai.voice.di.WakeDeviceWrapper
+import com.ai.voice.io.wake.WakeState
+import kotlinx.coroutines.flow.collectLatest
 import com.ai.voice.ui.floating.components.DraggableFloatingOrb
 import com.ai.voice.ui.floating.components.LottieAnimationTexts
+import com.ai.voice.ui.floating.components.LottieAnimationState
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.di.SpeechOutputDeviceWrapper
@@ -54,6 +60,9 @@ class EnhancedFloatingWindowService : Service(),
     @Inject lateinit var skillEvaluator: SkillEvaluator
     @Inject lateinit var voiceAssistantStateProvider: VoiceAssistantStateProvider
     @Inject lateinit var speechOutputDevice: SpeechOutputDeviceWrapper
+    @Inject lateinit var wakeDevice: WakeDeviceWrapper
+    @Inject lateinit var skillHandler: com.ai.voice.eval.SkillHandler
+    @Inject lateinit var skillContext: com.ai.voice.di.SkillContextInternal
     
     // 生命周期管理
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -65,11 +74,13 @@ class EnhancedFloatingWindowService : Service(),
     
     // 悬浮球组件
     private var floatingOrb: DraggableFloatingOrb? = null
+    private var permissionCheckJob: kotlinx.coroutines.Job? = null
     
     
     override fun onCreate() {
         super.onCreate()
         DebugLogger.logUI(TAG, "🚀 EnhancedFloatingWindowService created")
+        Log.i(TAG, "🚀 EnhancedFloatingWindowService onCreate")
         
         createForegroundNotification()
         startWakeService()
@@ -95,6 +106,12 @@ class EnhancedFloatingWindowService : Service(),
         // 显示悬浮球
         showFloatingOrb()
         
+        // 监听状态变化并更新UI
+        observeStatusChanges()
+        
+        // 监听UI状态变化，统一更新悬浮球动画
+        observeUIStateChanges()
+        
         // 监听技能评估结果，匹配到技能后停止ASR并设置orb为idle
         observeSkillEvaluation()
         
@@ -102,6 +119,34 @@ class EnhancedFloatingWindowService : Service(),
         AsrHandler.setFinalResultCallback { finalText ->
             if (finalText.isNotBlank()) {
                 DebugLogger.logUI(TAG, "🔍 Final识别完成，触发技能识别: $finalText")
+                Log.i(TAG, "🎯 [Final ASR] 识别文本: \"$finalText\"")
+                
+                serviceScope.launch {
+                    try {
+                        val cleanedText = finalText.trim()
+                            .replace(Regex("\\s+"), " ")
+                            .replace(Regex("[.,。，!！?？;；:：]"), "")
+                            .trim()
+                        
+                        val skillRanker = skillHandler.skillRanker.value
+                        
+                        Log.i(TAG, "🔍 [Final ASR] 开始技能评分，清理后文本: \"$cleanedText\"")
+                        val result = skillRanker.getBest(skillContext, cleanedText)
+                        
+                        if (result != null) {
+                            val score = result.score.scoreIn01Range()
+                            val skillId = result.skill.correspondingSkillInfo.id
+                            Log.i(TAG, "✅ [Final ASR] 技能评分结果: skillId=$skillId, score=$score (raw=${result.score})")
+                            DebugLogger.logUI(TAG, "✅ [Final ASR] 技能评分: $skillId = $score")
+                        } else {
+                            Log.i(TAG, "❌ [Final ASR] 无匹配技能")
+                            DebugLogger.logUI(TAG, "❌ [Final ASR] 无匹配技能")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "❌ [Final ASR] 技能评分异常", e)
+                    }
+                }
+                
                 val finalEvent = InputEvent.Final(listOf(Pair(finalText, 1.0f)))
                 skillEvaluator.processInputEvent(finalEvent)
             }
@@ -144,6 +189,9 @@ class EnhancedFloatingWindowService : Service(),
     
     override fun onDestroy() {
         DebugLogger.logUI(TAG, "🛑 EnhancedFloatingWindowService destroyed")
+        
+        permissionCheckJob?.cancel()
+        permissionCheckJob = null
         
         stopAutoTestServer()
         WakeWordCallbackManager.unregisterCallback(this)
@@ -203,8 +251,92 @@ class EnhancedFloatingWindowService : Service(),
         DebugLogger.logUI(TAG, "🎈 Showing floating orb")
         floatingOrb?.show()
         
-        // 设置为待机状态
-        floatingOrb?.getAnimationStateManager()?.setIdle()
+        // 更新状态显示
+        updateStatusDisplay()
+    }
+    
+    /**
+     * 监听UI状态变化，统一更新悬浮球动画
+     */
+    private fun observeUIStateChanges() {
+        voiceAssistantStateProvider.addListener { state ->
+            Log.i(TAG, "🔄 [UI状态变化] UI状态=${state.uiState}")
+            updateStatusDisplay()
+        }
+    }
+    
+    /**
+     * 监听状态变化（权限、模型、激活状态）
+     */
+    private fun observeStatusChanges() {
+        serviceScope.launch {
+            wakeDevice.state.collectLatest { wakeState ->
+                updateStatusDisplay()
+            }
+        }
+        
+        serviceScope.launch {
+            while (true) {
+                updateStatusDisplay()
+                kotlinx.coroutines.delay(5000)
+            }
+        }
+    }
+    
+    /**
+     * 更新状态显示
+     */
+    private fun updateStatusDisplay() {
+        if (floatingOrb == null) return
+        
+        val hasPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val wakeState = wakeDevice.state.value
+        val activationStatus = ActivationChecker.getActivationStatus(this)
+        val currentUIState = voiceAssistantStateProvider.getCurrentUIState()
+        
+        DebugLogger.logUI(TAG, "📊 状态更新: 权限=$hasPermission, 模型状态=$wakeState, 激活状态=$activationStatus, UI状态=$currentUIState")
+        
+        val statusText = when {
+            !hasPermission -> {
+                DebugLogger.logUI(TAG, "❌ 无权限状态")
+                getString(R.string.status_no_permission)
+            }
+            wakeState is WakeState.ErrorLoading -> {
+                DebugLogger.logUI(TAG, "❌ 模型加载失败: ${wakeState.throwable.message}")
+                getString(R.string.status_no_permission)
+            }
+            wakeState == WakeState.NotLoaded -> {
+                DebugLogger.logUI(TAG, "❌ 模型未加载")
+                getString(R.string.status_no_permission)
+            }
+            activationStatus == ActivationChecker.ActivationStatus.NOT_ACTIVATED -> {
+                DebugLogger.logUI(TAG, "⚠️ 未激活状态")
+                getString(R.string.activation_status_not_activated)
+            }
+            activationStatus == ActivationChecker.ActivationStatus.TRIAL -> {
+                val remainingDays = ActivationChecker.getRemainingDays(this)
+                DebugLogger.logUI(TAG, "⏳ 试用模式: 剩余 $remainingDays 天")
+                getString(R.string.activation_status_trial_with_days, remainingDays)
+            }
+            activationStatus == ActivationChecker.ActivationStatus.ACTIVATED -> {
+                DebugLogger.logUI(TAG, "✅ 已激活状态")
+                getString(R.string.activation_status_activated)
+            }
+            else -> LottieAnimationTexts.DEFAULT
+        }
+        
+        Log.i(TAG, "📊 [状态显示] UI状态=$currentUIState, 状态文本=\"$statusText\"")
+        
+        val stateManager = floatingOrb?.getAnimationStateManager()
+        when (currentUIState) {
+            VoiceAssistantUIState.IDLE -> {
+                stateManager?.setIdle(statusText)
+            }
+            VoiceAssistantUIState.LISTENING -> {
+                stateManager?.setListening("正在听取...")
+                stateManager?.setDisplayText(statusText)
+            }
+        }
     }
     
     /**
@@ -220,41 +352,26 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun handleOrbClick() {
         DebugLogger.logUI(TAG, "👆 Orb clicked")
-        floatingOrb?.getAnimationStateManager()?.setLoading()
-        handleTextDisplayMode()
+        serviceScope.launch {
+            voiceAssistantStateProvider.transitionToState(
+                VoiceAssistantUIState.LISTENING,
+                reason = "用户点击悬浮球"
+            )
+        }
     }
-    
-    /**
-     * 处理文本显示模式 (替代半屏展开)
-     */
-    private fun handleTextDisplayMode() {
-        DebugLogger.logUI(TAG, "📝 Switching to text display mode")
-        
-        // 设置激活状态但不隐藏悬浮球
-        floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.READY)
-        
-        // 启动语音识别
-        startVoiceRecognition()
-    }
+
     
     private fun startVoiceRecognition() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
             return
         }
         
-        // ✅ 设置静音超时回调：使用统一的状态转换方法
         AsrHandler.setSilenceTimeoutCallback {
             Log.d(TAG, "🔔 [SILENCE_TIMEOUT] AsrHandler静音超时回调触发")
             
-            // 更新悬浮球动画
-            floatingOrb?.getAnimationStateManager()?.setIdle()
-            
-            // 🔥 先清空ASR和TTS文本
             voiceAssistantStateProvider.setASRText("")
             voiceAssistantStateProvider.setTTSText("")
             
-            // 🔥 使用统一的状态转换方法，确保功能状态同步
             serviceScope.launch {
                 voiceAssistantStateProvider.transitionToState(
                     VoiceAssistantUIState.IDLE,
@@ -262,32 +379,47 @@ class EnhancedFloatingWindowService : Service(),
                 )
             }
             
+            updateStatusDisplay()
+            
             Log.d(TAG, "✅ [SILENCE_TIMEOUT] 完整状态恢复完成")
         }
         
-        if (AsrHandler.start(this)) {
-            floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.LISTENING)
-        } else {
-            floatingOrb?.getAnimationStateManager()?.setActive(LottieAnimationTexts.ERROR)
+        serviceScope.launch {
+            voiceAssistantStateProvider.transitionToState(
+                VoiceAssistantUIState.LISTENING,
+                reason = "启动语音识别"
+            )
         }
     }
     
     override fun onWakeWordDetected(confidence: Float, wakeWord: String) {
+        DebugLogger.logUI(TAG, "🎯 唤醒词检测成功: confidence=$confidence, wakeWord=$wakeWord")
+        Log.i(TAG, "🎯 唤醒词检测成功: confidence=$confidence, wakeWord=$wakeWord")
         showFloatingOrb()
         
         when (ActivationChecker.getActivationStatus(this)) {
             ActivationChecker.ActivationStatus.NOT_ACTIVATED -> {
-                floatingOrb?.getAnimationStateManager()?.setActive(getString(R.string.activation_status_not_activated))
+                updateStatusDisplay()
                 return
             }
-            ActivationChecker.ActivationStatus.TRIAL -> {
-                val remainingDays = ActivationChecker.getRemainingDays(this)
-                val statusText = getString(R.string.activation_status_trial_with_days, remainingDays)
-                floatingOrb?.getAnimationStateManager()?.triggerWakeWord(statusText)
+            ActivationChecker.ActivationStatus.TRIAL,
+            ActivationChecker.ActivationStatus.ACTIVATED -> {
+                serviceScope.launch {
+                    voiceAssistantStateProvider.transitionToState(
+                        VoiceAssistantUIState.LISTENING,
+                        reason = "唤醒词检测: $wakeWord"
+                    )
+                }
             }
-            ActivationChecker.ActivationStatus.ACTIVATED -> { }
         }
+
         startVoiceRecognition()
+        serviceScope.launch {
+            voiceAssistantStateProvider.transitionToState(
+                VoiceAssistantUIState.LISTENING,
+                reason = "唤醒词检测: $wakeWord"
+            )
+        }
     }
     
     override fun onWakeWordListeningStarted() {}
@@ -295,7 +427,16 @@ class EnhancedFloatingWindowService : Service(),
     override fun onWakeWordError(error: Throwable) {}
     
     private fun startWakeService() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) return
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            permissionCheckJob?.cancel()
+            permissionCheckJob = serviceScope.launch {
+                while (ContextCompat.checkSelfPermission(this@EnhancedFloatingWindowService, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                    kotlinx.coroutines.delay(5000)
+                }
+                WakeService.start(this@EnhancedFloatingWindowService)
+            }
+            return
+        }
         WakeService.start(this)
     }
     

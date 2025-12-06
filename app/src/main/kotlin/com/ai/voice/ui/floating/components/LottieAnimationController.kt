@@ -30,21 +30,15 @@ fun LottieAnimationController(
         composition = composition,
         iterations = when (animationState) {
             LottieAnimationState.IDLE -> LottieConstants.IterateForever
-            LottieAnimationState.LOADING -> LottieConstants.IterateForever
-            LottieAnimationState.ACTIVE -> 1
-            LottieAnimationState.WAKE_WORD -> 1
+            LottieAnimationState.LISTENING -> LottieConstants.IterateForever
         },
         speed = when (animationState) {
             LottieAnimationState.IDLE -> 0.5f
-            LottieAnimationState.LOADING -> 1.0f
-            LottieAnimationState.ACTIVE -> 1.0f
-            LottieAnimationState.WAKE_WORD -> 1.5f
+            LottieAnimationState.LISTENING -> 1.0f
         },
         clipSpec = when (animationState) {
             LottieAnimationState.IDLE -> LottieClipSpec.Frame(0, 116)
-            LottieAnimationState.LOADING -> LottieClipSpec.Frame(116, 168)
-            LottieAnimationState.ACTIVE -> LottieClipSpec.Frame(168, 360)
-            LottieAnimationState.WAKE_WORD -> LottieClipSpec.Frame(168, 360)
+            LottieAnimationState.LISTENING -> LottieClipSpec.Frame(168, 360)
         }
     )
     
@@ -83,9 +77,7 @@ fun LottieAnimationController(
 
 enum class LottieAnimationState {
     IDLE,
-    LOADING,
-    ACTIVE,
-    WAKE_WORD
+    LISTENING
 }
 
 class LottieAnimationStateManager {
@@ -95,22 +87,14 @@ class LottieAnimationStateManager {
     private val _displayText = mutableStateOf("I'm here for you!")
     val displayText: State<String> = _displayText
     
-    fun setIdle() {
+    fun setIdle(text: String = "I'm here for you!") {
+        _displayText.value = text
         _currentState.value = LottieAnimationState.IDLE
     }
     
-    fun setLoading() {
-        _currentState.value = LottieAnimationState.LOADING
-    }
-    
-    fun setActive(text: String = "I'm here for you!") {
+    fun setListening(text: String = "正在听取...") {
         _displayText.value = text
-        _currentState.value = LottieAnimationState.ACTIVE
-    }
-    
-    fun triggerWakeWord(text: String = "正在听取...") {
-        _displayText.value = text
-        _currentState.value = LottieAnimationState.WAKE_WORD
+        _currentState.value = LottieAnimationState.LISTENING
     }
     
     fun setDisplayText(text: String) {

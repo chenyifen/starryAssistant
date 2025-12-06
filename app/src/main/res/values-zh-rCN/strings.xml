@@ -271,5 +271,6 @@
     <string name="activation_status_trial">试用模式</string>
     <string name="activation_status_trial_with_days">试用：剩余%1$d天</string>
     <string name="activation_status_activated">已激活</string>
+    <string name="status_no_permission">无权限</string>
     
 </resources>

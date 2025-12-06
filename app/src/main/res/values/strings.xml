@@ -305,5 +305,6 @@
     <string name="activation_status_trial">Trial Mode</string>
     <string name="activation_status_trial_with_days">Trial: %1$d days left</string>
     <string name="activation_status_activated">Activated</string>
+    <string name="status_no_permission">No Permission</string>
     
 </resources>

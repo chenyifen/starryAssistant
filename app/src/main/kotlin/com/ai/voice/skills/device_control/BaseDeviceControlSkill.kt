@@ -131,7 +131,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 HDMI 1")
             SourceHelper.getInstance().switchToHDMI1()
-            val response = getLocalizedResponse(ctx, "HDMI 1로 전환 중입니다", "Switching to HDMI 1")
+            val response = getLocalizedResponse(ctx, "에이치디엠아이 일 연결해줘", "Switching to HDMI 1")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
@@ -144,7 +144,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 HDMI 2")
             SourceHelper.getInstance().switchToHDMI2()
-            val response = getLocalizedResponse(ctx, "HDMI 2로 전환 중입니다", "Switching to HDMI 2")
+            val response = getLocalizedResponse(ctx, "에이치디엠아이 투 연결해줘", "Switching to HDMI 2")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
@@ -157,7 +157,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到 DP 端口")
             SourceHelper.getInstance().switchToDP()
-            val response = getLocalizedResponse(ctx, "DP 포트로 전환 중입니다", "Switching to DP port")
+            val response = getLocalizedResponse(ctx, "디피포트 연결해줘", "Switching to DP port")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
@@ -170,7 +170,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到前面板 HDMI")
             SourceHelper.getInstance().switchToFrontHDMI()
-            val response = getLocalizedResponse(ctx, "전면 패널 HDMI로 전환 중입니다", "Switching to front panel HDMI")
+            val response = getLocalizedResponse(ctx, "전면 에이치디엠아이 연결해줘", "Switching to front panel HDMI")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
@@ -183,7 +183,7 @@ abstract class BaseDeviceControlSkill {
         try {
             Log.d(TAG, "切换到前面板 USB-C")
             SourceHelper.getInstance().switchToFrontUSBC()
-            val response = getLocalizedResponse(ctx, "전면 패널 USB-C로 전환 중입니다", "Switching to front panel USB-C")
+            val response = getLocalizedResponse(ctx, "유에스비 씨 연결해줘", "Switching to front panel USB-C")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "切换失败", e)
@@ -210,11 +210,11 @@ abstract class BaseDeviceControlSkill {
     fun executeGoogle(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().gotoGoogle(ctx.android)
-            val response = getLocalizedResponse(ctx, "Google을 여는 중입니다", "Opening Google")
+            val response = getLocalizedResponse(ctx, "구글 연결해줘", "Opening Google")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开Google失败", e)
-            val errorResponse = getLocalizedResponse(ctx, "Google 열기 실패", "Failed to open Google")
+            val errorResponse = getLocalizedResponse(ctx, "구글 열기 실패", "Failed to open Google")
             return StringOutput(errorResponse)
         }
     }
@@ -234,11 +234,11 @@ abstract class BaseDeviceControlSkill {
     fun executePlayStore(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openPlayStore(ctx.android)
-            val response = getLocalizedResponse(ctx, "Play 스토어를 여는 중입니다", "Opening Play Store")
+            val response = getLocalizedResponse(ctx, "플레이스토어 실행해줘", "Opening Play Store")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开Play商店失败", e)
-            val errorResponse = getLocalizedResponse(ctx, "Play 스토어 열기 실패", "Failed to open Play Store")
+            val errorResponse = getLocalizedResponse(ctx, "플레이스토어 열기 실패", "Failed to open Play Store")
             return StringOutput(errorResponse)
         }
     }
@@ -246,11 +246,11 @@ abstract class BaseDeviceControlSkill {
     fun executeYoutube(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openYoutube(ctx.android)
-            val response = getLocalizedResponse(ctx, "YouTube를 여는 중입니다", "Opening YouTube")
+            val response = getLocalizedResponse(ctx, "유튜브 실행해줘", "Opening YouTube")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开YouTube失败", e)
-            val errorResponse = getLocalizedResponse(ctx, "YouTube 열기 실패", "Failed to open YouTube")
+            val errorResponse = getLocalizedResponse(ctx, "유튜브 열기 실패", "Failed to open YouTube")
             return StringOutput(errorResponse)
         }
     }
@@ -294,11 +294,11 @@ abstract class BaseDeviceControlSkill {
     fun executeEshare(ctx: SkillContext): SkillOutput {
         try {
             SystemHelper.getInstance().openEShare(ctx.android)
-            val response = getLocalizedResponse(ctx, "E-Share를 여는 중입니다", "Opening E-Share")
+            val response = getLocalizedResponse(ctx, "이쉐어 실행해줘", "Opening E-Share")
             return StringOutput(response)
         } catch (e: Exception) {
             Log.e(TAG, "打开E-Share失败", e)
-            val errorResponse = getLocalizedResponse(ctx, "E-Share 열기 실패", "Failed to open E-Share")
+            val errorResponse = getLocalizedResponse(ctx, "이쉐어 열기 실패", "Failed to open E-Share")
             return StringOutput(errorResponse)
         }
     }

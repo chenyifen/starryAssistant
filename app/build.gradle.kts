@@ -123,8 +123,8 @@ android {
     productFlavors {
         create("hyit") {
             dimension = "channel"
-//            signingConfig = signingConfigs.getByName("release")
-            signingConfig = signingConfigs.getByName("510en")
+            signingConfig = signingConfigs.getByName("release")
+//            signingConfig = signingConfigs.getByName("510en")
         }
         create("home") {
             dimension = "channel"

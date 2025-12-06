@@ -79,12 +79,9 @@ object AsrHandler {
      * 重置VAD静音超时时间（在每次唤醒后调用）
      */
     fun resetSilenceTimeout() {
-        val currentTime = System.currentTimeMillis()
-        val previousTime = lastSpeechDetectedTime
-        lastSpeechDetectedTime = currentTime
-        lastAudioReceivedTime = currentTime
+        lastSpeechDetectedTime = System.currentTimeMillis()
+        lastAudioReceivedTime = System.currentTimeMillis()
         audioDataCount = 0
-        Log.d(TAG, "🔄 重置VAD静音超时时间 - timestamp=$currentTime, elapsed_since_last=${currentTime - previousTime}ms")
         AutoTestLogger.logSilenceTimeoutReset()
     }
 
@@ -119,13 +116,8 @@ object AsrHandler {
                 if (_recognizer != null) {
                     return
                 }
-                Log.i(TAG, "Initializing sherpa-onnx offline recognizer")
-                // Please change getOfflineModelConfig() to add new models
-                // See https://k2-fsa.github.io/sherpa/onnx/pretrained_models/index.html
-                // for a list of available models
                 val asrModelType = 15
                 val asrRuleFsts: String? = null
-                Log.i(TAG, "Select model type $asrModelType for ASR")
 
                 val useHr = false
                 val hr = com.k2fsa.sherpa.onnx.HomophoneReplacerConfig(
@@ -166,8 +158,6 @@ object AsrHandler {
                     assetManager = assetManager,
                     config = config,
                 )
-
-                Log.i(TAG, "sherpa-onnx offline recognizer initialized")
             }
         }
 
@@ -177,7 +167,6 @@ object AsrHandler {
                     return
                 }
                 val type = 0
-                Log.i(TAG, "Select VAD model type $type")
                 val config = getVadModelConfig(type)
                 if (config == null) {
                     Log.e(TAG, "❌ getVadModelConfig(type=$type) 返回 null")
@@ -188,7 +177,6 @@ object AsrHandler {
                     assetManager = assetManager,
                     config = config,
                 )
-                Log.i(TAG, "sherpa-onnx vad initialized")
             }
         }
     }
@@ -213,16 +201,6 @@ object AsrHandler {
      * @return 是否成功初始化
      */
     fun initialize(context: Context): Boolean {
-        Log.i(TAG, "🚀 开始初始化 AsrHandler (应用启动时)...")
-        
-        // 🔒 检查激活状态（15天试用期）TODO
-//        val isActivated = ActivationChecker.isActivated(context)
-//        if (!isActivated) {
-//            Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法初始化")
-//            Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
-//            return false
-//        }
-        
         return try {
             val application = context.applicationContext as? Application
             if (application == null) {
@@ -230,19 +208,11 @@ object AsrHandler {
                 return false
             }
             
-            Log.i(TAG, "🔧 开始初始化 recognizer...")
             SimulateStreamingAsr.initOfflineRecognizer(context.assets, application)
-            Log.i(TAG, "✅ recognizer 初始化成功")
-            
-            Log.i(TAG, "🔧 开始初始化 VAD...")
             SimulateStreamingAsr.initVad(context.assets)
-            Log.i(TAG, "✅ VAD 初始化成功")
-            
-            Log.i(TAG, "✅ AsrHandler 初始化完成")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ AsrHandler 初始化失败: ${e.message}", e)
-            e.printStackTrace()
             false
         }
     }
@@ -256,23 +226,15 @@ object AsrHandler {
     @Synchronized
     fun start(context: Context): Boolean {
         if (isStarted) {
-            Log.d(TAG, "⏭️ AsrHandler 已经在运行中")
             return true
         }
-        // 🔒 检查激活状态（15天试用期）
+        
         val isActivated = ActivationChecker.isActivated(context)
         if (!isActivated) {
-            Log.e(TAG, "❌ 应用试用期已过期，AsrHandler无法启动")
-            Log.e(TAG, "💡 应用安装后15天试用期已到期，请激活应用")
+            Log.e(TAG, "❌ 应用试用期已过期")
             return false
         }
         
-        if (isStarted) {
-            Log.w(TAG, "⚠️ ASR 已在运行中")
-            return false
-        }
-        
-        // 检查权限
         if (ActivityCompat.checkSelfPermission(
                 context,
                 android.Manifest.permission.RECORD_AUDIO
@@ -281,29 +243,19 @@ object AsrHandler {
             Log.e(TAG, "❌ 没有录音权限")
             return false
         }
-        Log.d(TAG, "✅ 录音权限检查通过")
         
-        // 检查 recognizer 和 vad 是否已初始化
         if (!SimulateStreamingAsr.isRecognizerInitialized() || !SimulateStreamingAsr.isVadInitialized()) {
-            Log.e(TAG, "❌ recognizer 或 VAD 未初始化，请先调用 AsrHandler.initialize()")
-            Log.e(TAG, "💡 建议在 Application.onCreate() 中调用 AsrHandler.initialize(this)")
+            Log.e(TAG, "❌ recognizer 或 VAD 未初始化")
             return false
         }
-        Log.d(TAG, "✅ recognizer 和 VAD 已初始化，可以直接使用")
         
-        // 保存 context 用于静音超时后调用 stop
         contextForStop = context
-        
-        // 🔥 重置静音检测时间（确保重新启动时不会立即触发静音超时）
         resetSilenceTimeout()
-        
         isStarted = true
         lastAudioReceivedTime = System.currentTimeMillis()
         audioDataCount = 0
-        Log.i(TAG, "✅ 启动 doAsr...")
         AutoTestLogger.logAsrListeningStarted()
         doAsr(context)
-        Log.i(TAG, "✅ AsrHandler 启动成功")
         return true
     }
     
@@ -315,7 +267,6 @@ object AsrHandler {
     @Synchronized
     fun stop(context: Context) {
         if (!isStarted) {
-            Log.d(TAG, "⏭️ AsrHandler 已经停止")
             return
         }
         isStarted = false
@@ -343,7 +294,7 @@ object AsrHandler {
                     android.Manifest.permission.RECORD_AUDIO
                 ) != PackageManager.PERMISSION_GRANTED
             ) {
-                Log.i(TAG, "Recording is not allowed")
+                return
             } else {
                 // recording is allowed
                 val audioSource = MediaRecorder.AudioSource.MIC
@@ -371,8 +322,7 @@ object AsrHandler {
                 vad.reset()
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    Log.i(TAG, "processing samples")
-                    val interval = 0.1 // i.e., 100 ms
+                    val interval = 0.1
                     val bufferSize = (interval * SAMPLE_RATE_IN_HZ).toInt() // in samples
                     val buffer = ShortArray(bufferSize)
 
@@ -453,13 +403,9 @@ object AsrHandler {
                             if (buffer.size > maxBufferSize) {
                                 val removeCount = buffer.size - maxBufferSize
                                 if (offset >= removeCount) {
-                                    // 移除已处理的数据
                                     buffer = ArrayList(buffer.subList(removeCount, buffer.size))
                                     offset -= removeCount
-                                    Log.w(TAG, "Buffer cleanup: removed $removeCount samples, new size: ${buffer.size}")
                                 } else {
-                                    // 如果 offset 还没处理那么多数据，强制清理并重置
-                                    Log.w(TAG, "Buffer too large, forcing reset")
                                     buffer = arrayListOf()
                                     offset = 0
                                     isSpeechStarted = false
@@ -486,9 +432,7 @@ object AsrHandler {
                                     isSpeechStarted = true
                                     startTime = System.currentTimeMillis()
                                     lastVadActivityTime = System.currentTimeMillis()
-                                    // VAD 检测到语音，更新最后语音检测时间
                                     lastSpeechDetectedTime = System.currentTimeMillis()
-                                    Log.d(TAG, "🗣️ VAD 检测到语音开始，重置静音计时 - timestamp=$lastSpeechDetectedTime")
                                 } else if (isSpeechStarted && vadDetected) {
                                     // 持续检测到语音，更新最后语音检测时间
                                     lastSpeechDetectedTime = System.currentTimeMillis()
@@ -498,7 +442,6 @@ object AsrHandler {
                                 val currentTime = System.currentTimeMillis()
                                 val silenceDuration = currentTime - lastSpeechDetectedTime
                                 if (silenceDuration > SILENCE_TIMEOUT_MS && isStarted) {
-                                    Log.i(TAG, "⏰ 检测到连续静音超过${SILENCE_TIMEOUT_MS}ms（基于VAD） - duration=${silenceDuration}ms, 停止 AsrHandler")
                                     AutoTestLogger.logSilenceTimeoutTriggered(silenceDuration)
                                     // 先调用回调更新 UI 状态
                                     silenceTimeoutCallback?.invoke()
@@ -509,26 +452,20 @@ object AsrHandler {
                                     break
                                 }
                                 
-                                // 检查是否有音频数据但ASR未在处理
                                 val timeSinceLastAudio = currentTime - lastAudioReceivedTime
                                 if (isStarted && timeSinceLastAudio > 5000) {
-                                    Log.w(TAG, "⚠️ ASR isStarted=true但${timeSinceLastAudio}ms未接收到音频数据")
                                     AutoTestLogger.logAsrStartedButNoAudio(timeSinceLastAudio)
                                 }
                             }
                             
-                            // 定期清理已处理的数据，避免 buffer 过大
                             if (offset > cleanupThreshold && buffer.size > cleanupThreshold) {
                                 val removeCount = cleanupThreshold
                                 buffer = ArrayList(buffer.subList(removeCount, buffer.size))
                                 offset -= removeCount
-                                Log.d(TAG, "Periodic cleanup: removed $removeCount samples")
                             }
                             
-                            // 超时保护：如果长时间没有检测到语音结束，清空 buffer
                             val timeSinceLastActivity = System.currentTimeMillis() - lastVadActivityTime
                             if (isSpeechStarted && timeSinceLastActivity > timeoutMs) {
-                                Log.w(TAG, "⏱️ VAD超时 - ${timeSinceLastActivity}ms未检测到语音结束，重置buffer (buffer_size=${buffer.size}, offset=$offset)")
                                 buffer = arrayListOf()
                                 offset = 0
                                 isSpeechStarted = false
@@ -598,9 +535,7 @@ object AsrHandler {
                                 // 🔥 更新lastText为Final识别结果
                                 lastText = result.text
                                 
-                                // 🔥 Final识别完成，触发技能识别
                                 if (result.text.isNotBlank()) {
-                                    Log.d(TAG, "🎯 Final识别完成，触发技能识别: ${result.text}")
                                     finalResultCallback?.invoke(result.text)
                                 }
                             }

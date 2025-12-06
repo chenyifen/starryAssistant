@@ -6,13 +6,17 @@ import android.view.View
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -243,21 +247,30 @@ class DraggableFloatingOrb(
         }
     }
     
+    fun updateStatusText(statusText: String) {
+        val currentState = animationStateManager.currentState.value
+        when (currentState) {
+            LottieAnimationState.IDLE -> {
+                animationStateManager.setIdle(statusText)
+            }
+            LottieAnimationState.LISTENING -> {
+                animationStateManager.setDisplayText(statusText)
+            }
+        }
+    }
+    
     private fun updateUIState(state: VoiceAssistantFullState) {
         lastUiState = state.uiState
         lastDisplayText = state.displayText
         
-        // 根据UI状态更新动画 - 中央状态文本
+        val currentDisplayText = animationStateManager.displayText.value
+        
         when (state.uiState) {
             VoiceAssistantUIState.IDLE -> {
-                animationStateManager.setIdle()
+                animationStateManager.setIdle(currentDisplayText)
             }
             VoiceAssistantUIState.LISTENING -> {
-                animationStateManager.setActive("LISTENING")
-            }
-            else -> {
-                // 其他未知状态，默认显示 LISTENING
-                animationStateManager.setActive("LISTENING")
+                animationStateManager.setListening("正在听取...")
             }
         }
     }
@@ -274,32 +287,65 @@ private fun FloatingOrbContent(
     val shouldShowText = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
     val animationSize = FloatingOrbConfig.animationSizeDp
     val animationSizeInt = FloatingOrbConfig.animationSizeInt
+    val shouldShowStatusText = displayText.isNotEmpty() && displayText != "I'm here for you!"
 
-    Row(
+    Column(
         modifier = Modifier
             .wrapContentSize()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier.size(animationSize),
-            contentAlignment = Alignment.Center
-        ) {
-            LottieAnimationController(
-                animationState = animationState,
-                displayText = displayText,
-                size = animationSizeInt
-            )
-        }
-        
-        if (shouldShowText) {
-            FloatingTextDisplay(
-                userText = currentAsrText,
-                aiText = currentTtsText,
-                isVisible = true,
+        if (shouldShowStatusText) {
+            StatusTextDisplay(
+                text = displayText,
                 modifier = Modifier.wrapContentWidth()
             )
         }
+        
+        Row(
+            modifier = Modifier.wrapContentSize(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(animationSize),
+                contentAlignment = Alignment.Center
+            ) {
+                LottieAnimationController(
+                    animationState = animationState,
+                    displayText = displayText,
+                    size = animationSizeInt
+                )
+            }
+            
+            if (shouldShowText) {
+                FloatingTextDisplay(
+                    userText = currentAsrText,
+                    aiText = currentTtsText,
+                    isVisible = true,
+                    modifier = Modifier.wrapContentWidth()
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun StatusTextDisplay(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Text(
+        text = text,
+        modifier = modifier
+            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+            .background(Color(0xFF424242).copy(alpha = 0.85f))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        color = Color.White,
+        fontSize = 12.sp,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+        maxLines = 1,
+        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+    )
 }
