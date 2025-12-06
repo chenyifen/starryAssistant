@@ -7,8 +7,20 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_DIR"
 
+if [ -z "$JAVA_HOME" ] || [ ! -d "$JAVA_HOME" ]; then
+    if command -v /usr/libexec/java_home &> /dev/null; then
+        export JAVA_HOME=$(/usr/libexec/java_home 2>/dev/null || /usr/libexec/java_home -v 11 2>/dev/null || /usr/libexec/java_home -v 17 2>/dev/null || echo "")
+    fi
+    
+    if [ -z "$JAVA_HOME" ] || [ ! -d "$JAVA_HOME" ]; then
+        echo "警告: 无法自动检测 JAVA_HOME，请手动设置"
+        echo "例如: export JAVA_HOME=\$(/usr/libexec/java_home -v 11)"
+    fi
+fi
+
 echo "=========================================="
 echo "开始编译 APK (assemblehyitRelease)"
+echo "JAVA_HOME: ${JAVA_HOME:-未设置}"
 echo "=========================================="
 
 ./gradlew clean assemblehyitRelease
