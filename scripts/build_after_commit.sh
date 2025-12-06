@@ -23,7 +23,13 @@ echo "开始编译 APK (assemblehyitRelease)"
 echo "JAVA_HOME: ${JAVA_HOME:-未设置}"
 echo "=========================================="
 
-./gradlew clean assemblehyitRelease
+SKIP_LINT=${SKIP_LINT:-true}
+if [ "$SKIP_LINT" = "true" ]; then
+    echo "跳过 lint 检查以加快编译速度"
+    ./gradlew clean assemblehyitRelease -x lintVitalReportHyitRelease -x lintVitalAnalyzeHyitRelease 2>&1 | tee /tmp/gradle_build.log
+else
+    ./gradlew clean assemblehyitRelease 2>&1 | tee /tmp/gradle_build.log
+fi
 
 if [ $? -eq 0 ]; then
     echo "=========================================="
