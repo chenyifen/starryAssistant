@@ -14,7 +14,6 @@ import com.ai.voice.util.DebugLogger
 @Composable
 fun LottieAnimationController(
     animationState: LottieAnimationState,
-    displayText: String = "",
     modifier: Modifier = Modifier,
     size: Int = 80
 ) {
