@@ -136,76 +136,12 @@ class VoiceAssistantStateProvider @Inject constructor(
         // 注册唤醒词回调
         WakeWordCallbackManager.registerCallback(this)
         
-        // 监听SkillEvaluator状态变化
-        scope.launch {
-            skillEvaluator.state.collect { interactionLog ->
-                handleSkillEvaluatorState(interactionLog)
-            }
-        }
-        
         // 初始化时启动WakeService
         scope.launch {
             transitionToState(VoiceAssistantUIState.IDLE, reason = "初始化")
         }
     }
 
-    
-    /**
-     * 处理SkillEvaluator状态变化 - 仅处理文本，不管理状态
-     */
-    private fun handleSkillEvaluatorState(interactionLog: InteractionLog) {
-        val lastInteraction = interactionLog.interactions.lastOrNull()
-        val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
-        
-        if (lastAnswer != null) {
-            DebugLogger.logUI(TAG, "🎯 New skill result available")
-            
-            // 🆕 检查是否是fallback技能（识别不出具体命令）
-            val skillInfo = lastInteraction?.skill
-            val isFallbackSkill = skillInfo?.id == "text"
-            
-            if (isFallbackSkill) {
-                DebugLogger.logUI(TAG, "⏭️ 识别不出具体命令（fallback），显示TTS文本但不播放")
-//                val fallbackText = "잘 이해하지 못했습니다. 다시 말씀해주시겠어요?"
-//                updateState(ttsText = fallbackText)
-                return
-            }
-            updateState(uiState = VoiceAssistantUIState.IDLE)
-            
-            // 将技能输出转换为SimpleResult
-            val simpleResult = convertSkillOutputToSimpleResult(lastAnswer)
-            updateState(result = simpleResult)
-            
-            // 获取TTS文本
-            try {
-                val speechOutput = lastAnswer.getSpeechOutput(skillContext)
-                DebugLogger.logUI(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
-                
-                if (speechOutput.isNotBlank()) {
-                    notifyStateChange("skill_executed", mapOf(
-                        "skillId" to (skillInfo?.id ?: "unknown"),
-                        "ttsText" to speechOutput,
-                        "asrText" to _currentState.asrText
-                    ))
-                    setupTTSCompletionCallback()
-                    DebugLogger.logUI(TAG, "🗣️ [DEBUG] TTS 文本已设置")
-                } else {
-                    DebugLogger.logUI(TAG, "⚠️ [DEBUG] speechOutput 为空，跳过TTS和回调设置")
-                }
-            } catch (e: Exception) {
-                DebugLogger.logUI(TAG, "❌ Error getting speech output: ${e.message}")
-            }
-        }
-    }
-    
-    private fun convertSkillOutputToSimpleResult(skillOutput: SkillOutput): SimpleResult {
-        return try {
-            val speechText = skillOutput.getSpeechOutput(skillContext)
-            SimpleResultBuilder.info("命令执行", speechText)
-        } catch (e: Exception) {
-            SimpleResultBuilder.error("技能处理错误: ${e.message}")
-        }
-    }
     
     /**
      * 获取当前状态
@@ -358,20 +294,7 @@ class VoiceAssistantStateProvider @Inject constructor(
     fun updateUIState(uiState: VoiceAssistantUIState) {
         updateState(uiState = uiState)
     }
-    
-    /**
-     * 更新显示文本
-     */
-    fun updateDisplayText(displayText: String) {
-        updateState(displayText = displayText)
-    }
-    
-    /**
-     * 更新置信度
-     */
-    fun updateConfidence(confidence: Float) {
-        updateState(confidence = confidence)
-    }
+
     
     /**
      * 设置ASR文本
@@ -386,95 +309,7 @@ class VoiceAssistantStateProvider @Inject constructor(
     fun setTTSText(text: String) {
         updateState(ttsText = text)
     }
-    
-    /**
-     * 设置技能结果
-     */
-    fun setResult(result: SimpleResult) {
-        DebugLogger.logUI(TAG, "🎯 Setting skill result: ${result.title} (${result.type})")
-        updateState(result = result)
-    }
-    
-    /**
-     * 清除技能结果
-     */
-    fun clearResult() {
-        updateState(result = null)
-    }
-    
-    /**
-     * 重置到空闲状态
-     */
-    fun resetToIdle() {
-        DebugLogger.logUI(TAG, "🏠 Resetting to idle state")
-        _currentState = VoiceAssistantFullState.IDLE
-        notifyListeners()
-    }
-    
-    /**
-     * 添加用户消息到会话历史
-     */
-    fun addUserMessage(text: String, confidence: Float) {
-        val message = ConversationMessage(
-            text = text,
-            isUser = true,
-            timestamp = System.currentTimeMillis(),
-            confidence = confidence
-        )
-        
-        synchronized(conversationHistory) {
-            conversationHistory.add(message)
-            // 保持历史记录在限制范围内
-            while (conversationHistory.size > maxHistorySize) {
-                conversationHistory.removeAt(0)
-            }
-        }
-        
-        DebugLogger.logUI(TAG, "👤 User message added: $text (confidence: $confidence)")
-        updateState(conversationHistory = conversationHistory.toList())
-    }
-    
-    /**
-     * 添加AI回复到会话历史
-     */
-    fun addAIMessage(text: String) {
-        val message = ConversationMessage(
-            text = text,
-            isUser = false,
-            timestamp = System.currentTimeMillis()
-        )
-        
-        synchronized(conversationHistory) {
-            conversationHistory.add(message)
-            // 保持历史记录在限制范围内
-            while (conversationHistory.size > maxHistorySize) {
-                conversationHistory.removeAt(0)
-            }
-        }
-        
-        DebugLogger.logUI(TAG, "🤖 AI message added: $text")
-        updateState(conversationHistory = conversationHistory.toList())
-    }
-    
-    /**
-     * 清空会话历史
-     */
-    fun clearConversationHistory() {
-        synchronized(conversationHistory) {
-            conversationHistory.clear()
-        }
-        DebugLogger.logUI(TAG, "🧹 Conversation history cleared")
-        updateState(conversationHistory = emptyList())
-    }
-    
-    /**
-     * 获取会话历史
-     */
-    fun getConversationHistory(): List<ConversationMessage> {
-        return synchronized(conversationHistory) {
-            conversationHistory.toList()
-        }
-    }
+
 
     /**
      * 内部状态更新方法

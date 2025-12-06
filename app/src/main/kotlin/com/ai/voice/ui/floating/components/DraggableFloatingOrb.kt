@@ -26,6 +26,7 @@ import kotlinx.coroutines.delay
 import com.ai.voice.ui.floating.FloatingOrbConfig
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.components.LottieAnimationStateManager
+import com.ai.voice.ui.floating.components.LottieAnimationState
 import com.ai.voice.ui.floating.state.VoiceAssistantFullState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.util.DebugLogger
@@ -92,20 +93,29 @@ class DraggableFloatingOrb(
                     isFullyInitialized = true
                 }
                 
-                // 监听 AsrHandler 结果列表变化
+                // 监听 AsrHandler 状态变化
                 LaunchedEffect(Unit) {
                     while (true) {
-                        kotlinx.coroutines.delay(100) // 每100ms检查一次
+                        kotlinx.coroutines.delay(100)
+                        val isAsrStarted = AsrHandler.isStarted()
+                        
+                        val currentState = animationStateManager.currentState.value
+                        when {
+                            isAsrStarted && currentState != LottieAnimationState.LISTENING -> {
+                                animationStateManager.setListening("正在听取...")
+                            }
+                            !isAsrStarted && currentState != LottieAnimationState.IDLE -> {
+                                val currentText = animationStateManager.displayText.value
+                                animationStateManager.setIdle(currentText)
+                            }
+                        }
+                        
                         val resultList = AsrHandler.getResultList()
                         if (resultList.isNotEmpty()) {
-                            // 显示最新的结果文本
                             var latestText = resultList.last()
-                            
-                            // 如果启用过滤，则过滤文本
                             if (filterAsrTextEnabled) {
                                 latestText = filterAsrText(latestText)
                             }
-                            
                             if (currentAsrText.value != latestText) {
                                 currentAsrText.value = latestText
                             }
@@ -262,17 +272,6 @@ class DraggableFloatingOrb(
     private fun updateUIState(state: VoiceAssistantFullState) {
         lastUiState = state.uiState
         lastDisplayText = state.displayText
-        
-        val currentDisplayText = animationStateManager.displayText.value
-        
-        when (state.uiState) {
-            VoiceAssistantUIState.IDLE -> {
-                animationStateManager.setIdle(currentDisplayText)
-            }
-            VoiceAssistantUIState.LISTENING -> {
-                animationStateManager.setListening("正在听取...")
-            }
-        }
     }
 }
 

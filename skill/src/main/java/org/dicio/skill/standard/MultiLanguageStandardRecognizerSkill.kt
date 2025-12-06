@@ -55,7 +55,7 @@ abstract class MultiLanguageStandardRecognizerSkill<T>(
             }
         }
         
-        Log.d(TAG, "✅ [$skillId] 最佳匹配分数: $bestScore")
+            Log.d(TAG, "✅ [$skillId] 最佳匹配分数: $bestScore")
         
         if (bestResult == null) {
             Log.e(TAG, "❌ [$skillId] 所有语言匹配失败，输入: '$input', 语言数据数量: ${allLanguageData.size}")

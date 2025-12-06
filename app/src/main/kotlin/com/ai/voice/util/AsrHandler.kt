@@ -46,6 +46,8 @@ object AsrHandler {
     private const val SILENCE_TIMEOUT_MS = 8000L // 静音超时
     // Final识别触发条件：需要持续静音至少500ms（平衡响应速度和误触发）
     private const val FINAL_SILENCE_THRESHOLD_MS = 800L
+    // Partial识别稳定后触发Final识别的时间阈值
+    private const val PARTIAL_STABLE_THRESHOLD_MS = 500L
     private var lastSpeechDetectedTime = System.currentTimeMillis()
     private var contextForStop: Context? = null
     // 🔒 线程安全：回调变量使用 @Volatile
@@ -373,6 +375,9 @@ object AsrHandler {
                     var startTime = System.currentTimeMillis()
                     var lastText = ""
                     var added = false
+                    var lastPartialText = ""
+                    var lastPartialTextTime = 0L
+                    var finalTriggeredForCurrentSegment = false
                     // 最大 buffer 大小：限制为 10 秒的音频数据（防止内存溢出）
                     val maxBufferSize = SAMPLE_RATE_IN_HZ * 10
                     // 当 buffer 超过这个大小且 offset 已经处理了很多数据时，清理已处理的数据
@@ -433,9 +438,11 @@ object AsrHandler {
                                     startTime = System.currentTimeMillis()
                                     lastVadActivityTime = System.currentTimeMillis()
                                     lastSpeechDetectedTime = System.currentTimeMillis()
+                                    finalTriggeredForCurrentSegment = false
                                 } else if (isSpeechStarted && vadDetected) {
                                     // 持续检测到语音，更新最后语音检测时间
                                     lastSpeechDetectedTime = System.currentTimeMillis()
+                                    finalTriggeredForCurrentSegment = false
                                 }
                                 
                                 // 检查静音超时：基于 VAD 检测到的实际静音时间
@@ -489,11 +496,34 @@ object AsrHandler {
                                 lastText = result.text
 
                                 if (lastText.isNotBlank()) {
+                                    val currentTime = System.currentTimeMillis()
+                                    val textChanged = lastText != lastPartialText
+                                    
+                                    if (textChanged) {
+                                        lastPartialText = lastText
+                                        lastPartialTextTime = currentTime
+                                        finalTriggeredForCurrentSegment = false
+                                    }
+                                    
                                     if (!added || resultList.isEmpty()) {
                                         resultList.add(lastText)
+                                        Log.d("chenyifen","resultList.add(lastText)  = ${lastText} ")
                                         added = true
                                     } else {
                                         resultList[resultList.size - 1] = lastText
+                                        Log.d("chenyifen","set to list, Asr last text = ${lastText}")
+                                    }
+                                    
+                                    if (!finalTriggeredForCurrentSegment && isSpeechStarted) {
+                                        val silenceSinceLastPartial = currentTime - lastSpeechDetectedTime
+                                        val stableSinceLastChange = currentTime - lastPartialTextTime
+                                        
+                                        if (silenceSinceLastPartial >= PARTIAL_STABLE_THRESHOLD_MS && 
+                                            stableSinceLastChange >= PARTIAL_STABLE_THRESHOLD_MS) {
+                                            finalTriggeredForCurrentSegment = true
+                                            Log.d("chenyifen","invoke Final (stable): ${lastText}")
+                                            finalResultCallback?.invoke(lastText)
+                                        }
                                     }
                                 }
 
@@ -502,42 +532,33 @@ object AsrHandler {
 
 
                             while (!vad.empty()) {
-                                val stream = recognizer.createStream()
-                                // 🔥 使用完整的buffer进行Final识别
-                                val accumulatedAudio = if (buffer.isNotEmpty()) {
-                                    buffer.subList(0, buffer.size).toFloatArray()
-                                } else {
-                                    // buffer为空时降级使用VAD段
-                                    vad.front().samples
-                                }
-                                stream.acceptWaveform(
-                                    accumulatedAudio,
-                                    SAMPLE_RATE_IN_HZ
-                                )
-                                recognizer.decode(stream)
-                                val result = recognizer.getResult(stream)
-                                stream.release()
-
                                 isSpeechStarted = false
                                 vad.pop()
-
+                                
+                                val finalText = if (lastText.isNotBlank()) {
+                                    lastText
+                                } else if (resultList.isNotEmpty()) {
+                                    resultList.last()
+                                } else {
+                                    ""
+                                }
+                                
                                 buffer = arrayListOf()
                                 offset = 0
                                 lastVadActivityTime = System.currentTimeMillis()
-                                if (result.text.isNotBlank()) {
+                                
+                                if (finalText.isNotBlank()) {
                                     if (added && resultList.isNotEmpty()) {
-                                        resultList[resultList.size - 1] = result.text
+                                        resultList[resultList.size - 1] = finalText
                                     } else {
-                                        resultList.add(result.text)
+                                        resultList.add(finalText)
                                     }
                                     added = false
+                                    Log.d("chenyifen","invoke Final: ${finalText}")
+                                    finalResultCallback?.invoke(finalText)
                                 }
-                                // 🔥 更新lastText为Final识别结果
-                                lastText = result.text
                                 
-                                if (result.text.isNotBlank()) {
-                                    finalResultCallback?.invoke(result.text)
-                                }
+                                lastText = finalText
                             }
                         }
                     }

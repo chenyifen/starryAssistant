@@ -89,11 +89,11 @@ class SkillRanker(
                 var bestSkillSoFar: SkillWithResult<*>? = null
                 for (skill in skills) {
                     try {
-                        val res = skill.scoreAndWrapResult(ctx, input)
+                    val res = skill.scoreAndWrapResult(ctx, input)
                         val scoreValue = res.score.scoreIn01Range()
                         Log.d(TAG, "    📝 ${skill.correspondingSkillInfo.id}: $scoreValue (raw=${res.score})")
-                        if (bestSkillSoFar == null || res.score.isBetterThan(bestSkillSoFar.score)) {
-                            bestSkillSoFar = res
+                    if (bestSkillSoFar == null || res.score.isBetterThan(bestSkillSoFar.score)) {
+                        bestSkillSoFar = res
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "    ❌ ${skill.correspondingSkillInfo.id} 评分异常", e)

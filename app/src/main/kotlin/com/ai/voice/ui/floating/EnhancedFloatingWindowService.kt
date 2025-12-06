@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 import com.ai.voice.io.input.InputEvent
 import com.ai.voice.eval.SkillEvaluator
 import com.ai.voice.eval.InteractionLog
@@ -35,10 +36,8 @@ import androidx.core.content.ContextCompat
 import com.ai.voice.io.wake.WakeWordCallbackManager
 import com.ai.voice.di.WakeDeviceWrapper
 import com.ai.voice.io.wake.WakeState
-import kotlinx.coroutines.flow.collectLatest
 import com.ai.voice.ui.floating.components.DraggableFloatingOrb
 import com.ai.voice.ui.floating.components.LottieAnimationTexts
-import com.ai.voice.ui.floating.components.LottieAnimationState
 import com.ai.voice.ui.floating.VoiceAssistantUIState
 import com.ai.voice.ui.floating.state.VoiceAssistantStateProvider
 import com.ai.voice.di.SpeechOutputDeviceWrapper
@@ -46,6 +45,7 @@ import com.ai.voice.R
 import com.ai.voice.util.DebugLogger
 import com.ai.voice.util.AsrHandler
 import com.ai.voice.util.ActivationChecker
+import com.ai.voice.util.SkillOutputConverter
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -123,14 +123,11 @@ class EnhancedFloatingWindowService : Service(),
                 
                 serviceScope.launch {
                     try {
-                        val cleanedText = finalText.trim()
-                            .replace(Regex("\\s+"), " ")
-                            .replace(Regex("[.,。，!！?？;；:：]"), "")
-                            .trim()
+                        val cleanedText = cleanTextForSkillMatching(finalText)
+                        
+                        Log.i(TAG, "🔍 [Final ASR] 清理后文本: \"$cleanedText\"")
                         
                         val skillRanker = skillHandler.skillRanker.value
-                        
-                        Log.i(TAG, "🔍 [Final ASR] 开始技能评分，清理后文本: \"$cleanedText\"")
                         val result = skillRanker.getBest(skillContext, cleanedText)
                         
                         if (result != null) {
@@ -139,7 +136,7 @@ class EnhancedFloatingWindowService : Service(),
                             Log.i(TAG, "✅ [Final ASR] 技能评分结果: skillId=$skillId, score=$score (raw=${result.score})")
                             DebugLogger.logUI(TAG, "✅ [Final ASR] 技能评分: $skillId = $score")
                         } else {
-                            Log.i(TAG, "❌ [Final ASR] 无匹配技能")
+                            Log.i(TAG, "❌ [Final ASR] 无匹配技能，原始: \"$finalText\", 清理后: \"$cleanedText\"")
                             DebugLogger.logUI(TAG, "❌ [Final ASR] 无匹配技能")
                         }
                     } catch (e: Exception) {
@@ -270,7 +267,7 @@ class EnhancedFloatingWindowService : Service(),
      */
     private fun observeStatusChanges() {
         serviceScope.launch {
-            wakeDevice.state.collectLatest { wakeState ->
+            wakeDevice.state.collect { wakeState ->
                 updateStatusDisplay()
             }
         }
@@ -325,16 +322,18 @@ class EnhancedFloatingWindowService : Service(),
             else -> LottieAnimationTexts.DEFAULT
         }
         
-        Log.i(TAG, "📊 [状态显示] UI状态=$currentUIState, 状态文本=\"$statusText\"")
+        Log.i(TAG, "📊 [状态显示] UI状态=$currentUIState, ASR状态=${AsrHandler.isStarted()}, 状态文本=\"$statusText\"")
         
         val stateManager = floatingOrb?.getAnimationStateManager()
-        when (currentUIState) {
-            VoiceAssistantUIState.IDLE -> {
-                stateManager?.setIdle(statusText)
-            }
-            VoiceAssistantUIState.LISTENING -> {
+        val isAsrStarted = AsrHandler.isStarted()
+        
+        when {
+            isAsrStarted -> {
                 stateManager?.setListening("正在听取...")
                 stateManager?.setDisplayText(statusText)
+            }
+            else -> {
+                stateManager?.setIdle(statusText)
             }
         }
     }
@@ -445,22 +444,66 @@ class EnhancedFloatingWindowService : Service(),
             skillEvaluator.state.collect { interactionLog ->
                 val lastInteraction = interactionLog.interactions.lastOrNull()
                 val lastAnswer = lastInteraction?.questionsAnswers?.lastOrNull()?.answer
-                val skillId = lastInteraction?.skill?.id
-                Log.d(TAG, "🔍 [SKILL] observeSkillEvaluation: lastAnswer=${lastAnswer != null}, skillId=$skillId")
                 
                 if (lastAnswer != null) {
-                    Log.d(TAG, "🔍 [SKILL] 技能执行完成 (skillId=$skillId)")
+                    DebugLogger.logUI(TAG, "🎯 New skill result available")
                     
-                    voiceAssistantStateProvider.setASRText("")
-                    voiceAssistantStateProvider.setTTSText("")
+                    val skillInfo = lastInteraction?.skill
+                    val isFallbackSkill = skillInfo?.id == "text"
                     
-                    // 🔥 不立即转换到IDLE，等待静音超时回调处理状态转换
-                    // 静音超时回调会在8秒无语音后自动触发，由AsrHandler的silenceTimeoutCallback处理
-                } else {
-                    Log.d(TAG, "🔍 [SKILL] 无技能结果")
+                    if (isFallbackSkill) {
+                        DebugLogger.logUI(TAG, "⏭️ 识别不出具体命令（fallback），显示TTS文本但不播放")
+                        return@collect
+                    }
+                    
+                    serviceScope.launch {
+                        voiceAssistantStateProvider.transitionToState(
+                            VoiceAssistantUIState.IDLE,
+                            reason = "技能执行完成"
+                        )
+                    }
+
+
+                    try {
+                        val speechOutput = lastAnswer.getSpeechOutput(skillContext)
+                        DebugLogger.logUI(TAG, "🗣️ [DEBUG] getSpeechOutput() 返回: '$speechOutput'")
+                        
+                        if (speechOutput.isNotBlank()) {
+                            voiceAssistantStateProvider.setTTSText(speechOutput)
+                            setupTTSCompletionCallback()
+                            DebugLogger.logUI(TAG, "🗣️ [DEBUG] TTS 文本已设置")
+                        } else {
+                            DebugLogger.logUI(TAG, "⚠️ [DEBUG] speechOutput 为空，跳过TTS和回调设置")
+                        }
+                    } catch (e: Exception) {
+                        DebugLogger.logUI(TAG, "❌ Error getting speech output: ${e.message}")
+                    }
                 }
             }
         }
+    }
+    
+    private fun setupTTSCompletionCallback() {
+        speechOutputDevice.runWhenFinishedSpeaking {
+        }
+    }
+    
+    private fun cleanTextForSkillMatching(text: String): String {
+        var cleaned = text.trim()
+            .replace(Regex("\\s+"), " ")
+            .replace(Regex("[.,。，!！?？;；:：]"), "")
+            .trim()
+        
+        val sentences = cleaned.split(Regex("[。！？\\.!?]"))
+        if (sentences.size > 1) {
+            val firstSentence = sentences[0].trim()
+            val hasCommandKeywords = firstSentence.contains(Regex("연결|실행|켜|꺼|변경|지워|녹화|캡쳐|보여|열"))
+            if (hasCommandKeywords && firstSentence.length >= 3) {
+                cleaned = firstSentence
+            }
+        }
+        
+        return cleaned
     }
     
     private fun createForegroundNotification() {

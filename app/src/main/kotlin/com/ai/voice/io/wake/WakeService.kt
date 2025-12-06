@@ -455,8 +455,11 @@ class WakeService : Service() {
             ar.startRecording()
             
             while (listening.get()) {
-                if (com.ai.voice.util.AsrHandler.isStarted()) {
-                    if (ar.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
+                val asrStarted = com.ai.voice.util.AsrHandler.isStarted()
+                val isRecording = ar.recordingState == AudioRecord.RECORDSTATE_RECORDING
+                
+                if (asrStarted) {
+                    if (isRecording) {
                         try {
                             ar.stop()
                         } catch (e: Exception) {
@@ -464,7 +467,7 @@ class WakeService : Service() {
                         }
                     }
                     while (com.ai.voice.util.AsrHandler.isStarted() && listening.get()) {
-                        Thread.sleep(100)
+                        Thread.sleep(50)
                     }
                     if (!listening.get()) {
                         break
@@ -478,16 +481,20 @@ class WakeService : Service() {
                             break
                         }
                     }
-                }
-                
-                if (audio.size != wakeDevice.frameSize()) {
-                    audio = ShortArray(wakeDevice.frameSize())
-                }
-
-                val isRecording = ar.recordingState == AudioRecord.RECORDSTATE_RECORDING
-                val asrStarted = com.ai.voice.util.AsrHandler.isStarted()
-                
-                if (isRecording && !asrStarted) {
+                } else {
+                    if (!isRecording) {
+                        try {
+                            ar.startRecording()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "❌ Failed to start AudioRecord", e)
+                            break
+                        }
+                    }
+                    
+                    if (audio.size != wakeDevice.frameSize()) {
+                        audio = ShortArray(wakeDevice.frameSize())
+                    }
+                    
                     val bytesRead = ar.read(audio, 0, audio.size)
                     frameCount++
                     
@@ -508,8 +515,6 @@ class WakeService : Service() {
                     } else if (bytesRead < 0) {
                         Log.e(TAG, "❌ AudioRecord read failed: $bytesRead")
                     }
-                } else {
-                    Thread.sleep(10)
                 }
             }
         } catch (e: Exception) {
