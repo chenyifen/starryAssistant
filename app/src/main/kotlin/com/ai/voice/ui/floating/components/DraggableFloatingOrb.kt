@@ -285,6 +285,7 @@ private fun FloatingOrbContent(
         ) {
             LottieAnimationController(
                 animationState = animationState,
+                displayText = "Listening",
                 size = animationSizeInt
             )
         }

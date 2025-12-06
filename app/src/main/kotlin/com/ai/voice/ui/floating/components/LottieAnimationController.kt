@@ -14,6 +14,7 @@ import com.ai.voice.util.DebugLogger
 @Composable
 fun LottieAnimationController(
     animationState: LottieAnimationState,
+    displayText: String = "",
     modifier: Modifier = Modifier,
     size: Int = 80
 ) {
@@ -62,6 +63,12 @@ fun LottieAnimationController(
                     property = LottieProperty.OPACITY,
                     value = 0,
                     keyPath = arrayOf("Shape Layer 13", "**")
+                ),
+                // 动态替换文本内容
+                rememberLottieDynamicProperty(
+                    property = LottieProperty.TEXT,
+                    value = displayText.ifEmpty { "Listening" },
+                    keyPath = arrayOf("**") // 匹配所有文本层
                 )
             )
         )
