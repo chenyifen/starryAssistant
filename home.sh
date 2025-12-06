@@ -5,11 +5,9 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17 2>/dev/null || /usr/libexec/java
 
 PKG="com.ai.voice"
 
-CLEAN=${1:-""}
-if [ "$CLEAN" = "clean" ] || [ "$CLEAN" = "-c" ]; then
-    echo "=== Cleaning build ==="
-    ./gradlew clean -q
-fi
+echo "=== Cleaning build ==="
+./gradlew clean -q
+
 
 echo "=== Building homeDebug ==="
 ./gradlew assembleHomeDebug -q || exit 1

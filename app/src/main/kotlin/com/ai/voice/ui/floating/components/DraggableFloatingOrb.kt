@@ -102,11 +102,10 @@ class DraggableFloatingOrb(
                         val currentState = animationStateManager.currentState.value
                         when {
                             isAsrStarted && currentState != LottieAnimationState.LISTENING -> {
-                                animationStateManager.setListening("正在听取...")
+                                animationStateManager.setListening()
                             }
                             !isAsrStarted && currentState != LottieAnimationState.IDLE -> {
-                                val currentText = animationStateManager.displayText.value
-                                animationStateManager.setIdle(currentText)
+                                animationStateManager.setIdle()
                             }
                         }
                         
@@ -257,21 +256,8 @@ class DraggableFloatingOrb(
         }
     }
     
-    fun updateStatusText(statusText: String) {
-        val currentState = animationStateManager.currentState.value
-        when (currentState) {
-            LottieAnimationState.IDLE -> {
-                animationStateManager.setIdle(statusText)
-            }
-            LottieAnimationState.LISTENING -> {
-                animationStateManager.setDisplayText(statusText)
-            }
-        }
-    }
-    
     private fun updateUIState(state: VoiceAssistantFullState) {
         lastUiState = state.uiState
-        lastDisplayText = state.displayText
     }
 }
 
@@ -282,69 +268,35 @@ private fun FloatingOrbContent(
     currentTtsText: String
 ) {
     val animationState by animationStateManager.currentState
-    val displayText by animationStateManager.displayText
     val shouldShowText = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
     val animationSize = FloatingOrbConfig.animationSizeDp
     val animationSizeInt = FloatingOrbConfig.animationSizeInt
-    val shouldShowStatusText = displayText.isNotEmpty() && displayText != "I'm here for you!"
 
-    Column(
+    Row(
         modifier = Modifier
             .wrapContentSize()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        if (shouldShowStatusText) {
-            StatusTextDisplay(
-                text = displayText,
-                modifier = Modifier.wrapContentWidth()
+        Box(
+            modifier = Modifier.size(animationSize),
+            contentAlignment = Alignment.Center
+        ) {
+            LottieAnimationController(
+                animationState = animationState,
+                size = animationSizeInt
             )
         }
         
-        Row(
-            modifier = Modifier.wrapContentSize(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier.size(animationSize),
-                contentAlignment = Alignment.Center
-            ) {
-                LottieAnimationController(
-                    animationState = animationState,
-                    displayText = displayText,
-                    size = animationSizeInt
-                )
-            }
-            
-            if (shouldShowText) {
-                FloatingTextDisplay(
-                    userText = currentAsrText,
-                    aiText = currentTtsText,
-                    isVisible = true,
-                    modifier = Modifier.wrapContentWidth()
-                )
-            }
+        if (shouldShowText) {
+            FloatingTextDisplay(
+                userText = currentAsrText,
+                aiText = currentTtsText,
+                isVisible = true,
+                modifier = Modifier.wrapContentWidth()
+            )
         }
     }
 }
 
-@Composable
-private fun StatusTextDisplay(
-    text: String,
-    modifier: Modifier = Modifier
-) {
-    androidx.compose.material3.Text(
-        text = text,
-        modifier = modifier
-            .clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
-            .background(Color(0xFF424242).copy(alpha = 0.85f))
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        color = Color.White,
-        fontSize = 12.sp,
-        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
-        maxLines = 1,
-        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-    )
-}

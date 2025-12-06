@@ -14,7 +14,6 @@ import com.ai.voice.util.DebugLogger
 @Composable
 fun LottieAnimationController(
     animationState: LottieAnimationState,
-    displayText: String = "I'm here for you!",
     modifier: Modifier = Modifier,
     size: Int = 80
 ) {
@@ -63,12 +62,6 @@ fun LottieAnimationController(
                     property = LottieProperty.OPACITY,
                     value = 0,
                     keyPath = arrayOf("Shape Layer 13", "**")
-                ),
-                // 动态替换文本内容
-                rememberLottieDynamicProperty(
-                    property = LottieProperty.TEXT,
-                    value = displayText,
-                    keyPath = arrayOf("**") // 匹配所有文本层
                 )
             )
         )
@@ -84,21 +77,12 @@ class LottieAnimationStateManager {
     private val _currentState = mutableStateOf(LottieAnimationState.IDLE)
     val currentState: State<LottieAnimationState> = _currentState
     
-    private val _displayText = mutableStateOf("I'm here for you!")
-    val displayText: State<String> = _displayText
-    
-    fun setIdle(text: String = "I'm here for you!") {
-        _displayText.value = text
+    fun setIdle() {
         _currentState.value = LottieAnimationState.IDLE
     }
     
-    fun setListening(text: String = "正在听取...") {
-        _displayText.value = text
+    fun setListening() {
         _currentState.value = LottieAnimationState.LISTENING
-    }
-    
-    fun setDisplayText(text: String) {
-        _displayText.value = text
     }
 }
 

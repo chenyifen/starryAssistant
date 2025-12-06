@@ -334,11 +334,10 @@ class EnhancedFloatingWindowService : Service(),
         
         when {
             isAsrStarted -> {
-                stateManager?.setListening("正在听取...")
-                stateManager?.setDisplayText(statusText)
+                stateManager?.setListening()
             }
             else -> {
-                stateManager?.setIdle(statusText)
+                stateManager?.setIdle()
             }
         }
     }
