@@ -26,7 +26,7 @@ echo "=========================================="
 SKIP_LINT=${SKIP_LINT:-true}
 if [ "$SKIP_LINT" = "true" ]; then
     echo "跳过 lint 检查以加快编译速度"
-    ./gradlew clean assemblehyitRelease -x lint -x lintVital -x lintVitalReportHyitRelease -x lintVitalAnalyzeHyitRelease -x lintVitalHyitRelease 2>&1 | tee /tmp/gradle_build.log
+    ./gradlew clean assemblehyitRelease -x lintVitalReportHyitRelease -x lintVitalAnalyzeHyitRelease -x lintVitalHyitRelease 2>&1 | tee /tmp/gradle_build.log
 else
     ./gradlew clean assemblehyitRelease 2>&1 | tee /tmp/gradle_build.log
 fi
