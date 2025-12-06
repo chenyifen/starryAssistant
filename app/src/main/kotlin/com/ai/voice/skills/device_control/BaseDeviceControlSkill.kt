@@ -3,13 +3,18 @@ package com.ai.voice.skills.device_control
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.hardware.input.InputManager
 import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.util.Log
+import android.view.InputDevice
+import android.view.InputEvent
 import android.view.KeyEvent
 import android.widget.Toast
+import java.lang.reflect.Method
 import com.ifpdos.sdklib.hyundaiit.api.audio.AudioHelper
 import com.ifpdos.sdklib.hyundaiit.api.screen.ScreenHelper
 import com.ifpdos.sdklib.hyundaiit.api.source.SourceHelper
@@ -76,7 +81,7 @@ abstract class BaseDeviceControlSkill {
     fun executeVolumeUp(ctx: SkillContext): SkillOutput {
         try {
             Log.d(TAG, "执行音量增加命令")
-            AudioHelper.getInstance().volumeUp()
+            sendKeyEvent(ctx, KeyEvent.KEYCODE_VOLUME_UP)
             val response = getLocalizedResponse(ctx, "볼륨을 높였습니다", "Volume increased")
             return StringOutput(response)
         } catch (e: Exception) {
@@ -89,7 +94,7 @@ abstract class BaseDeviceControlSkill {
     fun executeVolumeDown(ctx: SkillContext): SkillOutput {
         try {
             Log.d(TAG, "执行音量减小命令")
-            AudioHelper.getInstance().volumeDown()
+            sendKeyEvent(ctx, KeyEvent.KEYCODE_VOLUME_DOWN)
             val response = getLocalizedResponse(ctx, "볼륨을 낮췄습니다", "Volume decreased")
             return StringOutput(response)
         } catch (e: Exception) {
@@ -586,15 +591,52 @@ abstract class BaseDeviceControlSkill {
     }
 
     /**
-     * 发送按键事件
+     * 发送按键事件（使用InputManager注入）
+     * KEYCODE 24 = VOLUME_UP, KEYCODE 25 = VOLUME_DOWN
      */
     private fun sendKeyEvent(ctx: SkillContext, keyCode: Int) {
         try {
-            val audioManager = ctx.android.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            val event = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
-            audioManager.dispatchMediaKeyEvent(event)
-            val eventUp = KeyEvent(KeyEvent.ACTION_UP, keyCode)
-            audioManager.dispatchMediaKeyEvent(eventUp)
+            val inputManager = ctx.android.getSystemService(Context.INPUT_SERVICE) as InputManager
+            val injectInputEventMethod: Method = InputManager::class.java.getMethod(
+                "injectInputEvent",
+                InputEvent::class.java,
+                Int::class.javaPrimitiveType
+            )
+            
+            val downTime = SystemClock.uptimeMillis()
+            val eventTime = SystemClock.uptimeMillis()
+            
+            val downEvent = KeyEvent(
+                downTime,
+                eventTime,
+                KeyEvent.ACTION_DOWN,
+                keyCode,
+                0,
+                0,
+                -1,
+                0,
+                KeyEvent.FLAG_FROM_SYSTEM,
+                InputDevice.SOURCE_UNKNOWN
+            )
+            
+            val upEvent = KeyEvent(
+                downTime,
+                eventTime + 10,
+                KeyEvent.ACTION_UP,
+                keyCode,
+                0,
+                0,
+                -1,
+                0,
+                KeyEvent.FLAG_FROM_SYSTEM,
+                InputDevice.SOURCE_UNKNOWN
+            )
+            
+            injectInputEventMethod.invoke(inputManager, downEvent, 0)
+            Thread.sleep(10)
+            injectInputEventMethod.invoke(inputManager, upEvent, 0)
+            
+            Log.d(TAG, "发送按键事件成功: KEYCODE=$keyCode")
         } catch (e: Exception) {
             Log.e(TAG, "发送按键事件失败: $keyCode", e)
         }

@@ -43,7 +43,7 @@ object AsrHandler {
     private val resultList: MutableList<String> = mutableListOf()
     
     // 静音超时配置
-    private const val SILENCE_TIMEOUT_MS = 8000L // 静音超时
+    private const val SILENCE_TIMEOUT_MS = 6000L // 静音超时
     // Final识别触发条件：需要持续静音至少500ms（平衡响应速度和误触发）
     private const val FINAL_SILENCE_THRESHOLD_MS = 800L
     // Partial识别稳定后触发Final识别的时间阈值
