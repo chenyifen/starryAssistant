@@ -123,11 +123,16 @@ class EnhancedFloatingWindowService : Service(),
                 
                 serviceScope.launch {
                     try {
-                        val cleanedText = cleanTextForSkillMatching(finalText)
+                        val cleanedText = finalText.trim()
+                            .replace(Regex("\\s+"), " ")
+                            .replace(Regex("[.,。，!！?？;；:：]"), "")
+                            .trim()
                         
                         Log.i(TAG, "🔍 [Final ASR] 清理后文本: \"$cleanedText\"")
                         
                         val skillRanker = skillHandler.skillRanker.value
+                        
+                        Log.i(TAG, "🔍 [Final ASR] 开始技能评分，清理后文本: \"$cleanedText\"")
                         val result = skillRanker.getBest(skillContext, cleanedText)
                         
                         if (result != null) {
@@ -136,7 +141,7 @@ class EnhancedFloatingWindowService : Service(),
                             Log.i(TAG, "✅ [Final ASR] 技能评分结果: skillId=$skillId, score=$score (raw=${result.score})")
                             DebugLogger.logUI(TAG, "✅ [Final ASR] 技能评分: $skillId = $score")
                         } else {
-                            Log.i(TAG, "❌ [Final ASR] 无匹配技能，原始: \"$finalText\", 清理后: \"$cleanedText\"")
+                            Log.i(TAG, "❌ [Final ASR] 无匹配技能")
                             DebugLogger.logUI(TAG, "❌ [Final ASR] 无匹配技能")
                         }
                     } catch (e: Exception) {

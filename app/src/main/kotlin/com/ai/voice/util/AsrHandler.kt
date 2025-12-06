@@ -431,7 +431,6 @@ object AsrHandler {
                                 
                                 // VAD 检测逻辑
                                 val vadDetected = vad.isSpeechDetected()
-                                AutoTestLogger.logVadDetected(vadDetected)
                                 
                                 if (!isSpeechStarted && vadDetected) {
                                     isSpeechStarted = true
