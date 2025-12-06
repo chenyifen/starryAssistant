@@ -401,6 +401,12 @@ class EnhancedFloatingWindowService : Service(),
         Log.i(TAG, "🎯 唤醒词检测成功: confidence=$confidence, wakeWord=$wakeWord")
         showFloatingOrb()
         
+        val hasPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (!hasPermission) {
+            updateStatusDisplay()
+            return
+        }
+        
         when (ActivationChecker.getActivationStatus(this)) {
             ActivationChecker.ActivationStatus.NOT_ACTIVATED -> {
                 updateStatusDisplay()
