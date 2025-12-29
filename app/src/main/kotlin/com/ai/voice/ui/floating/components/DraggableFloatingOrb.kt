@@ -195,9 +195,9 @@ class DraggableFloatingOrb(
             // 窗口类型
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             
-            // 窗口标志 - 设置为完全不可交互
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
             
             // 像素格式 - 使用RGBA_8888支持完全透明

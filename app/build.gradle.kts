@@ -43,16 +43,22 @@ val baseVersionMajor = 3
 val baseVersionMinor = 3
 val baseVersionCode = 16
 
+// 版本号偏移量：用于跳转到指定版本号继续开始
+// 例如：要跳转到3.19.70，设置commitOffset = 1670
+// 计算方式：目标版本号3.19.70 = 3.(3+16).70，需要commitCount = 16*100 + 70 = 1670
+val commitOffset = 1670
+
 // 版本号计算规则：修订号0-99循环，每100次commit次版本号+1，次版本号超过99时主版本号+1
 // 例如：3.3.0 -> 3.3.99 -> 3.4.0 -> ... -> 3.99.99 -> 4.0.0
-val revisionNumber = gitCommitCount % 100  // 修订号：0-99循环
-val minorVersionIncrement = (gitCommitCount / 100) % 100  // 次版本号增量：0-99
-val majorVersionIncrement = gitCommitCount / 10000  // 主版本号增量
+val adjustedCommitCount = gitCommitCount + commitOffset
+val revisionNumber = adjustedCommitCount % 100
+val minorVersionIncrement = (adjustedCommitCount / 100) % 100
+val majorVersionIncrement = adjustedCommitCount / 10000
 val minorVersion = baseVersionMinor + minorVersionIncrement
 val majorVersion = baseVersionMajor + majorVersionIncrement
 
 // 最终版本号
-val finalVersionCode = baseVersionCode + gitCommitCount
+val finalVersionCode = baseVersionCode + adjustedCommitCount
 val finalVersionName = "${majorVersion}.${minorVersion}.${revisionNumber}"
 
 android {
