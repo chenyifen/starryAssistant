@@ -10,6 +10,7 @@ import android.media.MediaRecorder
 import android.util.Log
 import com.ai.voice.util.ActivationChecker
 import com.ai.voice.util.AutoTestLogger
+import com.ai.voice.util.DebugLogger
 import androidx.core.app.ActivityCompat
 import com.k2fsa.sherpa.onnx.OfflineRecognizer
 import com.k2fsa.sherpa.onnx.OfflineRecognizerConfig
@@ -116,33 +117,35 @@ object AsrHandler {
         fun initOfflineRecognizer(assetManager: AssetManager? = null, application: Application) {
             synchronized(this) {
                 if (_recognizer != null) {
+                    Log.i(TAG, "⚠️ ASR Recognizer 已初始化，跳过")
                     return
                 }
+                Log.i(TAG, "🚀 开始初始化 ASR Recognizer (type=15)...")
                 val asrModelType = 15
                 val asrRuleFsts: String? = null
 
                 val useHr = false
                 val hr = com.k2fsa.sherpa.onnx.HomophoneReplacerConfig(
-                    // Used only when useHr is true
-                    // Please download the following 2 files from
-                    // https://github.com/k2-fsa/sherpa-onnx/releases/tag/hr-files
-                    //
-                    // lexicon.txt can be shared by different apps
-                    //
-                    // replace.fst is specific for an app
                     lexicon = "lexicon.txt",
                     ruleFsts = "replace.fst",
                 )
 
+                Log.i(TAG, "📋 调用 getOfflineModelConfig(type=$asrModelType)...")
                 val modelConfig = getOfflineModelConfig(type = asrModelType)
                 if (modelConfig == null) {
                     Log.e(TAG, "❌ getOfflineModelConfig(type=$asrModelType) 返回 null")
+                    Log.e(TAG, "❌ 可能原因：1) 模型文件不存在 2) type=$asrModelType 未配置 3) 模型路径配置错误")
                     throw IllegalStateException("getOfflineModelConfig 返回 null，请检查模型文件是否存在")
                 }
+                
+                Log.i(TAG, "✅ getOfflineModelConfig 返回配置成功")
+                Log.i(TAG, "📦 模型配置信息: modelConfig=$modelConfig")
                 
                 val config = OfflineRecognizerConfig(
                     modelConfig = modelConfig,
                 )
+                
+                Log.i(TAG, "📦 OfflineRecognizerConfig 创建成功: numThreads=${config.modelConfig.numThreads}")
 
                 if (config.modelConfig.numThreads == 1) {
                     config.modelConfig.numThreads = 2
@@ -160,14 +163,17 @@ object AsrHandler {
                     assetManager = assetManager,
                     config = config,
                 )
+                Log.i(TAG, "✅ ASR Recognizer 初始化成功")
             }
         }
 
         fun initVad(assetManager: AssetManager? = null) {
             synchronized(this) {
                 if (_vad != null) {
+                    Log.i(TAG, "⚠️ ASR VAD 已初始化，跳过")
                     return
                 }
+                Log.i(TAG, "🚀 开始初始化 ASR VAD (type=0)...")
                 val type = 0
                 val config = getVadModelConfig(type)
                 if (config == null) {
@@ -179,6 +185,7 @@ object AsrHandler {
                     assetManager = assetManager,
                     config = config,
                 )
+                Log.i(TAG, "✅ ASR VAD 初始化成功")
             }
         }
     }
@@ -212,6 +219,9 @@ object AsrHandler {
             
             SimulateStreamingAsr.initOfflineRecognizer(context.assets, application)
             SimulateStreamingAsr.initVad(context.assets)
+            val recognizerInitialized = SimulateStreamingAsr.isRecognizerInitialized()
+            val vadInitialized = SimulateStreamingAsr.isVadInitialized()
+            Log.i(TAG, "✅ AsrHandler 初始化完成: recognizer=$recognizerInitialized, vad=$vadInitialized")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ AsrHandler 初始化失败: ${e.message}", e)
@@ -256,6 +266,7 @@ object AsrHandler {
         isStarted = true
         lastAudioReceivedTime = System.currentTimeMillis()
         audioDataCount = 0
+        DebugLogger.logVoiceRecognition(TAG, "ASR 启动成功")
         AutoTestLogger.logAsrListeningStarted()
         doAsr(context)
         return true
@@ -269,8 +280,10 @@ object AsrHandler {
     @Synchronized
     fun stop(context: Context) {
         if (!isStarted) {
+            DebugLogger.logRecognition(TAG, "ASR 已停止，跳过")
             return
         }
+        DebugLogger.logVoiceRecognition(TAG, "ASR 停止")
         isStarted = false
         contextForStop = null
         lastAudioReceivedTime = 0
@@ -312,16 +325,29 @@ object AsrHandler {
                     numBytes * 2 // a sample has two bytes as we are using 16-bit PCM
                 )
 
+                val audioRecordState = audioRecord?.state
+                DebugLogger.logVoiceRecognition(TAG, "AudioRecord 创建完成: state=$audioRecordState, bufferSize=${numBytes * 2}")
+                
+                if (audioRecordState != AudioRecord.STATE_INITIALIZED) {
+                    DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord 初始化失败: state=$audioRecordState", null)
+                    isStarted = false
+                    audioRecord?.release()
+                    audioRecord = null
+                    return
+                }
+
                 // 使用内部 SimulateStreamingAsr 的 recognizer 和 vad
                 val recognizer = SimulateStreamingAsr.recognizer
                 val vad = SimulateStreamingAsr.vad
                 
                 if (recognizer == null || vad == null) {
-                    Log.e(TAG, "❌ recognizer 或 VAD 未初始化")
+                    DebugLogger.logVoiceRecognitionError(TAG, "recognizer 或 VAD 未初始化: recognizer=${recognizer != null}, vad=${vad != null}", null)
                     return
                 }
+                DebugLogger.logVoiceRecognition(TAG, "✅ recognizer 和 VAD 已初始化，开始ASR处理")
 
                 vad.reset()
+                DebugLogger.logVoiceRecognition(TAG, "开始录音，准备接收音频数据")
 
                 CoroutineScope(Dispatchers.IO).launch {
                     val interval = 0.1
@@ -329,24 +355,73 @@ object AsrHandler {
                     val buffer = ShortArray(bufferSize)
 
                     audioRecord?.let { it ->
+                        try {
                         it.startRecording()
+                            DebugLogger.logVoiceRecognition(TAG, "AudioRecord.startRecording() 调用成功")
+                            
+                            var consecutiveErrors = 0
+                            var consecutiveZeros = 0
 
                         while (isStarted) {
                             val ret = audioRecord?.read(buffer, 0, buffer.size)
-                            ret?.let { n ->
-                                if (n > 0) {
+                                
+                                when {
+                                    ret == null -> {
+                                        consecutiveErrors++
+                                        if (consecutiveErrors == 1 || consecutiveErrors % 10 == 0) {
+                                            DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord.read() 返回 null (连续 $consecutiveErrors 次)", null)
+                                        }
+                                        if (consecutiveErrors >= 50) {
+                                            DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord.read() 连续失败 50 次，停止录音", null)
+                                            break
+                                        }
+                                        delay(100)
+                                    }
+                                    ret < 0 -> {
+                                        consecutiveErrors++
+                                        val errorMsg = when (ret) {
+                                            AudioRecord.ERROR_INVALID_OPERATION -> "ERROR_INVALID_OPERATION"
+                                            AudioRecord.ERROR_BAD_VALUE -> "ERROR_BAD_VALUE"
+                                            else -> "未知错误码: $ret"
+                                        }
+                                        if (consecutiveErrors == 1 || consecutiveErrors % 10 == 0) {
+                                            DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord.read() 错误: $errorMsg (连续 $consecutiveErrors 次)", null)
+                                        }
+                                        if (consecutiveErrors >= 50) {
+                                            DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord.read() 连续错误 50 次，停止录音", null)
+                                            break
+                                        }
+                                        delay(100)
+                                    }
+                                    ret == 0 -> {
+                                        consecutiveZeros++
+                                        consecutiveErrors = 0
+                                        if (consecutiveZeros == 1 || consecutiveZeros % 100 == 0) {
+                                            DebugLogger.logRecognition(TAG, "AudioRecord.read() 返回 0 (无数据，连续 $consecutiveZeros 次)")
+                                        }
+                                        delay(10)
+                                    }
+                                    else -> {
+                                        consecutiveErrors = 0
+                                        consecutiveZeros = 0
                                     lastAudioReceivedTime = System.currentTimeMillis()
                                     audioDataCount++
-                                    if (audioDataCount % 50 == 0L) {
-                                        AutoTestLogger.logAudioDataReceived(n, isStarted)
-                                    }
+                                        if (audioDataCount == 1L || audioDataCount % 50 == 0L) {
+                                            DebugLogger.logRecognition(TAG, "音频数据接收: $ret 字节 (总计: $audioDataCount)")
+                                            AutoTestLogger.logAudioDataReceived(ret, isStarted)
                                 }
-                                val samples = FloatArray(n) { buffer[it] / 32768.0f }
+                                        val samples = FloatArray(ret) { buffer[it] / 32768.0f }
                                 samplesChannel.send(samples)
+                                    }
                             }
                         }
                         val samples = FloatArray(0)
                         samplesChannel.send(samples)
+                        } catch (e: Exception) {
+                            DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord 操作异常", e)
+                        }
+                    } ?: run {
+                        DebugLogger.logVoiceRecognitionError(TAG, "AudioRecord 为 null，无法启动录音", null)
                     }
                 }
 
@@ -390,11 +465,13 @@ object AsrHandler {
                     var audioSampleCount = 0
 
                     while (isStarted) {
+                        var hasNewAudio = false
                         for (s in samplesChannel) {
                             if (s.isEmpty()) {
                                 break
                             }
 
+                            hasNewAudio = true
                             // 记录音频数据接收
                             audioSampleCount++
                             lastAudioReceivedTime = System.currentTimeMillis()
@@ -410,13 +487,25 @@ object AsrHandler {
                                 if (offset >= removeCount) {
                                     buffer = ArrayList(buffer.subList(removeCount, buffer.size))
                                     offset -= removeCount
+                                    DebugLogger.logRecognition(TAG, "Buffer清理: 移除 $removeCount samples, offset: ${offset + removeCount} -> $offset, bufferSize: ${buffer.size + removeCount} -> ${buffer.size}")
                                 } else {
+                                    DebugLogger.logRecognition(TAG, "Buffer清理: offset($offset) < removeCount($removeCount), 清空buffer并重置")
                                     buffer = arrayListOf()
                                     offset = 0
                                     isSpeechStarted = false
                                     vad.reset()
                                     lastVadActivityTime = System.currentTimeMillis()
                                     continue
+                                }
+                            }
+                            
+                            // 如果 buffer 接近上限且 offset 无法继续增长，提前清理已处理的数据
+                            if (buffer.size >= maxBufferSize * 0.9 && offset + windowSize >= buffer.size) {
+                                val removeCount = cleanupThreshold
+                                if (offset >= removeCount) {
+                                    buffer = ArrayList(buffer.subList(removeCount, buffer.size))
+                                    offset -= removeCount
+                                    DebugLogger.logRecognition(TAG, "Buffer提前清理: offset=$offset, bufferSize=${buffer.size}, 移除 $removeCount samples")
                                 }
                             }
                             
@@ -438,54 +527,73 @@ object AsrHandler {
                                     lastVadActivityTime = System.currentTimeMillis()
                                     lastSpeechDetectedTime = System.currentTimeMillis()
                                     finalTriggeredForCurrentSegment = false
+                                    DebugLogger.logRecognition(TAG, "VAD 检测到语音开始 (offset=$offset, bufferSize=${buffer.size})")
                                 } else if (isSpeechStarted && vadDetected) {
-                                    // 持续检测到语音，更新最后语音检测时间
                                     lastSpeechDetectedTime = System.currentTimeMillis()
+                                    lastVadActivityTime = System.currentTimeMillis()
                                     finalTriggeredForCurrentSegment = false
-                                }
-                                
-                                // 检查静音超时：基于 VAD 检测到的实际静音时间
-                                val currentTime = System.currentTimeMillis()
-                                val silenceDuration = currentTime - lastSpeechDetectedTime
-                                if (silenceDuration > SILENCE_TIMEOUT_MS && isStarted) {
-                                    AutoTestLogger.logSilenceTimeoutTriggered(silenceDuration)
-                                    // 先调用回调更新 UI 状态
-                                    silenceTimeoutCallback?.invoke()
-                                    // 然后停止 AsrHandler
-                                    contextForStop?.let {
-                                        stop(it)
+                                } else if (isSpeechStarted && !vadDetected) {
+                                    val timeSinceLastVad = System.currentTimeMillis() - lastVadActivityTime
+                                    if (timeSinceLastVad > 1000 && offset % (windowSize * 10) == 0) {
+                                        DebugLogger.logRecognition(TAG, "VAD 未检测到语音 (offset=$offset, bufferSize=${buffer.size}, isSpeechStarted=$isSpeechStarted, 距上次VAD活动=${timeSinceLastVad}ms)")
                                     }
-                                    break
-                                }
-                                
-                                val timeSinceLastAudio = currentTime - lastAudioReceivedTime
-                                if (isStarted && timeSinceLastAudio > 5000) {
-                                    AutoTestLogger.logAsrStartedButNoAudio(timeSinceLastAudio)
                                 }
                             }
                             
-                            if (offset > cleanupThreshold && buffer.size > cleanupThreshold) {
-                                val removeCount = cleanupThreshold
-                                buffer = ArrayList(buffer.subList(removeCount, buffer.size))
-                                offset -= removeCount
+                            val timeSinceLastAudio = System.currentTimeMillis() - lastAudioReceivedTime
+                            if (isStarted && timeSinceLastAudio > 5000) {
+                                AutoTestLogger.logAsrStartedButNoAudio(timeSinceLastAudio)
                             }
-                            
-                            val timeSinceLastActivity = System.currentTimeMillis() - lastVadActivityTime
-                            if (isSpeechStarted && timeSinceLastActivity > timeoutMs) {
-                                buffer = arrayListOf()
-                                offset = 0
-                                isSpeechStarted = false
-                                vad.reset()
-                                lastVadActivityTime = System.currentTimeMillis()
+                        }
+                        
+                        // 检查静音超时：在主循环中检查，确保即使没有音频数据也能触发
+                        val currentTime = System.currentTimeMillis()
+                        val silenceDuration = currentTime - lastSpeechDetectedTime
+                        if (silenceDuration > SILENCE_TIMEOUT_MS && isStarted) {
+                            DebugLogger.logVoiceRecognition(TAG, "静音超时触发: ${silenceDuration}ms (阈值: ${SILENCE_TIMEOUT_MS}ms)")
+                            AutoTestLogger.logSilenceTimeoutTriggered(silenceDuration)
+                            silenceTimeoutCallback?.invoke()
+                            contextForStop?.let {
+                                stop(it)
                             }
+                            break
+                        } else if (silenceDuration > SILENCE_TIMEOUT_MS / 2) {
+                            DebugLogger.logRecognition(TAG, "静音时长: ${silenceDuration}ms / ${SILENCE_TIMEOUT_MS}ms")
+                        }
+                        
+                        if (!hasNewAudio) {
+                            delay(100)
+                        }
+                        
+                        if (offset > cleanupThreshold && buffer.size > cleanupThreshold) {
+                            val removeCount = cleanupThreshold
+                            buffer = ArrayList(buffer.subList(removeCount, buffer.size))
+                            offset -= removeCount
+                        }
+                        
+                        val timeSinceLastActivity = System.currentTimeMillis() - lastVadActivityTime
+                        if (isSpeechStarted && timeSinceLastActivity > timeoutMs) {
+                            buffer = arrayListOf()
+                            offset = 0
+                            isSpeechStarted = false
+                            vad.reset()
+                            lastVadActivityTime = System.currentTimeMillis()
+                        }
 
-                            val elapsed = System.currentTimeMillis() - startTime
-                            if (isSpeechStarted && elapsed > 200) {
+                        val elapsed = System.currentTimeMillis() - startTime
+                        if (isSpeechStarted) {
+                            DebugLogger.logRecognition(TAG, "ASR检查: isSpeechStarted=true, elapsed=${elapsed}ms, offset=$offset, bufferSize=${buffer.size}, startTime=$startTime")
+                        }
+                        if (isSpeechStarted && elapsed > 200) {
                                 // Run ASR every 0.2 seconds == 200 milliseconds
                                 // You can change it to some other value
+                                DebugLogger.logRecognition(TAG, "开始ASR识别: elapsed=${elapsed}ms, offset=$offset, bufferSize=${buffer.size}, startTime=$startTime")
                                 val stream = recognizer.createStream()
+                                val audioDataSize = minOf(offset, buffer.size)
+                                val audioData = buffer.subList(0, audioDataSize).toFloatArray()
+                                DebugLogger.logRecognition(TAG, "ASR音频数据长度: ${audioData.size} samples (offset=$offset, bufferSize=${buffer.size})")
                                 stream.acceptWaveform(
-                                    buffer.subList(0, offset).toFloatArray(),
+                                    audioData,
                                     SAMPLE_RATE_IN_HZ
                                 )
                                 recognizer.decode(stream)
@@ -495,6 +603,7 @@ object AsrHandler {
                                 lastText = result.text
 
                                 if (lastText.isNotBlank()) {
+                                    DebugLogger.logRecognition(TAG, "ASR Partial 识别结果: \"$lastText\"")
                                     val currentTime = System.currentTimeMillis()
                                     val textChanged = lastText != lastPartialText
                                     
@@ -506,11 +615,11 @@ object AsrHandler {
                                     
                                     if (!added || resultList.isEmpty()) {
                                         resultList.add(lastText)
-                                        Log.d("chenyifen","resultList.add(lastText)  = ${lastText} ")
+                                        DebugLogger.logRecognition(TAG, "添加识别结果到列表: \"$lastText\"")
                                         added = true
                                     } else {
                                         resultList[resultList.size - 1] = lastText
-                                        Log.d("chenyifen","set to list, Asr last text = ${lastText}")
+                                        DebugLogger.logRecognition(TAG, "更新识别结果: \"$lastText\"")
                                     }
                                     
                                     if (!finalTriggeredForCurrentSegment && isSpeechStarted) {
@@ -520,19 +629,25 @@ object AsrHandler {
                                         if (silenceSinceLastPartial >= PARTIAL_STABLE_THRESHOLD_MS && 
                                             stableSinceLastChange >= PARTIAL_STABLE_THRESHOLD_MS) {
                                             finalTriggeredForCurrentSegment = true
-                                            Log.d("chenyifen","invoke Final (stable): ${lastText}")
+                                            DebugLogger.logVoiceRecognition(TAG, "Final 识别触发 (稳定): \"$lastText\"")
                                             finalResultCallback?.invoke(lastText)
                                         }
                                     }
-                                }
+                        } else {
+                            DebugLogger.logRecognition(TAG, "ASR Partial 识别结果为空 (offset=$offset, bufferSize=${buffer.size}, elapsed=${elapsed}ms)")
+                        }
 
                                 startTime = System.currentTimeMillis()
+                            } else if (isSpeechStarted && elapsed <= 200) {
+                                DebugLogger.logRecognition(TAG, "ASR等待elapsed超过200ms: elapsed=${elapsed}ms, offset=$offset, bufferSize=${buffer.size}, startTime=$startTime")
+                            } else if (!isSpeechStarted && offset > windowSize * 20) {
+                                DebugLogger.logRecognition(TAG, "ASR等待VAD检测: offset=$offset, bufferSize=${buffer.size}, elapsed=${elapsed}ms")
                             }
-
 
                             while (!vad.empty()) {
                                 isSpeechStarted = false
                                 vad.pop()
+                                DebugLogger.logRecognition(TAG, "VAD 检测到语音结束")
                                 
                                 val finalText = if (lastText.isNotBlank()) {
                                     lastText
@@ -553,12 +668,14 @@ object AsrHandler {
                                         resultList.add(finalText)
                                     }
                                     added = false
-                                    Log.d("chenyifen","invoke Final: ${finalText}")
+                                DebugLogger.logVoiceRecognition(TAG, "Final 识别触发 (VAD结束): \"$finalText\"")
+                                DebugLogger.logAsrResult(TAG, finalText)
                                     finalResultCallback?.invoke(finalText)
+                            } else {
+                                DebugLogger.logRecognition(TAG, "Final 识别触发但文本为空")
                                 }
                                 
                                 lastText = finalText
-                            }
                         }
                     }
                 }
