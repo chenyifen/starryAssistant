@@ -16,6 +16,8 @@ object DebugLogger {
     private const val SYSTEM_PROP_SAVE_AUDIO = "persist.debug.voice.save_audio"
     
     private var systemPropertiesGet: Method? = null
+    private var debugLogEnabled: Boolean? = null
+    private var debugLogInitialized = false
     
     init {
         try {
@@ -28,14 +30,8 @@ object DebugLogger {
     private fun getSystemProperty(key: String, defaultValue: String = "false"): String {
         return try {
             val result = systemPropertiesGet?.invoke(null, key, defaultValue) as? String ?: defaultValue
-            if (key == SYSTEM_PROP_DEBUG_LOG) {
-                Log.i("DebugLogger", "系统属性 $key = $result (默认值: $defaultValue)")
-            }
             result
         } catch (e: Exception) {
-            if (key == SYSTEM_PROP_DEBUG_LOG) {
-                Log.e("DebugLogger", "读取系统属性失败: $key", e)
-            }
             defaultValue
         }
     }
@@ -43,16 +39,19 @@ object DebugLogger {
     private fun getSystemPropertyBoolean(key: String, defaultValue: Boolean = false): Boolean {
         val value = getSystemProperty(key, if (defaultValue) "true" else "false")
         val result = value == "true" || value == "1"
-        if (key == SYSTEM_PROP_DEBUG_LOG) {
-            Log.i("DebugLogger", "系统属性 $key 布尔值 = $result (原始值: $value)")
-        }
         return result
     }
     
     private fun isDebugEnabled(): Boolean {
-        val enabled = getSystemPropertyBoolean(SYSTEM_PROP_DEBUG_LOG)
-        Log.i("DebugLogger", "Debug日志总开关: $enabled")
-        return enabled
+        if (!debugLogInitialized) {
+            debugLogEnabled = getSystemPropertyBoolean(SYSTEM_PROP_DEBUG_LOG)
+            val value = getSystemProperty(SYSTEM_PROP_DEBUG_LOG, "false")
+            Log.i("DebugLogger", "系统属性 $SYSTEM_PROP_DEBUG_LOG = $value (默认值: false)")
+            Log.i("DebugLogger", "系统属性 $SYSTEM_PROP_DEBUG_LOG 布尔值 = $debugLogEnabled (原始值: $value)")
+            Log.i("DebugLogger", "Debug日志总开关: $debugLogEnabled")
+            debugLogInitialized = true
+        }
+        return debugLogEnabled ?: false
     }
     
     private fun isWakeWordEnabled(): Boolean = getSystemPropertyBoolean(SYSTEM_PROP_WAKE_WORD) || isDebugEnabled()
