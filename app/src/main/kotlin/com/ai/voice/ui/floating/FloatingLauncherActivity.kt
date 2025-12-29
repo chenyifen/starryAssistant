@@ -60,8 +60,33 @@ class FloatingLauncherActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "🚀 FloatingLauncherActivity 启动")
         
+        // 如果悬浮球服务正在运行，临时隐藏悬浮球，避免覆盖权限弹窗
+        val intent = Intent(this, EnhancedFloatingWindowService::class.java).apply {
+            action = "ACTION_HIDE_ORB_TEMPORARILY"
+        }
+        try {
+            startService(intent)
+            Log.d(TAG, "✅ 发送隐藏悬浮球请求，避免覆盖权限弹窗")
+        } catch (e: Exception) {
+            // 服务未运行，忽略
+        }
+        
         // 开始权限检查流程
         checkNextPermission()
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        // Activity 销毁时恢复悬浮球显示（如果服务正在运行）
+        val intent = Intent(this, EnhancedFloatingWindowService::class.java).apply {
+            action = "ACTION_RESTORE_ORB"
+        }
+        try {
+            startService(intent)
+            Log.d(TAG, "✅ 发送恢复悬浮球请求")
+        } catch (e: Exception) {
+            // 服务未运行，忽略
+        }
     }
     
     /**
