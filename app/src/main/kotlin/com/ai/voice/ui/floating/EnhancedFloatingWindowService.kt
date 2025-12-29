@@ -329,6 +329,8 @@ class EnhancedFloatingWindowService : Service(),
         
         Log.i(TAG, "📊 [状态显示] UI状态=$currentUIState, ASR状态=${AsrHandler.isStarted()}, 状态文本=\"$statusText\"")
         
+        voiceAssistantStateProvider.setStatusText(statusText)
+        
         val stateManager = floatingOrb?.getAnimationStateManager()
         val isAsrStarted = AsrHandler.isStarted()
         
