@@ -124,20 +124,18 @@ class DraggableFloatingOrb(
                 }
                 
                 if (!isFullyInitialized) {
-                    // 简单占位符 - 快速渲染
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .wrapContentSize()
                             .background(Color.Transparent)
                     )
                 } else {
-                    // 在Composable内部读取状态，以便触发重组
                     val asrText by currentAsrText
                     val ttsText by currentTtsText
                     
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .wrapContentSize()
                             .background(Color.Transparent),
                         contentAlignment = Alignment.BottomStart
                     ) {
@@ -156,9 +154,9 @@ class DraggableFloatingOrb(
             floatingView = composeView
             isShowing = true
             
-            // 移除所有触摸交互，设置为不可点击
             composeView.isClickable = false
             composeView.isFocusable = false
+            composeView.setOnTouchListener { _, _ -> false }
             
             // 默认设置为待机状态
             animationStateManager.setIdle()
