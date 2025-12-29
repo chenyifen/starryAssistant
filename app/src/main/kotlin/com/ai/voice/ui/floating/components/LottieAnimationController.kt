@@ -52,7 +52,7 @@ fun LottieAnimationController(
             composition = composition,
             progress = { animationProgress },
             modifier = Modifier
-                .fillMaxSize()
+                .size(size.dp)
                 .background(Color.Transparent), // 确保Lottie动画背景透明
             clipToCompositionBounds = false, // 不裁剪到组合边界
             enableMergePaths = true, // 启用路径合并优化
