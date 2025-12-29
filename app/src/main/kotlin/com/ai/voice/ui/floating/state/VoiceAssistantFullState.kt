@@ -18,6 +18,7 @@ data class VoiceAssistantFullState(
     // 实时文本
     val asrText: String,           // 当前ASR识别文本
     val ttsText: String,           // 当前TTS播放文本
+    val statusText: String,       // 状态文本（试用期、权限等）
     
     // 技能结果 - 只保留最核心的
     val result: SimpleResult?,
@@ -33,6 +34,7 @@ data class VoiceAssistantFullState(
             timestamp = System.currentTimeMillis(),
             asrText = "",
             ttsText = "",
+            statusText = "",
             result = null,
             conversationHistory = emptyList()
         )

@@ -310,6 +310,12 @@ class VoiceAssistantStateProvider @Inject constructor(
         updateState(ttsText = text)
     }
 
+    /**
+     * 设置状态文本（试用期、权限等）
+     */
+    fun setStatusText(text: String) {
+        updateState(statusText = text)
+    }
 
     /**
      * 内部状态更新方法
@@ -320,6 +326,7 @@ class VoiceAssistantStateProvider @Inject constructor(
         confidence: Float? = null,
         asrText: String? = null,
         ttsText: String? = null,
+        statusText: String? = null,
         result: SimpleResult? = null,
         conversationHistory: List<ConversationMessage>? = null
     ) {
@@ -340,6 +347,7 @@ class VoiceAssistantStateProvider @Inject constructor(
             confidence = confidence ?: _currentState.confidence,
             asrText = asrText ?: _currentState.asrText,
             ttsText = ttsText ?: _currentState.ttsText,
+            statusText = statusText ?: _currentState.statusText,
             result = result ?: _currentState.result,
             conversationHistory = conversationHistory ?: _currentState.conversationHistory,
             timestamp = System.currentTimeMillis()
