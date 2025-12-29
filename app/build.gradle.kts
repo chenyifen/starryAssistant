@@ -41,12 +41,12 @@ val gitCommitCount: Int = run {
 // 基础版本号
 val baseVersionMajor = 3
 val baseVersionMinor = 3
-val baseVersionCode = 16
+val baseVersionCode = 1673
 
 // 版本号偏移量：用于跳转到指定版本号继续开始
-// 例如：要跳转到3.19.70，设置commitOffset = 1670
-// 计算方式：目标版本号3.19.70 = 3.(3+16).70，需要commitCount = 16*100 + 70 = 1670
-val commitOffset = 1670
+// 例如：要跳转到3.19.70，需要adjustedCommitCount = 16*100 + 70 = 1670
+// 当前gitCommitCount = 1657，所以commitOffset = 1670 - 1657 = 13
+val commitOffset = 13
 
 // 版本号计算规则：修订号0-99循环，每100次commit次版本号+1，次版本号超过99时主版本号+1
 // 例如：3.3.0 -> 3.3.99 -> 3.4.0 -> ... -> 3.99.99 -> 4.0.0
