@@ -64,11 +64,11 @@ fun LottieAnimationController(
                     value = 0,
                     keyPath = arrayOf("Shape Layer 13", "**")
                 ),
-                // 动态替换文本内容
+                // 隐藏文本层 - Hi, I'm ME AI (ind: 2)
                 rememberLottieDynamicProperty(
-                    property = LottieProperty.TEXT,
-                    value = displayText,
-                    keyPath = arrayOf("**") // 匹配所有文本层
+                    property = LottieProperty.OPACITY,
+                    value = 0,
+                    keyPath = arrayOf("Hi, I'm ME AI", "**")
                 )
             )
         )
