@@ -15,8 +15,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Text
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
@@ -45,7 +48,8 @@ class DraggableFloatingOrb(
     private val animationStateManager = LottieAnimationStateManager()
     private val currentAsrText = mutableStateOf("")
     private val currentTtsText = mutableStateOf("")
-    private var lastUiState: VoiceAssistantUIState? = null
+    private val currentStatusText = mutableStateOf("")
+    private val currentUIState = mutableStateOf(VoiceAssistantUIState.IDLE)
     private var lastDisplayText = ""
     private var stateProvider: VoiceAssistantStateProvider? = null
     private var stateListener: ((VoiceAssistantFullState) -> Unit)? = null
@@ -123,29 +127,24 @@ class DraggableFloatingOrb(
                 }
                 
                 if (!isFullyInitialized) {
-                    // 简单占位符 - 快速渲染
                     Box(
                         modifier = Modifier
-                            .fillMaxSize()
+                            .wrapContentSize()
                             .background(Color.Transparent)
                     )
                 } else {
-                    // 在Composable内部读取状态，以便触发重组
                     val asrText by currentAsrText
                     val ttsText by currentTtsText
+                    val statusText by currentStatusText
+                    val uiState by currentUIState
                     
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Transparent),
-                        contentAlignment = Alignment.BottomStart
-                    ) {
-                        FloatingOrbContent(
-                            animationStateManager = animationStateManager,
-                            currentAsrText = asrText,
-                            currentTtsText = ttsText
-                        )
-                    }
+                    FloatingOrbContent(
+                        animationStateManager = animationStateManager,
+                        currentAsrText = asrText,
+                        currentTtsText = ttsText,
+                        currentStatusText = statusText,
+                        currentUIState = uiState
+                    )
                 }
             }
             
@@ -158,6 +157,8 @@ class DraggableFloatingOrb(
             // 移除所有触摸交互，设置为不可点击
             composeView.isClickable = false
             composeView.isFocusable = false
+            composeView.isFocusableInTouchMode = false
+            composeView.setOnTouchListener { _, _ -> false }
             
             // 默认设置为待机状态
             animationStateManager.setIdle()
@@ -194,7 +195,6 @@ class DraggableFloatingOrb(
             // 窗口类型
             type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
             
-            // 窗口标志 - 设置为完全不可交互
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
                     WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
@@ -238,7 +238,8 @@ class DraggableFloatingOrb(
     private fun handleVoiceAssistantStateChange(state: VoiceAssistantFullState) {
         val asrTextChanged = currentAsrText.value != state.asrText
         val ttsTextChanged = currentTtsText.value != state.ttsText
-        val uiStateChanged = lastUiState != state.uiState
+        val statusTextChanged = currentStatusText.value != state.statusText
+        val uiStateChanged = currentUIState.value != state.uiState
         
         val shouldUpdateAsr = asrTextChanged && !(state.asrText.isEmpty() && currentAsrText.value.isEmpty())
         val shouldUpdateTts = ttsTextChanged && !(state.ttsText.isEmpty() && currentTtsText.value.isEmpty())
@@ -251,13 +252,17 @@ class DraggableFloatingOrb(
             currentTtsText.value = state.ttsText
         }
         
-        if (uiStateChanged) {
-            updateUIState(state)
+        if (statusTextChanged) {
+            DebugLogger.logUI(TAG, "📝 状态文本更新: \"${currentStatusText.value}\" -> \"${state.statusText}\"")
+            currentStatusText.value = state.statusText
         }
-    }
-    
-    private fun updateUIState(state: VoiceAssistantFullState) {
-        lastUiState = state.uiState
+        
+        if (uiStateChanged) {
+            DebugLogger.logUI(TAG, "🔄 UI状态更新: ${currentUIState.value} -> ${state.uiState}")
+            currentUIState.value = state.uiState
+        }
+        
+        DebugLogger.logUI(TAG, "📊 当前状态: statusText=\"${currentStatusText.value}\", uiState=${currentUIState.value}, shouldShow=${currentStatusText.value.isNotEmpty() && currentUIState.value == VoiceAssistantUIState.IDLE}")
     }
 }
 
@@ -265,38 +270,85 @@ class DraggableFloatingOrb(
 private fun FloatingOrbContent(
     animationStateManager: LottieAnimationStateManager,
     currentAsrText: String,
-    currentTtsText: String
+    currentTtsText: String,
+    currentStatusText: String,
+    currentUIState: VoiceAssistantUIState
 ) {
     val animationState by animationStateManager.currentState
-    val shouldShowText = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
+    val shouldShowAsrTts = currentAsrText.isNotEmpty() || currentTtsText.isNotEmpty()
+    val shouldShowStatusText = currentStatusText.isNotEmpty() && currentUIState == VoiceAssistantUIState.IDLE
     val animationSize = FloatingOrbConfig.animationSizeDp
     val animationSizeInt = FloatingOrbConfig.animationSizeInt
 
-    Row(
+    LaunchedEffect(currentStatusText, currentUIState, shouldShowStatusText) {
+        DebugLogger.logUI("FloatingOrbContent", "🎨 显示状态: statusText=\"$currentStatusText\", uiState=$currentUIState, shouldShow=$shouldShowStatusText")
+    }
+
+    Column(
         modifier = Modifier
             .wrapContentSize()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier.size(animationSize),
-            contentAlignment = Alignment.Center
-        ) {
-            LottieAnimationController(
-                animationState = animationState,
-                size = animationSizeInt
+        if (shouldShowStatusText) {
+            StatusTextBubble(
+                text = currentStatusText,
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .fillMaxWidth(0.8f)
             )
+        } else {
+            DebugLogger.logUI("FloatingOrbContent", "⚠️ 状态文本未显示: statusText=\"$currentStatusText\", uiState=$currentUIState, isEmpty=${currentStatusText.isEmpty()}, isIdle=${currentUIState == VoiceAssistantUIState.IDLE}")
         }
         
-        if (shouldShowText) {
-            FloatingTextDisplay(
-                userText = currentAsrText,
-                aiText = currentTtsText,
-                isVisible = true,
-                modifier = Modifier.wrapContentWidth()
-            )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.wrapContentSize()
+        ) {
+            Box(
+                modifier = Modifier.size(animationSize),
+                contentAlignment = Alignment.Center
+            ) {
+                LottieAnimationController(
+                    animationState = animationState,
+                    size = animationSizeInt
+                )
+            }
+            
+            if (shouldShowAsrTts) {
+                FloatingTextDisplay(
+                    userText = currentAsrText,
+                    aiText = currentTtsText,
+                    isVisible = true,
+                    modifier = Modifier.wrapContentWidth()
+                )
+            }
         }
+    }
+}
+
+@Composable
+private fun StatusTextBubble(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .wrapContentSize()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFF2196F3).copy(alpha = 0.95f))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
